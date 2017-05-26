@@ -1,0 +1,18 @@
+with "yada";
+with "aunit";
+
+project Yada_Unittests is
+   for Languages use ("ada");
+
+   for Object_Dir use "test/obj";
+   for Library_Dir use "test/lib";
+   for Exec_Dir use "test/bin";
+
+   for Main use ("yada-lexing-harness.adb");
+
+   package Builder renames Yada.Builder;
+   package Compiler renames Yada.Compiler;
+   package Ide renames Yada.Ide;
+
+   for Source_Dirs use ("test/src");
+end Yada_Unittests;

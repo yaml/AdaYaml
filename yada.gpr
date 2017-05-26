@@ -3,13 +3,15 @@ library project Yada is
 
    for Library_Name use "Yada";
 
-   Yada_Source := ("src/interface",
-                      "src/implementation");
+   Yada_Sources := ("src/interface",
+                    "src/implementation");
 
    for Source_Dirs use Yada_Sources;
    for Object_Dir use "obj";
    for Library_Dir use "lib";
-   for Library_Kind use OpenGL_Shared'Library_Kind;
+
+   type Mode_Type is ("debug", "release");
+   Mode : Mode_Type := external ("Mode", "debug");
 
    package Ide is
       for Vcs_Kind use "Git";
@@ -17,7 +19,7 @@ library project Yada is
 
    package Builder is
       case Mode is
-      when "debug" => 
+      when "debug" =>
          for Default_Switches ("ada") use ("-s", "-gnatE", "-g");
       when "release" =>
          for Default_Switches ("ada") use ("-s");
@@ -28,10 +30,10 @@ library project Yada is
       case Mode is
       when "debug" =>
          for Default_Switches ("ada") use
-            ("-gnat12", "-gnatwa", "-g", "-fstack-check");
+            ("-gnat12", "-gnatwa", "-gnatwl", "-gnaty3abcefhiklmNprt", "-g", "-fstack-check");
       when "release" =>
          for Default_Switches ("ada") use
-            ("-gnat12", "-gnatwa", "-O2", "-gnatn2", "-fstack-check");
+            ("-gnat12", "-gnatwa", "-gnatwl", "-O3", "-gnaty3abcefhiklmNprt", "-fstack-check");
       end case;
    end Compiler;
 end Yada;
