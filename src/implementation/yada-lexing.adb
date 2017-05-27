@@ -1,17 +1,9 @@
-with Ada.Strings.Maps;
 with Ada.Unchecked_Deallocation;
 
 package body Yada.Lexing is
-   End_Of_Input    : constant Character := Character'Val (4);
-   Line_Feed       : constant Character := Character'Val (10);
-   Carriage_Return : constant Character := Character'Val (13);
-
-   Line_Ends : constant Ada.Strings.Maps.Character_Set :=
-     Ada.Strings.Maps.To_Set (Line_Feed & Carriage_Return);
-
    procedure Free is new Ada.Unchecked_Deallocation (String, Buffer_Type);
 
-   function Next (Object : in out Lexer) return Character with Inline is
+   function Next (Object : in out Lexer) return Character is
    begin
       return C : constant Character := Object.Buffer (Object.Pos) do
          Object.Pos := Object.Pos + 1;
@@ -19,7 +11,7 @@ package body Yada.Lexing is
    end Next;
 
    procedure Refill_Buffer (L : in out Lexer) is
-      Bytes_To_Copy : constant Natural := L.Buffer'Last - L.Sentinel;
+      Bytes_To_Copy : constant Natural := L.Buffer'Last + 1 - L.Sentinel;
       Fill_At : Positive := Bytes_To_Copy + 1;
       Bytes_Read : Positive;
 
@@ -33,17 +25,18 @@ package body Yada.Lexing is
                Peek := Peek - 1;
             end if;
          end loop;
+         L.Sentinel := Peek + 1;
          return True;
       end Search_Sentinel;
    begin
       if Bytes_To_Copy > 0 then
-         L.Buffer (1 .. Bytes_To_Copy) := L.Buffer (L.Sentinel + 1 .. L.Buffer'Last);
+         L.Buffer (1 .. Bytes_To_Copy) := L.Buffer (L.Sentinel .. L.Buffer'Last);
       end if;
       loop
          L.Input.Read_Data (L.Buffer (Fill_At .. L.Buffer'Last), Bytes_Read);
          if Bytes_Read < L.Buffer'Last - Fill_At then
             L.Sentinel := Fill_At + Bytes_Read + 1;
-            L.Buffer (L.Sentinel) := End_Of_Input;
+            L.Buffer (L.Sentinel - 1) := End_Of_Input;
             exit;
          else
             exit when Search_Sentinel;
@@ -62,7 +55,6 @@ package body Yada.Lexing is
 
    procedure Handle_CR (L : in out Lexer) is
    begin
-      L.Pos := L.Pos + 1;
       if L.Buffer (L.Pos) = Line_Feed then
          L.Pos := L.Pos + 1;
       end if;
@@ -74,7 +66,6 @@ package body Yada.Lexing is
 
    procedure Handle_LF (L : in out Lexer) is
    begin
-      L.Pos := L.Pos + 1;
       if L.Pos = L.Sentinel then
          Refill_Buffer (L);
          L.Pos := 1;
@@ -87,7 +78,7 @@ package body Yada.Lexing is
       return Lexer is
    begin
       return L : Lexer :=
-        Lexer'(Input => Input, Sentinel => Initial_Buffer_Size, Pos => 1,
+        Lexer'(Input => Input, Sentinel => Initial_Buffer_Size + 1, Pos => 1,
                Buffer => new String (1 .. Initial_Buffer_Size)) do
          Refill_Buffer (L);
       end return;

@@ -8,7 +8,8 @@ package body Yada.Sources.Files is
       declare
          subtype Read_Blob is String (1 .. Length);
       begin
-         Read_Blob'Read (S.Stream, Buffer (Buffer'First .. Length - 1));
+         Read_Blob'Read (S.Stream, Buffer (Buffer'First .. Buffer'First + Length - 1));
+         S.Input_At := S.Input_At + Ada.Directories.File_Size (Length);
       end;
    end Read_Data;
 
