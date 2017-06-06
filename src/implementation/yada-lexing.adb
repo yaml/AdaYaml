@@ -1,7 +1,7 @@
 with Ada.Unchecked_Deallocation;
+with Yada.Lexing.Scalars;
 
 package body Yada.Lexing is
-   use Ada.Strings.Maps;
    -----------------------------------------------------------------------------
    --             Initialization and buffer handling                          --
    -----------------------------------------------------------------------------
@@ -23,7 +23,7 @@ package body Yada.Lexing is
       function Search_Sentinel return Boolean with Inline is
          Peek : Positive := L.Buffer'Last;
       begin
-         while not Is_In (L.Buffer.all (Peek), Line_Ends) loop
+         while not (L.Buffer (Peek) in Line_End) loop
             if Peek = Fill_At then
                return False;
             else
@@ -48,7 +48,7 @@ package body Yada.Lexing is
             Fill_At := L.Buffer'Last + 1;
             declare
                New_Buffer : constant Buffer_Type :=
-                 new String (1 .. 2 * L.Buffer'Last);
+                 new UTF_String (1 .. 2 * L.Buffer'Last);
             begin
                New_Buffer.all (L.Buffer'Range) := L.Buffer.all;
                Free (L.Buffer);
@@ -69,6 +69,7 @@ package body Yada.Lexing is
       end if;
       L.Line_Start := L.Pos;
       L.Cur_Line := L.Cur_Line + 1;
+      L.Cur := Next (L);
    end Handle_CR;
 
    procedure Handle_LF (L : in out Lexer) is
@@ -79,14 +80,17 @@ package body Yada.Lexing is
       end if;
       L.Line_Start := L.Pos;
       L.Cur_Line := L.Cur_Line + 1;
+      L.Cur := Next (L);
    end Handle_LF;
 
    function New_Lexer (Input : Sources.Source_Access; Buffer : Buffer_Type)
      return Lexer is
       (Lexer'(Input => Input, Sentinel => Buffer.all'Last + 1, Buffer => Buffer,
               Pos => Buffer.all'First, Indentation => <>, Cur_Line => 1,
-              State => Outside_Doc'Access, Cur => <>,
-             Token_Start => <>, Line_Start => Buffer.all'First))
+              State => Outside_Doc'Access, Cur => <>, Flow_Depth => 0,
+              Line_Start_State => Outside_Doc'Access, Scalar_Content => null,
+              Json_Enabling_State => Inside_Line'Access,
+              Token_Start => <>, Line_Start => Buffer.all'First))
      with Inline;
 
    function From_Source
@@ -104,8 +108,8 @@ package body Yada.Lexing is
    function From_String (Input : String) return Lexer is
    begin
       return L : Lexer :=
-        New_Lexer (null, new String (1 .. Input'Length)) do
-         L.Buffer.all := Input;
+        New_Lexer (null, new String (1 .. Input'Length + 1)) do
+         L.Buffer.all := Input & End_Of_Input;
          L.Cur := Next (L);
       end return;
    end From_String;
@@ -121,11 +125,7 @@ package body Yada.Lexing is
    --                            Tokenization                                 --
    -----------------------------------------------------------------------------
 
-   --  this function escapes a given string by converting all non-printable
-   --  characters plus '"', ''' and '\', into c-style backslash escape
-   --  sequences. it also surrounds the string with double quotation marks.
-   --  this is primarily used for error message rendering
-   function Escape (S : String) return String is
+   function Escaped (S : String) return String is
       Ret : String (1 .. S'Length * 4) := (1 => '"', others => <>);
       Retpos : Positive := 2;
 
@@ -161,9 +161,9 @@ package body Yada.Lexing is
       end loop;
       Ret (Retpos) := '"';
       return Ret (1 .. Retpos);
-   end Escape;
+   end Escaped;
 
-   function Escape (C : Character) return String is (Escape ("" & C));
+   function Escaped (C : Character) return String is (Escaped ("" & C));
 
    function Next_Token (L : in out Lexer) return Token is
       Ret : Token;
@@ -174,47 +174,49 @@ package body Yada.Lexing is
       return Ret;
    end Next_Token;
 
-   procedure Tell_Indentation (L : in out Lexer; Indentation : Natural) is
-   begin
-      L.Indentation := Indentation;
-   end Tell_Indentation;
-
    function Short_Lexeme (L : Lexer) return String is
       (L.Buffer (L.Token_Start .. L.Pos - 1));
 
    function Full_Lexeme (L : Lexer) return String is
      (L.Buffer (L.Token_Start - 1 .. L.Pos - 1));
 
-   procedure Finish_Line (L : in out Lexer; Next_State : Lexer_State) is
+   --  to be called whenever a '-' is read as first character in a line. this
+   --  function checks for whether this is a directives end marker ('---'). if
+   --  yes, the lexer position is updated to be after the marker.
+   function Is_Directives_End (L : in out Lexer) return Boolean is
+      Peek : Positive := L.Pos + 1;
    begin
-      while L.Cur = ' ' loop
-         L.Cur := Next (L);
-      end loop;
-      case L.Cur is
-         when '#' =>
-            loop
-               L.Cur := Next (L);
-               exit when Is_In (L.Cur, Space_Or_Line_End);
-            end loop;
-         when Line_Feed | Carriage_Return | End_Of_Input =>
-            null;
-         when others =>
-            raise Lexer_Error with
-              "Unexpected character (expected line end): " & Escape (L.Cur);
-      end case;
-      case L.Cur is
-         when Line_Feed =>
-            Handle_LF (L);
-            L.State := Next_State;
-         when Carriage_Return =>
-            Handle_CR (L);
-            L.State := Next_State;
-         when End_Of_Input =>
-            L.State := Stream_End'Access;
-         when others => null; --  can not happen at this point
-      end case;
-   end Finish_Line;
+      if L.Buffer (Peek) = '-' then
+         Peek := Peek + 1;
+         if L.Buffer (Peek) = '-' then
+            Peek := Peek + 1;
+            if L.Buffer (Peek) in Space_Or_Line_End then
+               L.Pos := Peek;
+               return True;
+            end if;
+         end if;
+      end if;
+      return False;
+   end Is_Directives_End;
 
+   --  similar to Hyphen_Line_Type, this function checks whether, when a line
+   --  begin with a '.', that line contains a document end marker ('...'). if
+   --  yes, the lexer position is updated to be after the marker.
+   function Is_Document_End (L : in out Lexer) return Boolean is
+      Peek : Positive := L.Pos + 1;
+   begin
+      if L.Buffer (Peek) = '.' then
+         Peek := Peek + 1;
+         if L.Buffer (Peek) = '.' then
+            Peek := Peek + 1;
+            if L.Buffer (Peek) in Space_Or_Line_End then
+               L.Pos := Peek;
+               return True;
+            end if;
+         end if;
+      end if;
+      return False;
+   end Is_Document_End;
 
    function Outside_Doc (L : in out Lexer; T : out Token) return Boolean is
    begin
@@ -223,7 +225,7 @@ package body Yada.Lexing is
             L.Token_Start := L.Pos;
             loop
                L.Cur := Next (L);
-               exit when Is_In (L.Cur, Space_Or_Line_End);
+               exit when L.Cur in Space_Or_Line_End;
             end loop;
             declare
                Name : constant String := Short_Lexeme (L);
@@ -243,38 +245,411 @@ package body Yada.Lexing is
                end if;
             end;
          when '-' =>
-            null;
-            return False;
+            if Is_Directives_End (L) then
+               L.State := Inside_Line'Access;
+               T := Directives_End;
+            else
+               L.State := Indentation_Setting_Token'Access;
+               T := Indentation;
+            end if;
+            L.Indentation := -1;
+            L.Line_Start_State := Line_Start'Access;
+            return True;
          when '.' =>
-            null;
-            return False;
+            if Is_Document_End (L) then
+               L.State := Expect_Line_End'Access;
+               T := Document_End;
+            else
+               L.State := Indentation_Setting_Token'Access;
+               L.Line_Start_State := Line_Start'Access;
+               L.Indentation := -1;
+               T := Indentation;
+            end if;
+            return True;
          when others =>
-            L.Indentation := 0;
             while L.Cur = ' ' loop
                L.Cur := Next (L);
-               L.Indentation := L.Indentation + 1;
             end loop;
-            if Is_In (L.Cur, Comment_Or_Line_End) then
-               Finish_Line (L, Outside_Doc'Access);
+            if L.Cur in Comment_Or_Line_End then
+               L.State := Expect_Line_End'Access;
                return False;
             end if;
+            L.Indentation := -1;
             T := Indentation;
-            L.State := Inside_Line'Access;
+            L.State := Indentation_Setting_Token'Access;
+            L.Line_Start_State := Line_Start'Access;
             return True;
       end case;
    end Outside_Doc;
 
-
    function Yaml_Version (L : in out Lexer; T : out Token) return Boolean is
-      (False);
+      procedure Read_Numeric_Subtoken is
+      begin
+         if not (L.Cur in Digit) then
+            raise Lexer_Error with "Illegal character in YAML version string: " &
+              Escaped (L.Cur);
+         end if;
+         loop
+            L.Cur := Next (L);
+            exit when not (L.Cur in Digit);
+         end loop;
+      end Read_Numeric_Subtoken;
+   begin
+      while L.Cur = ' ' loop
+         L.Cur := Next (L);
+      end loop;
+      L.Token_Start := L.Pos;
+      Read_Numeric_Subtoken;
+      if L.Cur /= '.' then
+         raise Lexer_Error with "Illegal character in YAML version string: " &
+           Escaped (L.Cur);
+      end if;
+      L.Cur := Next (L);
+      Read_Numeric_Subtoken;
+      if not (L.Cur in Space_Or_Line_End) then
+         raise Lexer_Error with "Illegal character in YAML version string: " &
+           Escaped (L.Cur);
+      end if;
+      L.State := Expect_Line_End'Access;
+      T := Directive_Param;
+      return True;
+   end Yaml_Version;
+
    function Tag_Shorthand (L : in out Lexer; T : out Token) return Boolean is
-      (False);
+   begin
+      while L.Cur = ' ' loop
+         L.Cur := Next (L);
+      end loop;
+      if L.Cur /= '!' then
+         raise Lexer_Error with
+           "Illegal character, tag shorthand must start with ""!"":" &
+           Escaped (L.Cur);
+      end if;
+      L.Token_Start := L.Pos;
+      L.Cur := Next (L);
+      if L.Cur /= ' ' then
+         while L.Cur in Tag_Shorthand_Char loop
+            L.Cur := Next (L);
+         end loop;
+         if L.Cur /= '!' then
+            if L.Cur in Space_Or_Line_End then
+               raise Lexer_Error with "Tag shorthand must end with ""!"".";
+            else
+               raise Lexer_Error with "Illegal character in tag shorthand: " &
+                 Escaped (L.Cur);
+            end if;
+         end if;
+         L.Cur := Next (L);
+         if L.Cur /= ' ' then
+            raise Lexer_Error with "Missing space after tag shorthand";
+         end if;
+      end if;
+      L.State := Tag_Uri'Access;
+      T := Directive_Param;
+      return True;
+   end Tag_Shorthand;
+
    function Tag_Uri (L : in out Lexer; T : out Token) return Boolean is
-      (False);
+   begin
+      while L.Cur = ' ' loop
+         L.Cur := Next (L);
+      end loop;
+      L.Token_Start := L.Pos;
+      if L.Cur = '!' then
+         --  local tag prefix
+         L.Cur := Next (L);
+      end if;
+      loop
+         case L.Cur is
+            when Tag_Uri_Char => L.Cur := Next (L);
+            when Space_Or_Line_End => exit;
+            when others =>
+               raise Lexer_Error with "Illegal character in tag prefix: " &
+                 Escaped (L.Cur);
+         end case;
+      end loop;
+      T := Directive_Param;
+      L.Line_Start_State := Outside_Doc'Access;
+      L.State := Expect_Line_End'Access;
+      return True;
+   end Tag_Uri;
+
    function Unknown_Directive (L : in out Lexer; T : out Token) return Boolean
-     is (False);
+   is begin
+      while L.Cur = ' ' loop
+         L.Cur := Next (L);
+      end loop;
+      if L.Cur in Comment_Or_Line_End then
+         L.State := Expect_Line_End'Access;
+         return False;
+      end if;
+      L.Token_Start := L.Pos;
+      loop
+         L.Cur := Next (L);
+         exit when L.Cur in Space_Or_Line_End;
+      end loop;
+      T := Directive_Param;
+      return True;
+   end Unknown_Directive;
+
+   procedure End_Line (L : in out Lexer) is
+   begin
+      loop
+         case L.Cur is
+            when Line_Feed =>
+               Handle_LF (L);
+               L.State := L.Line_Start_State;
+               exit;
+            when Carriage_Return =>
+               Handle_CR (L);
+               L.State := L.Line_Start_State;
+               exit;
+            when End_Of_Input =>
+               L.State := Stream_End'Access;
+               exit;
+            when '#' =>
+               loop
+                  L.Cur := Next (L);
+                  exit when L.Cur in Line_End;
+               end loop;
+            when others => null; --  forbidden by precondition
+         end case;
+      end loop;
+   end End_Line;
+
+   function Expect_Line_End (L : in out Lexer; T : out Token) return Boolean is
+      pragma Unreferenced (T);
+   begin
+      while L.Cur = ' ' loop
+         L.Cur := Next (L);
+      end loop;
+      if not (L.Cur in Comment_Or_Line_End) then
+         raise Lexer_Error with
+           "Unexpected character (expected line end): " & Escaped (L.Cur);
+      end if;
+      End_Line (L);
+      return False;
+   end Expect_Line_End;
+
    function Stream_End (L : in out Lexer; T : out Token) return Boolean is
-      (False);
+   begin
+      L.Token_Start := L.Pos;
+      T := Stream_End;
+      return True;
+   end Stream_End;
+
+   function Line_Start (L : in out Lexer; T : out Token) return Boolean is
+   begin
+      case L.Cur is
+         when '-' =>
+            if Is_Directives_End (L) then
+               return Line_Dir_End (L, T);
+            else
+               return Line_Indentation (L, T);
+            end if;
+         when '.' =>
+            if Is_Document_End (L) then
+               return Line_Doc_End (L, T);
+            else
+               return Line_Indentation (L, T);
+            end if;
+         when others =>
+            while L.Cur = ' ' loop
+               L.Cur := Next (L);
+            end loop;
+            if L.Cur in Comment_Or_Line_End then
+               End_Line (L);
+               return False;
+            end if;
+            return Line_Indentation (L, T);
+      end case;
+   end Line_Start;
+
+   procedure Check_Indicator_Char (L : in out Lexer; Kind : Token;
+                                   T : out Token) is
+   begin
+      if Scalars.Next_Is_Plain_Safe (L) then
+         Scalars.Read_Plain_Scalar (L);
+         T := Scalar;
+      else
+         L.Token_Start := L.Pos;
+         T := Kind;
+         L.Cur := Next (L);
+         L.State := Before_Indentation_Setting_Token'Access;
+      end if;
+   end Check_Indicator_Char;
+
+   subtype Flow_Depth_Modifier is Integer range -1 .. 1;
+
+   procedure Handle_Flow_Indicator (L : in out Lexer;
+                                    Modifier : Flow_Depth_Modifier) is
+   begin
+      L.Token_Start := L.Pos;
+      L.Flow_Depth := L.Flow_Depth + Modifier;
+      case Modifier is
+         when -1 =>
+            if L.Flow_Depth = 0 then
+               L.Json_Enabling_State := After_Token'Access;
+            end if;
+            L.State := L.Json_Enabling_State;
+         when 1 =>
+            if L.Flow_Depth = 1 then
+               L.Json_Enabling_State := After_Json_Enabling_Token'Access;
+            end if;
+            L.State := After_Token'Access;
+         when others =>
+            L.State := After_Token'Access;
+      end case;
+   end Handle_Flow_Indicator;
+
    function Inside_Line (L : in out Lexer; T : out Token) return Boolean is
-      (False);
+   begin
+      case L.Cur is
+         when ':' =>
+            Check_Indicator_Char (L, Map_Value_Ind, T);
+            return True;
+         when '?' =>
+            Check_Indicator_Char (L, Map_Key_Ind, T);
+            return True;
+         when '-' =>
+            Check_Indicator_Char (L, Seq_Item_Ind, T);
+            return True;
+         when Comment_Or_Line_End =>
+            End_Line (L);
+            return False;
+         when '"' =>
+            Scalars.Read_Double_Quoted_Scalar (L);
+            L.State := L.Json_Enabling_State;
+            return True;
+         when ''' =>
+            Scalars.Read_Single_Quoted_Scalar (L);
+            L.State := L.Json_Enabling_State;
+            return True;
+         when '>' | '|' =>
+            raise Lexer_Error with "Not implemented: block scalars";
+         when '{' =>
+            Handle_Flow_Indicator (L, 1);
+            T := Flow_Map_Start;
+            return True;
+         when '}' =>
+            Handle_Flow_Indicator (L, -1);
+            T := Flow_Map_End;
+            return True;
+         when '[' =>
+            Handle_Flow_Indicator (L, 1);
+            T := Flow_Seq_Start;
+            return True;
+         when ']' =>
+            Handle_Flow_Indicator (L, -1);
+            T := Flow_Seq_End;
+            return True;
+         when ',' =>
+            Handle_Flow_Indicator (L, 0);
+            T := Flow_Separator;
+            return True;
+         when '!' =>
+            raise Lexer_Error with "Not implemented: tag handles";
+         when '&' =>
+            raise Lexer_Error with "Not implemented: anchors";
+         when '*' =>
+            raise Lexer_Error with "Not implemented: aliases";
+         when '@' =>
+            raise Lexer_Error with "Not implemented: attributes";
+         when '`' =>
+            raise Lexer_Error with
+              "Reserved characters cannot start a plain scalar.";
+         when others =>
+            Scalars.Read_Plain_Scalar (L);
+            T := Scalar;
+            return True;
+      end case;
+   end Inside_Line;
+
+   function Indentation_Setting_Token (L : in out Lexer; T : out Token)
+                                       return Boolean is
+      Cached_Indentation : constant Natural := L.Pos - L.Line_Start - 1;
+   begin
+      return Ret : constant Boolean := Inside_Line (L, T) do
+         if Ret then
+            L.Indentation := Cached_Indentation;
+         end if;
+      end return;
+   end Indentation_Setting_Token;
+
+   function After_Token (L : in out Lexer; T : out Token) return Boolean is
+      pragma Unreferenced (T);
+   begin
+      while L.Cur = ' ' loop
+         L.Cur := Next (L);
+      end loop;
+      if L.Cur in Comment_Or_Line_End then
+         End_Line (L);
+      else
+         L.State := Inside_Line'Access;
+      end if;
+      return False;
+   end After_Token;
+
+   function Before_Indentation_Setting_Token (L : in out Lexer; T : out Token)
+                                              return Boolean is
+   begin
+      if After_Token (L, T) then
+         null;
+      end if;
+      if L.State = Inside_Line'Access then
+         L.State := Indentation_Setting_Token'Access;
+      end if;
+      return False;
+   end Before_Indentation_Setting_Token;
+
+   function After_Json_Enabling_Token (L : in out Lexer; T : out Token)
+                                       return Boolean is
+   begin
+      while L.Cur = ' ' loop
+         L.Cur := Next (L);
+      end loop;
+      case L.Cur is
+         when ':' =>
+            L.Token_Start := L.Pos;
+            T := Map_Value_Ind;
+            L.Cur := Next (L);
+            L.State := After_Token'Access;
+            return True;
+         when Comment_Or_Line_End =>
+            End_Line (L);
+            return False;
+         when others =>
+            L.State := Inside_Line'Access;
+            return False;
+      end case;
+   end After_Json_Enabling_Token;
+
+   function Line_Indentation (L : in out Lexer; T : out Token)
+                              return Boolean is
+   begin
+      T := Indentation;
+      L.State := Indentation_Setting_Token'Access;
+      return True;
+   end Line_Indentation;
+
+   function Line_Dir_End (L : in out Lexer; T : out Token)
+                          return Boolean is
+   begin
+      T := Directives_End;
+      L.State := Inside_Line'Access;
+      L.Indentation := -1;
+      return True;
+   end Line_Dir_End;
+
+   --  similar to Indentation_After_Plain_Scalar, but used for a document end
+   --  marker ending a plain scalar.
+   function Line_Doc_End (L : in out Lexer; T : out Token)
+                          return Boolean is
+   begin
+      T := Document_End;
+      L.State := Expect_Line_End'Access;
+      L.Line_Start_State := Outside_Doc'Access;
+      return True;
+   end Line_Doc_End;
+
 end Yada.Lexing;

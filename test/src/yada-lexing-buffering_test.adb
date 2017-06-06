@@ -28,21 +28,20 @@ package body Yada.Lexing.Buffering_Test is
 
       S : constant Sources.Source_Access := Sources.Files.As_Source (Data_Path);
       L : Lexer := From_Source (S, 64);
-      C : Character;
-
    begin
       Ada.Text_IO.Put_Line ("Buffer = """ & L.Buffer.all & """");
+      Ada.Text_IO.Put_Line ("Pos =" & L.Pos'Img);
       Assert (L.Buffer.all'Length = 64, "Buffer length does not match! Val:" & L.Buffer.all'Length'Img);
       for I in Expected'Range loop
-         C := Next (L);
-         case C is
+         Assert (Expected (I) = L.Cur, "Buffer contents at" & I'Img &
+                   " does not match. Expected """ & Expected (I) & """, got """ &
+                   L.Cur & """.");
+         exit when L.Cur = End_Of_Input;
+         case L.Cur is
             when Line_Feed => Handle_LF (L);
             when Carriage_Return => Handle_CR (L);
-            when others => null;
+            when others => L.Cur := Next (L);
          end case;
-         Assert (Expected (I) = C, "Buffer contents at" & I'Img &
-                   " does not match. Expected """ & Expected (I) & """, got """ &
-                   C & """.");
       end loop;
    end Test_File_Without_Refill;
 
@@ -53,10 +52,19 @@ package body Yada.Lexing.Buffering_Test is
 
       S : constant Sources.Source_Access := Sources.Files.As_Source (Data_Path);
       L : Lexer := From_Source (S, 64);
-      C : Character;
 
    begin
       Assert (L.Buffer.all'Length = 64, "Buffer length does not match! Val: " & L.Buffer.all'Length'Img);
-      Assert (L.Buffer (1 .. 5) = "Lorem", "Buffer contains wrong data!");
+      for I in Expected'Range loop
+         Assert (Expected (I) = L.Cur, "Buffer contents at" & I'Img &
+                   " does not match. Expected """ & Expected (I) & """, got """ &
+                   L.Cur & """.");
+         exit when L.Cur = End_Of_Input;
+         case L.Cur is
+            when Line_Feed => Handle_LF (L);
+            when Carriage_Return => Handle_CR (L);
+            when others => L.Cur := Next (L);
+         end case;
+      end loop;
    end Test_File_With_Single_Refill;
 end Yada.Lexing.Buffering_Test;
