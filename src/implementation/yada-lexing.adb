@@ -165,6 +165,12 @@ package body Yada.Lexing is
 
    function Escaped (C : Character) return String is (Escaped ("" & C));
 
+   function Next_Is_Plain_Safe (L : Lexer) return Boolean is
+      (case L.Buffer (L.Pos) is
+         when Space_Or_Line_End => False,
+         when Flow_Indicator => L.Flow_Depth = 0,
+          when others => True);
+
    function Next_Token (L : in out Lexer) return Token is
       Ret : Token;
    begin
@@ -468,7 +474,7 @@ package body Yada.Lexing is
    procedure Check_Indicator_Char (L : in out Lexer; Kind : Token;
                                    T : out Token) is
    begin
-      if Scalars.Next_Is_Plain_Safe (L) then
+      if Next_Is_Plain_Safe (L) then
          Scalars.Read_Plain_Scalar (L);
          T := Scalar;
       else
@@ -519,14 +525,18 @@ package body Yada.Lexing is
             return False;
          when '"' =>
             Scalars.Read_Double_Quoted_Scalar (L);
+            T := Scalar;
             L.State := L.Json_Enabling_State;
             return True;
          when ''' =>
             Scalars.Read_Single_Quoted_Scalar (L);
+            T := Scalar;
             L.State := L.Json_Enabling_State;
             return True;
          when '>' | '|' =>
-            raise Lexer_Error with "Not implemented: block scalars";
+            Scalars.Read_Block_Scalar (L);
+            T := Scalar;
+            return True;
          when '{' =>
             Handle_Flow_Indicator (L, 1);
             T := Flow_Map_Start;

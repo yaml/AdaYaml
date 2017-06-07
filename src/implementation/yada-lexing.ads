@@ -149,6 +149,8 @@ private
    function Escaped (S : String) return String;
    function Escaped (C : Character) return String with Inline;
 
+   function Next_Is_Plain_Safe (L : Lexer) return Boolean with Inline;
+
    -----------------------------------------------------------------------------
    --  lexer states
    -----------------------------------------------------------------------------

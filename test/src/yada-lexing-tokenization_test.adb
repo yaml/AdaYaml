@@ -122,7 +122,8 @@ package body Yada.Lexing.Tokenization_Test is
                     "Wrong token kind at #" & I'Img & ": Expected " &
                       To_String (Expected_Token) & ", got " &
                       T'Img);
-            case T is
+            if T = Expected_Token.Reference.Kind then
+               case T is
                when Scalar =>
                   Assert (L.Scalar_Content.all = Expected_Token.Reference.Content.all,
                           "Wrong scalar content at #" & I'Img & ": Expected " &
@@ -141,7 +142,8 @@ package body Yada.Lexing.Tokenization_Test is
                when Empty_Token => null;
                when others =>
                   Assert (False, "Not implemented: " & T'Img);
-            end case;
+               end case;
+            end if;
          end;
       end loop;
    end Assert_Equals;
@@ -155,6 +157,15 @@ package body Yada.Lexing.Tokenization_Test is
       Register_Routine (T, Single_Line_Mapping'Access, "Single line mapping");
       Register_Routine (T, Multiline_Mapping'Access, "Multiline mapping");
       Register_Routine (T, Explicit_Mapping'Access, "Explicit mapping");
+      Register_Routine (T, Sequence'Access, "Sequence");
+      Register_Routine (T, Single_Quoted_Scalar'Access, "Single-line single quoted scalar");
+      Register_Routine (T, Multiline_Single_Quoted_Scalar'Access, "Multiline single quoted scalar");
+      Register_Routine (T, Double_Quoted_Scalar'Access, "Single-line double quoted scalar");
+      Register_Routine (T, Multiline_Double_Quoted_Scalar'Access, "Multiline double quoted scalar");
+      Register_Routine (T, Escape_Sequences'Access, "Escape sequences");
+
+      Register_Routine (T, Block_Scalar'Access, "Block scalar");
+      Register_Routine (T, Block_Scalars'Access, "Block scalars");
    end Register_Tests;
 
    function Name (T : TC) return Message_String is
@@ -201,4 +212,70 @@ package body Yada.Lexing.Tokenization_Test is
       Assert_Equals ("? key" & Line_Feed & ": value",
                      (TI (0), TMK, TS ("key"), TI (0), TMV, TS ("value"), TSE));
    end Explicit_Mapping;
+
+   procedure Sequence (T : in out Test_Cases.Test_Case'Class) is
+      pragma Unreferenced (T);
+   begin
+      Assert_Equals ("- a" & Line_Feed & "- b",
+                     (TI (0), TSI, TS ("a"), TI (0), TSI, TS ("b"), TSE));
+   end Sequence;
+
+   procedure Single_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class) is
+      pragma Unreferenced (T);
+   begin
+      Assert_Equals ("'quoted scalar'", (TI (0), TS ("quoted scalar"), TSE));
+   end Single_Quoted_Scalar;
+
+   procedure Multiline_Single_Quoted_Scalar
+     (T : in out Test_Cases.Test_Case'Class) is
+      pragma Unreferenced (T);
+   begin
+      Assert_Equals ("'quoted" & Line_Feed & "  multi line  " & Line_Feed &
+                       Line_Feed & "scalar'",
+                     (TI (0), TS ("quoted multi line" & Line_Feed & "scalar"),
+                      TSE));
+   end Multiline_Single_Quoted_Scalar;
+
+   procedure Double_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class) is
+      pragma Unreferenced (T);
+   begin
+      Assert_Equals ("""quoted scalar""", (TI (0), TS ("quoted scalar"), TSE));
+   end Double_Quoted_Scalar;
+
+   procedure Multiline_Double_Quoted_Scalar
+     (T : in out Test_Cases.Test_Case'Class) is
+      pragma Unreferenced (T);
+   begin
+      Assert_Equals ("""quoted" & Line_Feed & "  multi line  " & Line_Feed &
+                       Line_Feed & "scalar""",
+                     (TI (0), TS ("quoted multi line" & Line_Feed & "scalar"),
+                      TSE));
+   end Multiline_Double_Quoted_Scalar;
+
+   procedure Escape_Sequences (T : in out Test_Cases.Test_Case'Class) is
+      pragma Unreferenced (T);
+   begin
+      Assert_Equals ("""\n\x31\u0032\U00000033""",
+                     (TI (0), TS (Line_Feed & "123"), TSE));
+   end Escape_Sequences;
+
+   procedure Block_Scalar (T : in out Test_Cases.Test_Case'Class) is
+      pragma Unreferenced (T);
+   begin
+      Assert_Equals ("|" & Line_Feed & "  a" & Line_Feed & Line_Feed & "  b" &
+                       Line_Feed & " # comment",
+                     (TI (0), TS ("a" & Line_Feed & Line_Feed & "b" & Line_Feed), TSE));
+   end Block_Scalar;
+
+   procedure Block_Scalars (T : in out Test_Cases.Test_Case'Class) is
+      pragma Unreferenced (T);
+   begin
+      Assert_Equals ("one : >2-" & Line_Feed & "   foo" & Line_Feed & "  bar" &
+                       Line_Feed & "two: |+" & Line_Feed & " bar" & Line_Feed &
+                       "  baz" & Line_Feed & Line_Feed,
+                     (TI (0), TS ("one"), TMV, TS (" foo bar"), TI (0),
+                      TS ("two"), TMV,
+                      TS ("bar" & Line_Feed & " baz" & Line_Feed & Line_Feed),
+                      TSE));
+   end Block_Scalars;
 end Yada.Lexing.Tokenization_Test;
