@@ -1,5 +1,5 @@
 with Ada.Unchecked_Deallocation;
-with Yada.Lexing.Scalars;
+with Yada.Lexing.Evaluation;
 
 package body Yada.Lexing is
    -----------------------------------------------------------------------------
@@ -88,7 +88,7 @@ package body Yada.Lexing is
       (Lexer'(Input => Input, Sentinel => Buffer.all'Last + 1, Buffer => Buffer,
               Pos => Buffer.all'First, Indentation => <>, Cur_Line => 1,
               State => Outside_Doc'Access, Cur => <>, Flow_Depth => 0,
-              Line_Start_State => Outside_Doc'Access, Scalar_Content => null,
+              Line_Start_State => Outside_Doc'Access, Content => null,
               Json_Enabling_State => Inside_Line'Access,
               Token_Start => <>, Line_Start => Buffer.all'First))
      with Inline;
@@ -122,11 +122,11 @@ package body Yada.Lexing is
    end From_String;
 
    -----------------------------------------------------------------------------
-   --                            Tokenization                                 --
+   --  interface and utilities
    -----------------------------------------------------------------------------
 
    function Escaped (S : String) return String is
-      Ret : String (1 .. S'Length * 4) := (1 => '"', others => <>);
+      Ret : String (1 .. S'Length * 4 + 2) := (1 => '"', others => <>);
       Retpos : Positive := 2;
 
       procedure Add_Escape_Sequence (C : Character) with Inline is
@@ -181,16 +181,20 @@ package body Yada.Lexing is
    end Next_Token;
 
    function Short_Lexeme (L : Lexer) return String is
-      (L.Buffer (L.Token_Start .. L.Pos - 1));
+      (L.Buffer (L.Token_Start .. L.Pos - 2));
 
    function Full_Lexeme (L : Lexer) return String is
-     (L.Buffer (L.Token_Start - 1 .. L.Pos - 1));
+     (L.Buffer (L.Token_Start - 1 .. L.Pos - 2));
+
+   -----------------------------------------------------------------------------
+   --                            Tokenization                                 --
+   -----------------------------------------------------------------------------
 
    --  to be called whenever a '-' is read as first character in a line. this
    --  function checks for whether this is a directives end marker ('---'). if
    --  yes, the lexer position is updated to be after the marker.
    function Is_Directives_End (L : in out Lexer) return Boolean is
-      Peek : Positive := L.Pos + 1;
+      Peek : Positive := L.Pos;
    begin
       if L.Buffer (Peek) = '-' then
          Peek := Peek + 1;
@@ -198,6 +202,7 @@ package body Yada.Lexing is
             Peek := Peek + 1;
             if L.Buffer (Peek) in Space_Or_Line_End then
                L.Pos := Peek;
+               L.Cur := Next (L);
                return True;
             end if;
          end if;
@@ -209,7 +214,7 @@ package body Yada.Lexing is
    --  begin with a '.', that line contains a document end marker ('...'). if
    --  yes, the lexer position is updated to be after the marker.
    function Is_Document_End (L : in out Lexer) return Boolean is
-      Peek : Positive := L.Pos + 1;
+      Peek : Positive := L.Pos;
    begin
       if L.Buffer (Peek) = '.' then
          Peek := Peek + 1;
@@ -217,6 +222,7 @@ package body Yada.Lexing is
             Peek := Peek + 1;
             if L.Buffer (Peek) in Space_Or_Line_End then
                L.Pos := Peek;
+               L.Cur := Next (L);
                return True;
             end if;
          end if;
@@ -350,35 +356,26 @@ package body Yada.Lexing is
             raise Lexer_Error with "Missing space after tag shorthand";
          end if;
       end if;
-      L.State := Tag_Uri'Access;
-      T := Directive_Param;
+      L.State := At_Tag_Uri'Access;
+      T := Tag_Handle;
       return True;
    end Tag_Shorthand;
 
-   function Tag_Uri (L : in out Lexer; T : out Token) return Boolean is
+   function At_Tag_Uri (L : in out Lexer; T : out Token) return Boolean is
    begin
       while L.Cur = ' ' loop
          L.Cur := Next (L);
       end loop;
       L.Token_Start := L.Pos;
-      if L.Cur = '!' then
-         --  local tag prefix
-         L.Cur := Next (L);
+      if L.Cur = '<' then
+         raise Lexer_Error with "Illegal character in tag prefix: " &
+           Escaped (L.Cur);
       end if;
-      loop
-         case L.Cur is
-            when Tag_Uri_Char => L.Cur := Next (L);
-            when Space_Or_Line_End => exit;
-            when others =>
-               raise Lexer_Error with "Illegal character in tag prefix: " &
-                 Escaped (L.Cur);
-         end case;
-      end loop;
-      T := Directive_Param;
-      L.Line_Start_State := Outside_Doc'Access;
+      Evaluation.Read_URI (L, False);
+      T := Tag_Uri;
       L.State := Expect_Line_End'Access;
       return True;
-   end Tag_Uri;
+   end At_Tag_Uri;
 
    function Unknown_Directive (L : in out Lexer; T : out Token) return Boolean
    is begin
@@ -471,11 +468,44 @@ package body Yada.Lexing is
       end case;
    end Line_Start;
 
+   function Flow_Line_Start (L : in out Lexer; T : out Token) return Boolean is
+      pragma Unreferenced (T);
+      Indent : Natural;
+   begin
+      case L.Cur is
+         when '-' =>
+            if Is_Directives_End (L) then
+               raise Lexer_Error with
+                 "Directives end marker before end of flow content";
+            else
+               Indent := 0;
+            end if;
+         when '.' =>
+            if Is_Document_End (L) then
+               raise Lexer_Error with
+                 "Document end marker before end of flow content";
+            else
+               Indent := 0;
+            end if;
+         when others =>
+            while L.Cur = ' ' loop
+               L.Cur := Next (L);
+            end loop;
+            Indent := L.Pos - L.Line_Start - 1;
+      end case;
+      if Indent <= L.Indentation then
+         raise Lexer_Error with
+           "Too few indentation spaces (must surpass surrounding block element)" & L.Indentation'Img;
+      end if;
+      L.State := Inside_Line'Access;
+      return False;
+   end Flow_Line_Start;
+
    procedure Check_Indicator_Char (L : in out Lexer; Kind : Token;
                                    T : out Token) is
    begin
       if Next_Is_Plain_Safe (L) then
-         Scalars.Read_Plain_Scalar (L);
+         Evaluation.Read_Plain_Scalar (L);
          T := Scalar;
       else
          L.Token_Start := L.Pos;
@@ -485,28 +515,91 @@ package body Yada.Lexing is
       end if;
    end Check_Indicator_Char;
 
-   subtype Flow_Depth_Modifier is Integer range -1 .. 1;
-
-   procedure Handle_Flow_Indicator (L : in out Lexer;
-                                    Modifier : Flow_Depth_Modifier) is
+   procedure Enter_Flow_Collection (L : in out Lexer) is
    begin
       L.Token_Start := L.Pos;
-      L.Flow_Depth := L.Flow_Depth + Modifier;
-      case Modifier is
-         when -1 =>
-            if L.Flow_Depth = 0 then
-               L.Json_Enabling_State := After_Token'Access;
-            end if;
-            L.State := L.Json_Enabling_State;
-         when 1 =>
-            if L.Flow_Depth = 1 then
-               L.Json_Enabling_State := After_Json_Enabling_Token'Access;
-            end if;
-            L.State := After_Token'Access;
-         when others =>
-            L.State := After_Token'Access;
-      end case;
-   end Handle_Flow_Indicator;
+      if L.Flow_Depth = 0 then
+         L.Json_Enabling_State := After_Json_Enabling_Token'Access;
+         L.Line_Start_State := Flow_Line_Start'Access;
+      end if;
+      L.Flow_Depth := L.Flow_Depth + 1;
+      L.State := After_Token'Access;
+      L.Cur := Next (L);
+   end Enter_Flow_Collection;
+
+   procedure Leave_Flow_Collection (L : in out Lexer) is
+   begin
+      L.Token_Start := L.Pos;
+      if L.Flow_Depth = 0 then
+         raise Lexer_Error with "No flow collection to leave!";
+      end if;
+      L.Flow_Depth := L.Flow_Depth - 1;
+      if L.Flow_Depth = 0 then
+         L.Json_Enabling_State := After_Token'Access;
+         L.Line_Start_State := Line_Start'Access;
+      end if;
+      L.State := L.Json_Enabling_State;
+      L.Cur := Next (L);
+   end Leave_Flow_Collection;
+
+   procedure Read_Tag_Handle (L : in out Lexer; T : out Token) with
+     Pre => L.Cur = '!' is
+   begin
+      L.Token_Start := L.Pos;
+      L.Cur := Next (L);
+      if L.Cur = '<' then
+         Evaluation.Read_URI (L, False);
+         L.State := After_Token'Access;
+         T := Verbatim_Tag;
+      else
+         --  we need to scan for a possible second '!' in case this is not a
+         --  primary tag handle. We must lookahead here because there may be
+         --  URI characters in the suffix that are not allowed in the handle.
+         declare
+            Handle_End : Positive := L.Token_Start;
+         begin
+            loop
+               case L.Buffer (Handle_End) is
+                  when Space_Or_Line_End | Flow_Indicator =>
+                     Handle_End := L.Token_Start;
+                     L.Pos := L.Pos - 1;
+                     exit;
+                  when '!' =>
+                     Handle_End := Handle_End + 1;
+                     exit;
+                  when others =>
+                     Handle_End := Handle_End + 1;
+               end case;
+            end loop;
+            while L.Pos < Handle_End loop
+               L.Cur := Next (L);
+               if not (L.Cur in Tag_Shorthand_Char | '!') then
+                  raise Lexer_Error with "Illegal character in tag handle: " &
+                    Escaped (L.Cur);
+               end if;
+            end loop;
+            L.Cur := Next (L);
+            T := Tag_Handle;
+            L.State := At_Tag_Suffix'Access;
+         end;
+      end if;
+   end Read_Tag_Handle;
+
+   procedure Read_Anchor_Name (L : in out Lexer) is
+   begin
+      L.Token_Start := L.Pos;
+      loop
+         L.Cur := Next (L);
+         exit when not (L.Cur in Ascii_Char | Digit | '-' | '_');
+      end loop;
+      if not (L.Cur in Space_Or_Line_End | Flow_Indicator) then
+         raise Lexer_Error with "Illegal character in anchor: " &
+           Escaped (L.Cur);
+      elsif L.Pos = L.Token_Start + 1 then
+         raise Lexer_Error with "Anchor name must not be empty";
+      end if;
+      L.State := After_Token'Access;
+   end Read_Anchor_Name;
 
    function Inside_Line (L : in out Lexer; T : out Token) return Boolean is
    begin
@@ -524,52 +617,64 @@ package body Yada.Lexing is
             End_Line (L);
             return False;
          when '"' =>
-            Scalars.Read_Double_Quoted_Scalar (L);
+            Evaluation.Read_Double_Quoted_Scalar (L);
             T := Scalar;
             L.State := L.Json_Enabling_State;
             return True;
          when ''' =>
-            Scalars.Read_Single_Quoted_Scalar (L);
+            Evaluation.Read_Single_Quoted_Scalar (L);
             T := Scalar;
             L.State := L.Json_Enabling_State;
             return True;
          when '>' | '|' =>
-            Scalars.Read_Block_Scalar (L);
+            if L.Flow_Depth > 0 then
+               Evaluation.Read_Plain_Scalar (L);
+            else
+               Evaluation.Read_Block_Scalar (L);
+            end if;
             T := Scalar;
             return True;
          when '{' =>
-            Handle_Flow_Indicator (L, 1);
+            Enter_Flow_Collection (L);
             T := Flow_Map_Start;
             return True;
          when '}' =>
-            Handle_Flow_Indicator (L, -1);
+            Leave_Flow_Collection (L);
             T := Flow_Map_End;
             return True;
          when '[' =>
-            Handle_Flow_Indicator (L, 1);
+            Enter_Flow_Collection (L);
             T := Flow_Seq_Start;
             return True;
          when ']' =>
-            Handle_Flow_Indicator (L, -1);
+            Leave_Flow_Collection (L);
             T := Flow_Seq_End;
             return True;
          when ',' =>
-            Handle_Flow_Indicator (L, 0);
+            L.Cur := Next (L);
+            L.State := After_Token'Access;
             T := Flow_Separator;
             return True;
          when '!' =>
-            raise Lexer_Error with "Not implemented: tag handles";
+            Read_Tag_Handle (L, T);
+            return True;
          when '&' =>
-            raise Lexer_Error with "Not implemented: anchors";
+            Read_Anchor_Name (L);
+            T := Anchor;
+            return True;
          when '*' =>
-            raise Lexer_Error with "Not implemented: aliases";
+            Read_Anchor_Name (L);
+            T := Alias;
+            return True;
          when '@' =>
-            raise Lexer_Error with "Not implemented: attributes";
+            Read_Anchor_Name (L);
+            T := Attribute;
+            return True;
          when '`' =>
             raise Lexer_Error with
               "Reserved characters cannot start a plain scalar.";
          when others =>
-            Scalars.Read_Plain_Scalar (L);
+            Evaluation.Read_Plain_Scalar (L);
             T := Scalar;
             return True;
       end case;
@@ -580,7 +685,7 @@ package body Yada.Lexing is
       Cached_Indentation : constant Natural := L.Pos - L.Line_Start - 1;
    begin
       return Ret : constant Boolean := Inside_Line (L, T) do
-         if Ret then
+         if Ret and L.Flow_Depth = 0 then
             L.Indentation := Cached_Indentation;
          end if;
       end return;
@@ -618,20 +723,25 @@ package body Yada.Lexing is
       while L.Cur = ' ' loop
          L.Cur := Next (L);
       end loop;
-      case L.Cur is
-         when ':' =>
-            L.Token_Start := L.Pos;
-            T := Map_Value_Ind;
-            L.Cur := Next (L);
-            L.State := After_Token'Access;
-            return True;
-         when Comment_Or_Line_End =>
-            End_Line (L);
-            return False;
-         when others =>
-            L.State := Inside_Line'Access;
-            return False;
-      end case;
+      loop
+         case L.Cur is
+            when ':' =>
+               L.Token_Start := L.Pos;
+               T := Map_Value_Ind;
+               L.Cur := Next (L);
+               L.State := After_Token'Access;
+               return True;
+            when '#' | Carriage_Return | Line_Feed =>
+               End_Line (L);
+               if Flow_Line_Start (L, T) then null; end if;
+            when End_Of_Input =>
+               L.State := Stream_End'Access;
+               return False;
+            when others =>
+               L.State := Inside_Line'Access;
+               return False;
+         end case;
+      end loop;
    end After_Json_Enabling_Token;
 
    function Line_Indentation (L : in out Lexer; T : out Token)
@@ -661,5 +771,13 @@ package body Yada.Lexing is
       L.Line_Start_State := Outside_Doc'Access;
       return True;
    end Line_Doc_End;
+
+   function At_Tag_Suffix (L : in out Lexer; T : out Token) return Boolean is
+   begin
+      Evaluation.Read_URI (L, True);
+      T := Tag_Uri;
+      L.State := After_Token'Access;
+      return True;
+   end At_Tag_Suffix;
 
 end Yada.Lexing;

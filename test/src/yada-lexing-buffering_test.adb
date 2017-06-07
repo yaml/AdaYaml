@@ -1,6 +1,5 @@
 with AUnit.Assertions; use AUnit.Assertions;
 
-with Ada.Text_IO;
 with Yada.Sources.Files;
 
 with Utils;
@@ -29,8 +28,6 @@ package body Yada.Lexing.Buffering_Test is
       S : constant Sources.Source_Access := Sources.Files.As_Source (Data_Path);
       L : Lexer := From_Source (S, 64);
    begin
-      Ada.Text_IO.Put_Line ("Buffer = """ & L.Buffer.all & """");
-      Ada.Text_IO.Put_Line ("Pos =" & L.Pos'Img);
       Assert (L.Buffer.all'Length = 64, "Buffer length does not match! Val:" & L.Buffer.all'Length'Img);
       for I in Expected'Range loop
          Assert (Expected (I) = L.Cur, "Buffer contents at" & I'Img &

@@ -1,4 +1,4 @@
-private package Yada.Lexing.Scalars is
+private package Yada.Lexing.Evaluation is
    procedure Read_Plain_Scalar (L : in out Lexer);
 
    procedure Read_Single_Quoted_Scalar (L : in out Lexer)
@@ -9,4 +9,6 @@ private package Yada.Lexing.Scalars is
 
    procedure Read_Block_Scalar (L : in out Lexer)
      with Pre => L.Cur in '|' | '>';
-end Yada.Lexing.Scalars;
+
+   procedure Read_URI (L : in out Lexer; Restricted : Boolean);
+end Yada.Lexing.Evaluation;

@@ -2,7 +2,7 @@ with Ada.Strings.UTF_Encoding.Strings;
 with Ada.Strings.UTF_Encoding.Wide_Strings;
 with Ada.Strings.UTF_Encoding.Wide_Wide_Strings;
 
-package body Yada.Lexing.Scalars is
+package body Yada.Lexing.Evaluation is
    -----------------------------------------------------------------------------
    --  constant UTF-8 strings that may be generated from escape sequences
    -----------------------------------------------------------------------------
@@ -57,6 +57,9 @@ package body Yada.Lexing.Scalars is
       --  buffer. Therefore, we read its value into a string of the same size
       --  so we never have to do any bounds checking and growing of the string.
       Result : Out_Buffer_Type (L.Buffer.all'Length);
+      After_Newline_State : constant Lexer_State :=
+        (if L.Flow_Depth = 0 then Line_Indentation'Access
+           else Inside_Line'Access);
    begin
       L.Token_Start := L.Pos;
       Multiline_Loop : loop
@@ -125,7 +128,7 @@ package body Yada.Lexing.Scalars is
                   case T is
                      when Indentation =>
                         if L.Pos - L.Line_Start - 1 <= L.Indentation then
-                           L.State := Line_Indentation'Access;
+                           L.State := After_Newline_State;
                            exit Multiline_Loop;
                         end if;
                         exit Newline_Loop;
@@ -145,7 +148,7 @@ package body Yada.Lexing.Scalars is
               (L.Cur = ':' and then not Next_Is_Plain_Safe (L)) or else
               L.Cur = '#'
             then
-               L.State := Line_Indentation'Access;
+               L.State := After_Newline_State;
                exit Multiline_Loop;
             end if;
             if Newlines = 1 then
@@ -155,7 +158,7 @@ package body Yada.Lexing.Scalars is
             end if;
          end;
       end loop Multiline_Loop;
-      L.Scalar_Content := New_String_From (Result);
+      L.Content := New_String_From (Result);
    end Read_Plain_Scalar;
 
    procedure Process_Quoted_Whitespace (L : in out Lexer; Init : Natural;
@@ -226,36 +229,37 @@ package body Yada.Lexing.Scalars is
                L.Cur := Next (L);
          end case;
       end loop;
-      L.Scalar_Content := New_String_From (Result);
+      L.Content := New_String_From (Result);
    end Read_Single_Quoted_Scalar;
+
+   procedure Read_Hex_Sequence (L : in out Lexer; Length : Positive;
+                                Result : in out Out_Buffer_Type) is
+      Char_Pos : Natural := 0;
+   begin
+      for Exponent in reverse 0 .. Length - 1 loop
+         L.Cur := Next (L);
+         case L.Cur is
+            when Digit =>
+               Char_Pos := Char_Pos + (16 ** Exponent) *
+                 (Character'Pos (L.Cur) - Character'Pos ('0'));
+            when 'a' .. 'f' =>
+               Char_Pos := Char_Pos + (16 ** Exponent) *
+                 (Character'Pos (L.Cur) - Character'Pos ('a') + 10);
+            when 'A' .. 'F' =>
+               Char_Pos := Char_Pos + (16 ** Exponent) *
+                 (Character'Pos (L.Cur) - Character'Pos ('A') + 10);
+            when others =>
+               raise Lexer_Error with
+                 "Invalid character in hex escape sequence: " &
+                 Escaped (L.Cur);
+         end case;
+      end loop;
+      Add (Result, Ada.Strings.UTF_Encoding.Wide_Wide_Strings.Encode (
+           "" & Wide_Wide_Character'Val (Char_Pos)));
+   end Read_Hex_Sequence;
 
    procedure Read_Double_Quoted_Scalar (L : in out Lexer) is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
-
-      procedure Read_Unicode_Sequence (Length : Positive) is
-         Char_Pos : Natural := 0;
-      begin
-         for Exponent in reverse 0 .. Length - 1 loop
-            L.Cur := Next (L);
-            case L.Cur is
-               when Digit =>
-                  Char_Pos := Char_Pos + (16 ** Exponent) *
-                    (Character'Pos (L.Cur) - Character'Pos ('0'));
-               when 'a' .. 'f' =>
-                  Char_Pos := Char_Pos + (16 ** Exponent) *
-                    (Character'Pos (L.Cur) - Character'Pos ('a') + 10);
-               when 'A' .. 'F' =>
-                  Char_Pos := Char_Pos + (16 ** Exponent) *
-                    (Character'Pos (L.Cur) - Character'Pos ('A') + 10);
-               when others =>
-                  raise Lexer_Error with
-                    "Invalid character in unicode escape sequence: " &
-                    Escaped (L.Cur);
-            end case;
-         end loop;
-         Add (Result, Ada.Strings.UTF_Encoding.Wide_Wide_Strings.Encode (
-              "" & Wide_Wide_Character'Val (Char_Pos)));
-      end Read_Unicode_Sequence;
    begin
       L.Token_Start := L.Pos;
       L.Cur := Next (L);
@@ -283,9 +287,9 @@ package body Yada.Lexing.Scalars is
                   when '_' => Add (Result, Non_Breaking_Space);
                   when 'L' => Add (Result, Line_Separator);
                   when 'P' => Add (Result, Paragraph_Separator);
-                  when 'x' => Read_Unicode_Sequence (2);
-                  when 'u' => Read_Unicode_Sequence (4);
-                  when 'U' => Read_Unicode_Sequence (8);
+                  when 'x' => Read_Hex_Sequence (L, 2, Result);
+                  when 'u' => Read_Hex_Sequence (L, 4, Result);
+                  when 'U' => Read_Hex_Sequence (L, 8, Result);
                   when Line_Feed | Carriage_Return =>
                      Process_Quoted_Whitespace (L, 0, Result);
                      goto Handle_Char;
@@ -304,7 +308,7 @@ package body Yada.Lexing.Scalars is
          L.Cur := Next (L);
       end loop;
       L.Cur := Next (L);
-      L.Scalar_Content := New_String_From (Result);
+      L.Content := New_String_From (Result);
    end Read_Double_Quoted_Scalar;
 
    procedure Read_Block_Scalar (L : in out Lexer) is
@@ -462,7 +466,59 @@ package body Yada.Lexing.Scalars is
          when Keep => Add (Result, (1 .. Separation_Lines + 1 => Line_Feed));
       end case;
 
-      L.Scalar_Content := New_String_From (Result);
+      L.Content := New_String_From (Result);
    end Read_Block_Scalar;
 
-end Yada.Lexing.Scalars;
+   procedure Read_URI (L : in out Lexer; Restricted : Boolean) is
+      Result : Out_Buffer_Type (L.Buffer.all'Length);
+      End_With_Space : constant Boolean := L.Cur /= '<';
+   begin
+      if End_With_Space then
+         if (not Restricted) and L.Cur in '[' | ']' | ',' then
+            raise Lexer_Error with "Flow indicator cannot start tag prefix";
+         end if;
+      else
+         L.Cur := Next (L);
+      end if;
+      loop
+         case L.Cur is
+            when Space_Or_Line_End =>
+               if End_With_Space then
+                  exit;
+               else
+                  raise Lexer_Error with "Unclosed verbatim tag";
+               end if;
+            when '%' =>
+               Read_Hex_Sequence (L, 2, Result);
+            when Tag_Char =>
+               Add (Result, L.Cur);
+            when '[' | ']' | ',' =>
+               if Restricted then
+                  exit;
+               else
+                  Add (Result, L.Cur);
+               end if;
+            when '!' =>
+               if Restricted then
+                  raise Lexer_Error with "Illegal '!' in tag suffix!";
+               else
+                  Add (Result, '!');
+               end if;
+            when '>' =>
+               if End_With_Space then
+                  raise Lexer_Error with "Illegal character in URI: "">""";
+               else
+                  L.Cur := Next (L);
+                  exit;
+               end if;
+            when others =>
+               raise Lexer_Error with "Illegal character in URI: " &
+                 Escaped (L.Cur);
+         end case;
+         L.Cur := Next (L);
+      end loop;
+      L.Content := New_String_From (Result);
+   end Read_URI;
+
+
+end Yada.Lexing.Evaluation;

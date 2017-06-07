@@ -22,7 +22,7 @@ private package Yada.Lexing is
      (Yaml_Directive,    --  `%YAML`
       Tag_Directive,     --  `%TAG`
       Unknown_Directive, --  any directive but `%YAML` and `%TAG`
-      Directive_Param,   --  parameters of `%YAML` or `%TAG`
+      Directive_Param,   --  parameters of %YAML and unknown directives
       Empty_Line,        --  necessary for correctly handling line folding in
                          --  multiline plain scalars
       Directives_End,    --  explicit `---`
@@ -39,8 +39,9 @@ private package Yada.Lexing is
       Flow_Seq_End,      --  `]`
       Flow_Separator,    --  `,`
       Tag_Handle,        --  a handle of a tag shorthand, e.g. `!!` of `!!str`
-      Tag_Suffix,        --  suffix of a tag shorthand, e.g. `str` of `!!str`
-      Literal_Tag,       --  a literal tag, e.g. `!<tag:yaml.org,2002:str>`
+      Tag_Uri,           --  suffix of a tag shorthand, e.g. `str` of `!!str`
+                         --  also used for the URI of the %TAG directive
+      Verbatim_Tag,      --  a verbatim tag, e.g. `!<tag:yaml.org,2002:str>`
       Anchor,            --  an anchor property of a node, e.g. `&anchor`
       Alias,             --  an alias property of a node, e.g. `*alias`
       Attribute          --  an attribute property of a node, e.g. `@attribute`
@@ -93,8 +94,8 @@ private
         --  by whitespace.
       Cur         : Character;  --  recently read character
       Flow_Depth  : Natural; --  current level of flow collections
-      Scalar_Content : access UTF_8_String;
-        --  content of the recently read scalar, if any.
+      Content : access UTF_8_String;
+        --  content of the recently read scalar or URI, if any.
    end record;
 
    --  The following stuff is declared here so that it can be unit-tested.
@@ -129,7 +130,7 @@ private
    subtype Tag_Shorthand_Char is Character with Static_Predicate =>
      Tag_Shorthand_Char in Ascii_Char | Digit | '-';
    subtype Tag_Uri_Char is Character with Static_Predicate =>
-     Tag_Uri_Char in Ascii_Char | Digit | '%' | '#' | ';' | '/' | '?' | ':' |
+     Tag_Uri_Char in Ascii_Char | Digit | '#' | ';' | '/' | '?' | ':' |
        '@' | '&' | '=' | '+' | '$' | ',' | '_' | '.' | '!' | '~' | '*' | ''' |
          '(' | ')' | '[' | ']' | '-';
    subtype Tag_Char is Character with Static_Predicate =>
@@ -169,7 +170,7 @@ private
 
    --  state for reading a tag URI after a '%TAG' directive and the
    --  corresponding tag shorthand.
-   function Tag_Uri (L : in out Lexer; T : out Token) return Boolean;
+   function At_Tag_Uri (L : in out Lexer; T : out Token) return Boolean;
 
    --  state for reading parameters of unknown directives.
    function Unknown_Directive (L : in out Lexer; T : out Token) return Boolean;
@@ -186,6 +187,12 @@ private
    --  state at the beginnig of a line inside a YAML document when in block
    --  mode. reads indentation and directive / document end markers.
    function Line_Start (L : in out Lexer; T : out Token) return Boolean;
+
+   --  state at the beginnig of a line inside a YAML document when in flow
+   --  mode. this differs from Line_Start as it does not yield indentation
+   --  tokens - instead, it just checks whether the indentation is more than
+   --  the surrounding block element.
+   function Flow_Line_Start (L : in out Lexer; T : out Token) return Boolean;
 
    --  state inside a line in block mode.
    function Inside_Line (L : in out Lexer; T : out Token) return Boolean;
@@ -223,4 +230,8 @@ private
    --  similar to Indentation_After_Plain_Scalar, but used for a document end
    --  marker ending a plain scalar.
    function Line_Doc_End (L : in out Lexer; T : out Token) return Boolean;
+
+   --  state after having read a tag handle. this will always yield the
+   --  corresponding tag suffix.
+   function At_Tag_Suffix (L : in out Lexer; T : out Token) return Boolean;
 end Yada.Lexing;

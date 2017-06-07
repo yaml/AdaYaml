@@ -20,7 +20,15 @@ package Yada.Lexing.Tokenization_Test is
    procedure Double_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class);
    procedure Multiline_Double_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class);
    procedure Escape_Sequences (T : in out Test_Cases.Test_Case'Class);
-
    procedure Block_Scalar (T : in out Test_Cases.Test_Case'Class);
    procedure Block_Scalars (T : in out Test_Cases.Test_Case'Class);
+   procedure Directives (T : in out Test_Cases.Test_Case'Class);
+   procedure Markers (T : in out Test_Cases.Test_Case'Class);
+   procedure Flow_Indicators (T : in out Test_Cases.Test_Case'Class);
+   procedure Adjacent_Map_Values (T : in out Test_Cases.Test_Case'Class);
+   procedure Tag_Handles (T : in out Test_Cases.Test_Case'Class);
+   procedure Verbatim_Tag_Handle (T : in out Test_Cases.Test_Case'Class);
+   procedure Anchors_And_Aliases (T : in out Test_Cases.Test_Case'Class);
+   procedure Empty_Lines (T : in out Test_Cases.Test_Case'Class);
+
 end Yada.Lexing.Tokenization_Test;
