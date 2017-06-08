@@ -1,9 +1,9 @@
 with AUnit; use AUnit;
 with AUnit.Test_Cases; use AUnit.Test_Cases;
 
-package Yada.Lexing.Buffering_Test is
+package Yada.Strings.Chunk_Test is
    type TC is new Test_Cases.Test_Case with record
-      Pool : Strings.String_Pool;
+      Pool : String_Pool;
    end record;
 
    overriding procedure Register_Tests (T : in out TC);
@@ -11,6 +11,6 @@ package Yada.Lexing.Buffering_Test is
 
    function Name (T : TC) return Message_String;
 
-   procedure Test_File_Without_Refill (T : in out Test_Cases.Test_Case'Class);
-   procedure Test_File_With_Single_Refill (T : in out Test_Cases.Test_Case'Class);
-end Yada.Lexing.Buffering_Test;
+   procedure Test_One_String (T : in out Test_Cases.Test_Case'Class);
+   procedure Test_Two_Strings (T : in out Test_Cases.Test_Case'Class);
+end Yada.Strings.Chunk_Test;

@@ -20,7 +20,7 @@ library project Yada is
    package Builder is
       case Mode is
       when "debug" =>
-         for Default_Switches ("ada") use ("-s", "-gnatE", "-g");
+         for Default_Switches ("ada") use ("-s", "-g");
       when "release" =>
          for Default_Switches ("ada") use ("-s");
       end case;

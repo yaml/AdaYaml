@@ -3,6 +3,8 @@ with Ada.Unchecked_Deallocation;
 with AUnit.Assertions; use AUnit.Assertions;
 
 package body Yada.Lexing.Tokenization_Test is
+   use Yada.Strings;
+
    subtype Evaluated_Token is Token with Static_Predicate =>
      Evaluated_Token in Scalar | Tag_Uri | Verbatim_Tag;
    subtype Short_Lexeme_Token is Token with Static_Predicate =>
@@ -14,12 +16,10 @@ package body Yada.Lexing.Tokenization_Test is
    subtype Empty_Token is Token with Static_Predicate =>
      not (Empty_Token in Value_Token | Indentation);
 
-   type String_Access is access String;
-
    type Token_With_Value_Holder (Kind : Token) is record
       Refcount : Natural := 1;
       case Kind is
-         when Value_Token => Content : String_Access;
+         when Value_Token => Value : Content;
          when Indentation => Depth : Natural;
          when others      => null;
       end case;
@@ -42,8 +42,7 @@ package body Yada.Lexing.Tokenization_Test is
    end Adjust;
 
    procedure Finalize (Object : in out Token_With_Value) is
-      procedure Free_S is new Ada.Unchecked_Deallocation (String, String_Access);
-      procedure Free_T is new Ada.Unchecked_Deallocation
+      procedure Free is new Ada.Unchecked_Deallocation
         (Token_With_Value_Holder, Token_With_Value_Holder_Access);
       Reference : Token_With_Value_Holder_Access := Object.Reference;
    begin
@@ -51,10 +50,7 @@ package body Yada.Lexing.Tokenization_Test is
       if Reference /= null then
          Reference.Refcount := Reference.Refcount - 1;
          if Reference.Refcount = 0 then
-            if Reference.Kind in Value_Token then
-               Free_S (Reference.Content);
-            end if;
-            Free_T (Reference);
+            Free (Reference);
          end if;
       end if;
    end Finalize;
@@ -62,7 +58,7 @@ package body Yada.Lexing.Tokenization_Test is
    function To_String (T : Token_With_Value) return String is
     (T.Reference.Kind'Img &
       (case T.Reference.Kind is
-          when Value_Token => '(' & Escaped (T.Reference.Content.all) & ')',
+          when Value_Token => '(' & Escaped (Value (T.Reference.Value)) & ')',
           when Indentation => '(' & T.Reference.Depth'Img & ')',
           when others => ""));
 
@@ -73,18 +69,20 @@ package body Yada.Lexing.Tokenization_Test is
                              new Token_With_Value_Holder'(Refcount => 1,
                                                           Kind => Indentation,
                                                           Depth => Indent)));
-   function With_String (T : Value_Token; S : String) return Token_With_Value is
+   function With_String (Tok : Value_Token; S : String;
+                         T : in out Test_Cases.Test_Case'Class)
+                         return Token_With_Value is
    begin
       return V : constant Token_With_Value :=
-        (Ada.Finalization.Controlled with Reference => new Token_With_Value_Holder (Kind => T)) do
+        (Ada.Finalization.Controlled with Reference => new Token_With_Value_Holder (Kind => Tok)) do
          V.Reference.Refcount := 1;
-         V.Reference.Content := new String (S'Range);
-         V.Reference.Content.all := S;
+         V.Reference.Value := From_String (TC (T).Pool, S);
       end return;
    end With_String;
 
-   function TS (Content : String) return Token_With_Value is
-     (With_String (Scalar, Content));
+   function TS (T : in out Test_Cases.Test_Case'Class;
+                Content : String) return Token_With_Value is
+     (With_String (Scalar, Content, T));
    TStrE : constant Token_With_Value :=
      (Ada.Finalization.Controlled with Reference =>
          new Token_With_Value_Holder'(Refcount => 1, Kind => Stream_End));
@@ -125,31 +123,39 @@ package body Yada.Lexing.Tokenization_Test is
      (Ada.Finalization.Controlled with Reference =>
          new Token_With_Value_Holder'(Refcount => 1, Kind => Document_End));
 
-   function TDP (Content : String) return Token_With_Value is
-     (With_String (Directive_Param, Content));
-   function TTH (Content : String) return Token_With_Value is
-     (With_String (Tag_Handle, Content));
-   function TTV (Content : String) return Token_With_Value is
-     (With_String (Verbatim_Tag, Content));
-   function TTU (Content : String) return Token_With_Value is
-     (With_String (Tag_Uri, Content));
-   function TUD (Content : String) return Token_With_Value is
-     (With_String (Unknown_Directive, Content));
-   function TAn (Content : String) return Token_With_Value is
-     (With_String (Anchor, Content));
-   function TAli (Content : String) return Token_With_Value is
-     (With_String (Alias, Content));
+   function TDP (T : in out Test_Cases.Test_Case'Class; Content : String)
+                 return Token_With_Value is
+     (With_String (Directive_Param, Content, T));
+   function TTH (T : in out Test_Cases.Test_Case'Class; Content : String)
+                 return Token_With_Value is
+     (With_String (Tag_Handle, Content, T));
+   function TTV (T : in out Test_Cases.Test_Case'Class; Content : String)
+                 return Token_With_Value is
+     (With_String (Verbatim_Tag, Content, T));
+   function TTU (T : in out Test_Cases.Test_Case'Class; Content : String)
+                 return Token_With_Value is
+     (With_String (Tag_Uri, Content, T));
+   function TUD (T : in out Test_Cases.Test_Case'Class; Content : String)
+                 return Token_With_Value is
+     (With_String (Unknown_Directive, Content, T));
+   function TAn (T : in out Test_Cases.Test_Case'Class; Content : String)
+                 return Token_With_Value is
+     (With_String (Anchor, Content, T));
+   function TAli (T : in out Test_Cases.Test_Case'Class; Content : String)
+                  return Token_With_Value is
+     (With_String (Alias, Content, T));
 
    function To_String (L : Lexer; T : Token) return String is
      (T'Img & (case T is
-         when Evaluated_Token => '(' & Escaped (L.Content.all) & ')',
+         when Evaluated_Token => '(' & Escaped (L.Value) & ')',
          when Short_Lexeme_Token => '(' & Escaped (Short_Lexeme (L)) & ')',
          when Full_Lexeme_Token => '(' & Escaped (Full_Lexeme (L)) & ')',
          when Empty_Token => "",
          when Indentation => '(' & Natural'(L.Pos - L.Line_Start - 1)'Img & ')'));
 
-   procedure Assert_Equals (Input : String; Expected : Token_List) is
-      L : Lexer := From_String (Input);
+   procedure Assert_Equals (Pool : String_Pool;
+                            Input : String; Expected : Token_List) is
+      L : Lexer := From_String (Input, Pool);
       I : Natural := 0;
    begin
       for Expected_Token of Expected loop
@@ -164,19 +170,19 @@ package body Yada.Lexing.Tokenization_Test is
             if T = Expected_Token.Reference.Kind then
                case T is
                when Evaluated_Token =>
-                  Assert (L.Content.all = Expected_Token.Reference.Content.all,
+                  Assert (L.Value = Expected_Token.Reference.Value,
                           "Wrong content at #" & I'Img & ": Expected " &
-                            Escaped (Expected_Token.Reference.Content.all) &
-                            ", got " & Escaped (L.Content.all));
+                            Escaped (Expected_Token.Reference.Value) &
+                            ", got " & Escaped (L.Value));
                when Full_Lexeme_Token =>
-                  Assert (Full_Lexeme (L) = Expected_Token.Reference.Content.all,
+                  Assert (Full_Lexeme (L) = Value (Expected_Token.Reference.Value),
                           "Wrong " & T'Img & " at #" & I'Img & ": Expected " &
-                            Escaped (Expected_Token.Reference.Content.all) &
+                            Escaped (Expected_Token.Reference.Value) &
                             ", got " & Escaped (Full_Lexeme (L)));
                when Short_Lexeme_Token =>
-                  Assert (Short_Lexeme (L) = Expected_Token.Reference.Content.all,
+                  Assert (Short_Lexeme (L) = Value (Expected_Token.Reference.Value),
                           "Wrong " & T'Img & "at #" & I'Img & ": Expected " &
-                            Escaped (Expected_Token.Reference.Content.all) &
+                            Escaped (Expected_Token.Reference.Value) &
                             ", got " & Escaped (Short_Lexeme (L)));
                when Indentation =>
                   Assert (L.Pos - L.Line_Start - 1 = Expected_Token.Reference.Depth,
@@ -223,188 +229,183 @@ package body Yada.Lexing.Tokenization_Test is
       return AUnit.Format ("Tokenization tests for Lexer");
    end Name;
 
-   procedure Empty_Document (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
+   procedure Set_Up (T : in out TC) is
    begin
-      Assert_Equals ("", (1 => TStrE));
+      Create (T.Pool, 8092);
+   end Set_Up;
+
+   procedure Empty_Document (T : in out Test_Cases.Test_Case'Class) is
+   begin
+      Assert_Equals (TC (T).Pool, "", (1 => TStrE));
    end Empty_Document;
 
    procedure Single_Line_Scalar (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("scalar", (TI (0), TS ("scalar"), TStrE));
+      Assert_Equals (TC (T).Pool, "scalar",
+                     (TI (0), TS (T, "scalar"), TStrE));
    end Single_Line_Scalar;
 
    procedure Multiline_Scalar (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("scalar" & Line_Feed & "  line two",
-                     (TI (0), TS ("scalar line two"), TStrE));
+      Assert_Equals (TC (T).Pool, "scalar" & Line_Feed & "  line two",
+                     (TI (0), TS (T, "scalar line two"), TStrE));
    end Multiline_Scalar;
 
    procedure Single_Line_Mapping (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("key: value", (TI (0), TS ("key"), TMV, TS ("value"),
-                     TStrE));
+      Assert_Equals (TC (T).Pool, "key: value",
+                     (TI (0), TS (T, "key"), TMV, TS (T, "value"), TStrE));
    end Single_Line_Mapping;
 
    procedure Multiline_Mapping (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("key:" & Line_Feed & "  value",
-                     (TI (0), TS ("key"), TMV, TI (2), TS ("value"), TStrE));
+      Assert_Equals (TC (T).Pool, "key:" & Line_Feed & "  value",
+                     (TI (0), TS (T, "key"), TMV, TI (2), TS (T, "value"),
+                      TStrE));
    end Multiline_Mapping;
 
    procedure Explicit_Mapping (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("? key" & Line_Feed & ": value",
-                     (TI (0), TMK, TS ("key"), TI (0), TMV, TS ("value"),
+      Assert_Equals (TC (T).Pool, "? key" & Line_Feed & ": value",
+                     (TI (0), TMK, TS (T, "key"), TI (0), TMV, TS (T, "value"),
                       TStrE));
    end Explicit_Mapping;
 
    procedure Sequence (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("- a" & Line_Feed & "- b",
-                     (TI (0), TSI, TS ("a"), TI (0), TSI, TS ("b"), TStrE));
+      Assert_Equals (TC (T).Pool, "- a" & Line_Feed & "- b",
+                     (TI (0), TSI, TS (T, "a"), TI (0), TSI, TS (T, "b"),
+                      TStrE));
    end Sequence;
 
    procedure Single_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("'quoted scalar'", (TI (0), TS ("quoted scalar"), TStrE));
+      Assert_Equals (TC (T).Pool, "'quoted scalar'",
+                     (TI (0), TS (T, "quoted scalar"), TStrE));
    end Single_Quoted_Scalar;
 
    procedure Multiline_Single_Quoted_Scalar
      (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("'quoted" & Line_Feed & "  multi line  " & Line_Feed &
-                       Line_Feed & "scalar'",
-                     (TI (0), TS ("quoted multi line" & Line_Feed & "scalar"),
+      Assert_Equals (TC (T).Pool, "'quoted" & Line_Feed &
+                       "  multi line  " & Line_Feed & Line_Feed & "scalar'",
+                     (TI (0),
+                      TS (T, "quoted multi line" & Line_Feed & "scalar"),
                       TStrE));
    end Multiline_Single_Quoted_Scalar;
 
    procedure Double_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("""quoted scalar""", (TI (0), TS ("quoted scalar"), TStrE));
+      Assert_Equals (TC (T).Pool, """quoted scalar""",
+                     (TI (0), TS (T, "quoted scalar"), TStrE));
    end Double_Quoted_Scalar;
 
    procedure Multiline_Double_Quoted_Scalar
      (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("""quoted" & Line_Feed & "  multi line  " & Line_Feed &
-                       Line_Feed & "scalar""",
-                     (TI (0), TS ("quoted multi line" & Line_Feed & "scalar"),
+      Assert_Equals (TC (T).Pool, """quoted" & Line_Feed &
+                       "  multi line  " & Line_Feed & Line_Feed & "scalar""",
+                     (TI (0),
+                      TS (T, "quoted multi line" & Line_Feed & "scalar"),
                       TStrE));
    end Multiline_Double_Quoted_Scalar;
 
    procedure Escape_Sequences (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("""\n\x31\u0032\U00000033""",
-                     (TI (0), TS (Line_Feed & "123"), TStrE));
+      Assert_Equals (TC (T).Pool, """\n\x31\u0032\U00000033""",
+                     (TI (0), TS (T, Line_Feed & "123"), TStrE));
    end Escape_Sequences;
 
    procedure Block_Scalar (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("|" & Line_Feed & "  a" & Line_Feed & Line_Feed & "  b" &
-                       Line_Feed & " # comment",
+      Assert_Equals (TC (T).Pool, "|" & Line_Feed & "  a" & Line_Feed &
+                       Line_Feed & "  b" & Line_Feed & " # comment",
                      (TI (0),
-                      TS ("a" & Line_Feed & Line_Feed & "b" & Line_Feed),
+                      TS (T, "a" & Line_Feed & Line_Feed & "b" & Line_Feed),
                       TStrE));
    end Block_Scalar;
 
    procedure Block_Scalars (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("one : >2-" & Line_Feed & "   foo" & Line_Feed & "  bar" &
-                       Line_Feed & "two: |+" & Line_Feed & " bar" & Line_Feed &
-                       "  baz" & Line_Feed & Line_Feed,
-                     (TI (0), TS ("one"), TMV, TS (" foo bar"), TI (0),
-                      TS ("two"), TMV,
-                      TS ("bar" & Line_Feed & " baz" & Line_Feed & Line_Feed),
+      Assert_Equals (TC (T).Pool, "one : >2-" & Line_Feed & "   foo" &
+                       Line_Feed & "  bar" & Line_Feed & "two: |+" & Line_Feed &
+                       " bar" & Line_Feed & "  baz" & Line_Feed & Line_Feed,
+                     (TI (0), TS (T, "one"), TMV, TS (T, " foo bar"), TI (0),
+                      TS (T, "two"), TMV,
+                      TS (T, "bar" & Line_Feed & " baz" & Line_Feed & Line_Feed),
                       TStrE));
    end Block_Scalars;
 
    procedure Directives (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("%YAML 1.3" & Line_Feed & "---" & Line_Feed & "%TAG" &
-                       Line_Feed & "..." & Line_Feed & Line_Feed &
-                       "%TAG ! example%20.html",
-                     (TYD, TDP ("1.3"), TDirE, TI (0), TS ("%TAG"), TDocE,
-                      TTD, TTH ("!"), TTU ("example .html"), TStrE));
+      Assert_Equals (TC (T).Pool, "%YAML 1.3" & Line_Feed & "---" &
+                       Line_Feed & "%TAG" & Line_Feed & "..." & Line_Feed &
+                       Line_Feed & "%TAG ! example%20.html",
+                     (TYD, TDP (T, "1.3"), TDirE, TI (0), TS (T, "%TAG"), TDocE,
+                      TTD, TTH (T, "!"), TTU (T, "example .html"), TStrE));
    end Directives;
 
    procedure Markers (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("---" & Line_Feed & "---" & Line_Feed & "..." &
-                       Line_Feed & "%UNKNOWN warbl",
-                     (TDirE, TDirE, TDocE, TUD ("UNKNOWN"),
-                      TDP ("warbl"), TStrE));
+      Assert_Equals (TC (T).Pool, "---" & Line_Feed & "---" & Line_Feed &
+                       "..." & Line_Feed & "%UNKNOWN warbl",
+                     (TDirE, TDirE, TDocE, TUD (T, "UNKNOWN"),
+                      TDP (T, "warbl"), TStrE));
    end Markers;
 
    procedure Flow_Indicators (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("bla]: {c: d, [e]: f}",
-                     (TI (0), TS ("bla]"), TMV, TMS, TS ("c"), TMV, TS ("d"),
-                      TSep, TSS, TS ("e"), TSE, TMV, TS ("f"), TME, TStrE));
+      Assert_Equals (TC (T).Pool, "bla]: {c: d, [e]: f}",
+                     (TI (0), TS (T, "bla]"), TMV, TMS, TS (T, "c"), TMV,
+                      TS (T, "d"), TSep, TSS, TS (T, "e"), TSE, TMV,
+                      TS (T, "f"), TME, TStrE));
    end Flow_Indicators;
 
    procedure Adjacent_Map_Values (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("{""foo"":bar, [1]" & Line_Feed & ":egg}",
-                     (TI (0), TMS, TS ("foo"), TMV, TS ("bar"), TSep, TSS,
-                      TS ("1"), TSE, TMV, TS ("egg"), TME, TStrE));
+      Assert_Equals (TC (T).Pool, "{""foo"":bar, [1]" & Line_Feed &
+                       ":egg}",
+                     (TI (0), TMS, TS (T, "foo"), TMV, TS (T, "bar"), TSep, TSS,
+                      TS (T, "1"), TSE, TMV, TS (T, "egg"), TME, TStrE));
    end Adjacent_Map_Values;
 
    procedure Tag_Handles (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("- !!str string" & Line_Feed & "- !local%21 local" &
-                       Line_Feed & "- !e! e",
-                     (TI (0), TSI, TTH ("!!"), TTU ("str"), TS ("string"),
-                      TI (0), TSI, TTH ("!"), TTU ("local!"), TS ("local"),
-                      TI (0), TSI, TTH ("!e!"), TTU (""), TS ("e"), TStrE));
+      Assert_Equals (TC (T).Pool, "- !!str string" & Line_Feed &
+                       "- !local%21 local" & Line_Feed & "- !e! e",
+                     (TI (0), TSI, TTH (T, "!!"), TTU (T, "str"),
+                      TS (T, "string"), TI (0), TSI, TTH (T, "!"),
+                      TTU (T, "local!"), TS (T, "local"), TI (0), TSI,
+                      TTH (T, "!e!"), TTU (T, ""), TS (T, "e"), TStrE));
    end Tag_Handles;
 
    procedure Verbatim_Tag_Handle (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("!<tag:yaml.org,2002:str> string",
-                     (TI (0), TTV ("tag:yaml.org,2002:str"), TS ("string"),
-                      TStrE));
+      Assert_Equals (TC (T).Pool, "!<tag:yaml.org,2002:str> string",
+                     (TI (0), TTV (T, "tag:yaml.org,2002:str"),
+                      TS (T, "string"), TStrE));
    end Verbatim_Tag_Handle;
 
    procedure Anchors_And_Aliases (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("&a foo: {&b b: *a, *b : c}",
-                     (TI (0), TAn ("a"), TS ("foo"), TMV, TMS, TAn ("b"),
-                      TS ("b"), TMV, TAli ("a"), TSep, TAli ("b"), TMV,
-                      TS ("c"), TME, TStrE));
+      Assert_Equals (TC (T).Pool, "&a foo: {&b b: *a, *b : c}",
+                     (TI (0), TAn (T, "a"), TS (T, "foo"), TMV, TMS,
+                      TAn (T, "b"), TS (T, "b"), TMV, TAli (T, "a"), TSep,
+                      TAli (T, "b"), TMV, TS (T, "c"), TME, TStrE));
    end Anchors_And_Aliases;
 
    procedure Empty_Lines (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
    begin
-      Assert_Equals ("block: foo" & Line_Feed & Line_Feed & "  bar" &
-                       Line_Feed & Line_Feed & "    baz" & Line_Feed &
+      Assert_Equals (TC (T).Pool, "block: foo" & Line_Feed & Line_Feed &
+                       "  bar" & Line_Feed & Line_Feed & "    baz" & Line_Feed &
                        "flow: {" & Line_Feed & "  foo" & Line_Feed & Line_Feed &
                        "  bar: baz" & Line_Feed & Line_Feed & Line_Feed &
                        "  mi" & Line_Feed & "}",
-                     (TI (0), TS ("block"), TMV, TS ("foo" & Line_Feed & "bar" &
-                        Line_Feed & "baz"), TI (0), TS ("flow"), TMV, TMS,
-                     TS ("foo" & Line_Feed & "bar"), TMV, TS ("baz" & Line_Feed & Line_Feed & "mi"),
+                     (TI (0), TS (T, "block"), TMV,
+                      TS (T, "foo" & Line_Feed & "bar" & Line_Feed & "baz"),
+                      TI (0), TS (T, "flow"), TMV, TMS,
+                      TS (T, "foo" & Line_Feed & "bar"), TMV,
+                      TS (T, "baz" & Line_Feed & Line_Feed & "mi"),
                      TME, TStrE));
    end Empty_Lines;
 end Yada.Lexing.Tokenization_Test;

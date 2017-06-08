@@ -2,6 +2,8 @@ with Ada.Unchecked_Deallocation;
 with Yada.Lexing.Evaluation;
 
 package body Yada.Lexing is
+   use Yada.Strings;
+
    -----------------------------------------------------------------------------
    --             Initialization and buffer handling                          --
    -----------------------------------------------------------------------------
@@ -83,40 +85,36 @@ package body Yada.Lexing is
       L.Cur := Next (L);
    end Handle_LF;
 
-   function New_Lexer (Input : Sources.Source_Access; Buffer : Buffer_Type)
+   function New_Lexer (Input : Sources.Source_Access; Buffer : Buffer_Type;
+                       Pool  : Strings.String_Pool)
      return Lexer is
       (Lexer'(Input => Input, Sentinel => Buffer.all'Last + 1, Buffer => Buffer,
               Pos => Buffer.all'First, Indentation => <>, Cur_Line => 1,
               State => Outside_Doc'Access, Cur => <>, Flow_Depth => 0,
-              Line_Start_State => Outside_Doc'Access, Content => null,
-              Json_Enabling_State => Inside_Line'Access,
+              Line_Start_State => Outside_Doc'Access, Value => <>,
+              Json_Enabling_State => Inside_Line'Access, Pool => Pool,
               Token_Start => <>, Line_Start => Buffer.all'First))
      with Inline;
 
    function From_Source
-     (Input : Sources.Source_Access;
+     (Input : Sources.Source_Access; Pool : Strings.String_Pool;
       Initial_Buffer_Size : Positive := Default_Initial_Buffer_Size)
       return Lexer is
    begin
       return L : Lexer :=
-        New_Lexer (Input, new String (1 .. Initial_Buffer_Size)) do
+        New_Lexer (Input, new String (1 .. Initial_Buffer_Size), Pool) do
          Refill_Buffer (L);
          L.Cur := Next (L);
       end return;
    end From_Source;
 
-   function From_String (Input : String) return Lexer is
+   function From_String (Input : String;
+                         Pool  : Strings.String_Pool)
+                         return Lexer is
    begin
       return L : Lexer :=
-        New_Lexer (null, new String (1 .. Input'Length + 1)) do
+        New_Lexer (null, new String (1 .. Input'Length + 1), Pool) do
          L.Buffer.all := Input & End_Of_Input;
-         L.Cur := Next (L);
-      end return;
-   end From_String;
-
-   function From_String (Input : not null access String) return Lexer is
-   begin
-      return L : Lexer := New_Lexer (null, Buffer_Type (Input)) do
          L.Cur := Next (L);
       end return;
    end From_String;
@@ -164,6 +162,9 @@ package body Yada.Lexing is
    end Escaped;
 
    function Escaped (C : Character) return String is (Escaped ("" & C));
+
+   function Escaped (C : Strings.Content) return String is
+     (Escaped (Value (C)));
 
    function Next_Is_Plain_Safe (L : Lexer) return Boolean is
       (case L.Buffer (L.Pos) is

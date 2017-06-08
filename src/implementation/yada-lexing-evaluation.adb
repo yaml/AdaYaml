@@ -39,14 +39,9 @@ package body Yada.Lexing.Evaluation is
       O.Pos := O.Pos + S'Length;
    end Add;
 
-   function New_String_From (O : Out_Buffer_Type) return access UTF_8_String
-     with Inline is
-   begin
-      return S : constant access UTF_8_String :=
-        new UTF_8_String (1 .. O.Pos - 1) do
-         S.all := O.Content (1 .. O.Pos - 1);
-      end return;
-   end New_String_From;
+   function New_Content_From (Pool : in out Strings.String_Pool;
+                              O : Out_Buffer_Type) return Strings.Content is
+      (Strings.From_String (Pool, O.Content (1 .. O.Pos - 1))) with Inline;
 
    -----------------------------------------------------------------------------
    --  implementation
@@ -158,7 +153,7 @@ package body Yada.Lexing.Evaluation is
             end if;
          end;
       end loop Multiline_Loop;
-      L.Content := New_String_From (Result);
+      L.Value := New_Content_From (L.Pool, Result);
    end Read_Plain_Scalar;
 
    procedure Process_Quoted_Whitespace (L : in out Lexer; Init : Natural;
@@ -229,7 +224,7 @@ package body Yada.Lexing.Evaluation is
                L.Cur := Next (L);
          end case;
       end loop;
-      L.Content := New_String_From (Result);
+      L.Value := New_Content_From (L.Pool, Result);
    end Read_Single_Quoted_Scalar;
 
    procedure Read_Hex_Sequence (L : in out Lexer; Length : Positive;
@@ -308,7 +303,7 @@ package body Yada.Lexing.Evaluation is
          L.Cur := Next (L);
       end loop;
       L.Cur := Next (L);
-      L.Content := New_String_From (Result);
+      L.Value := New_Content_From (L.Pool, Result);
    end Read_Double_Quoted_Scalar;
 
    procedure Read_Block_Scalar (L : in out Lexer) is
@@ -466,7 +461,7 @@ package body Yada.Lexing.Evaluation is
          when Keep => Add (Result, (1 .. Separation_Lines + 1 => Line_Feed));
       end case;
 
-      L.Content := New_String_From (Result);
+      L.Value := New_Content_From (L.Pool, Result);
    end Read_Block_Scalar;
 
    procedure Read_URI (L : in out Lexer; Restricted : Boolean) is
@@ -517,7 +512,7 @@ package body Yada.Lexing.Evaluation is
          end case;
          L.Cur := Next (L);
       end loop;
-      L.Content := New_String_From (Result);
+      L.Value := New_Content_From (L.Pool, Result);
    end Read_URI;
 
 

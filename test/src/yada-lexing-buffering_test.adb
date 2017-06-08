@@ -20,13 +20,17 @@ package body Yada.Lexing.Buffering_Test is
       return AUnit.Format ("Buffering tests for Lexer");
    end Name;
 
+   procedure Set_Up (T : in out TC) is
+   begin
+      Strings.Create (T.Pool, 8092);
+   end Set_Up;
+
    procedure Test_File_Without_Refill (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
       Data_Path : constant String := "test/data/64char.yaml";
       Expected : constant String := Utils.File_Content (Data_Path) & End_Of_Input;
 
-      S : constant Sources.Source_Access := Sources.Files.As_Source (Data_Path);
-      L : Lexer := From_Source (S, 64);
+      S : constant Sources.Source_Access := Sources.Files .As_Source (Data_Path);
+      L : Lexer := From_Source (S, TC (T).Pool, 64);
    begin
       Assert (L.Buffer.all'Length = 64, "Buffer length does not match! Val:" & L.Buffer.all'Length'Img);
       for I in Expected'Range loop
@@ -43,12 +47,11 @@ package body Yada.Lexing.Buffering_Test is
    end Test_File_Without_Refill;
 
    procedure Test_File_With_Single_Refill (T : in out Test_Cases.Test_Case'Class) is
-      pragma Unreferenced (T);
       Data_Path : constant String := "test/data/98char.yaml";
       Expected : constant String := Utils.File_Content (Data_Path);
 
       S : constant Sources.Source_Access := Sources.Files.As_Source (Data_Path);
-      L : Lexer := From_Source (S, 64);
+      L : Lexer := From_Source (S, TC (T).Pool, 64);
 
    begin
       Assert (L.Buffer.all'Length = 64, "Buffer length does not match! Val: " & L.Buffer.all'Length'Img);

@@ -1,4 +1,5 @@
 with Yada.Sources;
+with Yada.Strings;
 with Ada.Strings.UTF_Encoding;
 
 private package Yada.Lexing is
@@ -11,12 +12,13 @@ private package Yada.Lexing is
    Lexer_Error : exception;
 
    function From_Source
-     (Input : Sources.Source_Access;
+     (Input : Sources.Source_Access; Pool : Strings.String_Pool;
       Initial_Buffer_Size : Positive := Default_Initial_Buffer_Size)
       return Lexer;
 
-   function From_String (Input : UTF_String) return Lexer;
-   function From_String (Input : not null access UTF_String) return Lexer;
+   function From_String (Input : UTF_String;
+                         Pool  : Strings.String_Pool)
+                         return Lexer;
 
    type Token is
      (Yaml_Directive,    --  `%YAML`
@@ -94,8 +96,9 @@ private
         --  by whitespace.
       Cur         : Character;  --  recently read character
       Flow_Depth  : Natural; --  current level of flow collections
-      Content : access UTF_8_String;
+      Value : Strings.Content;
         --  content of the recently read scalar or URI, if any.
+      Pool : Strings.String_Pool; --  used for generating Content
    end record;
 
    --  The following stuff is declared here so that it can be unit-tested.
@@ -149,6 +152,7 @@ private
    --  this is primarily used for error message rendering.
    function Escaped (S : String) return String;
    function Escaped (C : Character) return String with Inline;
+   function Escaped (C : Strings.Content) return String with Inline;
 
    function Next_Is_Plain_Safe (L : Lexer) return Boolean with Inline;
 
