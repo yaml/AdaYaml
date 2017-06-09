@@ -1,7 +1,7 @@
 # AdaYaml - YAML 1.3 implementation in Ada
 
 This is an implementation of the upcoming YAML 1.3 standard. This library is
-currently under construction. Be vary of errors, I have not even proven it
+currently under construction. Be wary of errors, I have not even proven it
 correct.
 
 ## YAML 1.3 Features
@@ -34,8 +34,10 @@ Status of YAML 1.3 features, taken from [this list][1]:
  - [ ] Implement fancy error reporting (starting line of error with marker)
  - [ ] Do some benchmarks
  - [ ] Web demo
+ - [ ] Implement UTF-16 and UTF-32 encodings 
  - [ ] Make AdaYaml a drop-in replacement for libyaml (provide the C interface)
  - [ ] As proof-of-concept, implement the [Transformations extension][2]
+ - [ ] Maybe provide a DOM API
 
 ## License
 
