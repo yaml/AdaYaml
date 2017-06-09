@@ -1,9 +1,9 @@
 with Ada.Strings.UTF_Encoding;
 with Ada.Finalization;
 with System.Storage_Elements;
+private with Ada.Unchecked_Conversion;
 
 package Yaml.Strings is
-   pragma Preelaborate;
    --  this package defines a reference-counted string pointer type called
    --  Content. it is used for all YAML data entities and relieves the user from
    --  the need to manually dispose events created by the parser.
@@ -57,6 +57,11 @@ package Yaml.Strings is
                          return Content;
 
    Null_Content : constant Content;
+
+   type Constant_Content_Holder (<>) is private;
+
+   function Hold (Value : String) return Constant_Content_Holder;
+   function Held (Holder : Constant_Content_Holder) return Content;
 private
    --  this forces GNAT to store the First and Last dope values right before
    --  the first element of the String. we use that to our advantage.
@@ -104,6 +109,45 @@ private
    type Pool_Data_Access is access Pool_Data;
    for Pool_Data_Access'Size use Standard'Address_Size;
 
+   --  this is the dope vector of each string allocated in a Chunk. it is put
+   --  immediately before the string's value. note that the First and Last
+   --  elements are at the exact positions where GNAT searches for the string's
+   --  boundary dope. this allows us to access those values for maintaining the
+   --  ring list.
+   type Header is record
+      Pool : Pool_Data_Access;
+      Chunk_Index : Chunk_Index_Type;
+      Refcount : Refcount_Type := 1;
+      First, Last : System.Storage_Elements.Storage_Offset;
+   end record;
+
+   Chunk_Index_Start : constant := Standard'Address_Size;
+   Refcount_Start    : constant := Standard'Address_Size + 8;
+   First_Start       : constant := Standard'Address_Size + 32;
+   Last_Start        : constant := First_Start + Integer'Size;
+   Header_End        : constant := Last_Start + Integer'Size - 1;
+
+   for Header use record
+      Pool        at 0 range 0 .. Chunk_Index_Start - 1;
+      Chunk_Index at 0 range Chunk_Index_Start .. Refcount_Start - 1;
+      Refcount    at 0 range Refcount_Start .. First_Start - 1;
+      First       at 0 range First_Start .. Last_Start - 1;
+      Last        at 0 range Last_Start .. Header_End;
+   end record;
+   for Header'Size use Header_End + 1;
+
+   type Constant_Content_Holder (Length : Natural) is record
+      H : Header;
+      S : aliased String (1 .. Length);
+   end record;
+
+   function Hold (Value : String) return Constant_Content_Holder is
+     ((Length => Value'Length,
+       H => (Pool => null, First => 1, Last => Value'Length, others => <>),
+       S => Value));
+
+   Null_Content_Holder : constant Constant_Content_Holder := Hold ("");
+
    type String_Pool is new Ada.Finalization.Controlled with record
       Data : Pool_Data_Access;
    end record;
@@ -118,8 +162,12 @@ private
          Hold : Content;
       end record;
 
+   function To_UTF_8_String_Access is new Ada.Unchecked_Conversion
+     (System.Address, UTF_8_String_Access);
+
    type Content is new Ada.Finalization.Controlled with record
-      Data : UTF_8_String_Access;
+      Data : UTF_8_String_Access :=
+        To_UTF_8_String_Access (Null_Content_Holder.S'Address);
    end record;
 
    overriding procedure Adjust (Object : in out Content);
@@ -129,6 +177,6 @@ private
    function Current_Chunk_As_String (Pool : String_Pool) return String;
 
    Null_Content : constant Content :=
-     (Ada.Finalization.Controlled with Data => null);
+     (Ada.Finalization.Controlled with Data => <>);
 
 end Yaml.Strings;

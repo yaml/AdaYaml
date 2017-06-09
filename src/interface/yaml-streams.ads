@@ -2,7 +2,6 @@ with Ada.Finalization;
 with Yaml.Events;
 
 package Yaml.Streams is
-   pragma Preelaborate;
    Stream_Error : exception;
 
    --  has pointer semantics

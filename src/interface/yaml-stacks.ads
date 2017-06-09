@@ -17,7 +17,8 @@ package Yaml.Stacks is
    function New_Stack (Initial_Capacity : Positive) return Stack;
    function Top (Object : in out Stack) return access Element_Type;
    function Length (Object : Stack) return Natural;
-   function Element (Object : Stack; Index : Positive) return access Element_Type;
+   function Element (Object : Stack; Index : Positive)
+                     return access Element_Type;
    procedure Pop (Object : in out Stack);
    procedure Push (Object : in out Stack; Value : Element_Type);
 
@@ -33,6 +34,6 @@ private
    type Holder_Access is access Holder;
 
    type Stack is new Ada.Finalization.Controlled with record
-      Data : Holder_Access;
+      Data : Holder_Access := null;
    end record;
 end Yaml.Stacks;

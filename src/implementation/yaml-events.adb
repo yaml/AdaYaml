@@ -2,9 +2,16 @@ package body Yaml.Events is
    use Yaml.Strings;
 
    function To_String (E : Event) return String is
+      function Ann_String (Ann : Content_Stacks.Stack; Start : Positive := 1)
+                           return String is
+        (if Start > Content_Stacks.Length (Ann) then "" else
+              " @" & Value (Content_Stacks.Element (Ann, Start).all) &
+           Ann_String (Ann, Start + 1));
+
       function Attr_String (A : Attributes) return String is
         ((if A.Tag = Null_Content then "" else " <" & Value (A.Tag) & '>') &
-         (if A.Anchor = Null_Content then "" else " &" & Value (A.Anchor)));
+         (if A.Anchor = Null_Content then "" else " &" & Value (A.Anchor)) &
+         Ann_String (A.Annotations));
 
       function Scalar_Indicator (S : Scalar_Style_Type) return String is
         ((case S is

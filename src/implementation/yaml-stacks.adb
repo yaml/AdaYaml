@@ -39,7 +39,7 @@ package body Yaml.Stacks is
      (Object.Data.Elements (Object.Data.Length)'Access);
 
    function Length (Object : Stack) return Natural is
-     (Object.Data.Length);
+     (if Object.Data = null then 0 else Object.Data.Length);
 
    function Element (Object : Stack; Index : Positive)
                      return access Element_Type is
@@ -52,6 +52,9 @@ package body Yaml.Stacks is
 
    procedure Push (Object : in out Stack; Value : Element_Type) is
    begin
+      if Object.Data = null then
+         Object := New_Stack (32);
+      end if;
       if Object.Data.Length = Object.Data.Elements.all'Last then
          declare
             New_Array : constant Element_Array_Access :=

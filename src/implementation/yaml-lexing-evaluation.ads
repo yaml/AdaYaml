@@ -1,6 +1,4 @@
 private package Yaml.Lexing.Evaluation is
-   pragma Preelaborate;
-
    procedure Read_Plain_Scalar (L : in out Lexer; T : out Token);
 
    procedure Read_Single_Quoted_Scalar (L : in out Lexer; T : out Token)

@@ -1,8 +1,7 @@
 with Yaml.Strings;
+with Yaml.Stacks;
 
 package Yaml.Events is
-   pragma Preelaborate;
-
    type Event_Kind is (Stream_Start, Stream_End, Document_Start, Document_End,
                        Alias, Scalar, Sequence_Start, Sequence_End,
                        Mapping_Start, Mapping_End);
@@ -10,8 +9,11 @@ package Yaml.Events is
    type Scalar_Style_Type is
      (Plain, Single_Quoted, Double_Quoted, Literal, Folded);
 
+   package Content_Stacks is new Stacks (Strings.Content);
+
    type Attributes is record
-      Anchor, Tag, Attribute : Strings.Content;
+      Anchor, Tag : Strings.Content := Strings.Null_Content;
+      Annotations : Content_Stacks.Stack;
    end record;
 
    type Event (Kind : Event_Kind := Stream_End) is record

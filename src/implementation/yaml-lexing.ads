@@ -3,8 +3,6 @@ with Yaml.Strings;
 with Ada.Strings.UTF_Encoding;
 
 private package Yaml.Lexing is
-   pragma Preelaborate;
-
    use Ada.Strings.UTF_Encoding;
 
    Default_Initial_Buffer_Size : constant := 8096;

@@ -4,10 +4,9 @@ private with Yaml.Lexing;
 private with Yaml.Events;
 private with Yaml.Strings;
 private with Yaml.Stacks;
+private with Yaml.String_Sets;
 
 package Yaml.Parsing is
-   pragma Preelaborate;
-
    Parser_Error : exception;
 
    type Parser is new Streams.Event_Stream with private;
@@ -31,6 +30,7 @@ private
    end record;
 
    package Level_Stacks is new Yaml.Stacks (Parsing_Level);
+   package Tag_Handle_Sets is new Yaml.String_Sets (Strings.Content);
 
    type Parser_Implementation is new Streams.Stream_Implementation with record
       Pool : Strings.String_Pool;
@@ -39,6 +39,7 @@ private
       Current : Lexing.Token;
       Cached : Events.Event;
       Implicit_Key : Boolean := False;
+      Tag_Handles : Tag_Handle_Sets.String_Set;
    end record;
 
    procedure Fetch (Stream : in out Parser_Implementation;
@@ -70,5 +71,16 @@ private
                                 E : out Events.Event) return Boolean;
    function Before_Block_Map_Value (P : in out Parser_Implementation'Class;
                                     E : out Events.Event) return Boolean;
-
+   function Before_Flow_Item (P : in out Parser_Implementation'Class;
+                              E : out Events.Event) return Boolean;
+   function After_Flow_Map_Key (P : in out Parser_Implementation'Class;
+                                 E : out Events.Event) return Boolean;
+   function After_Flow_Map_Value (P : in out Parser_Implementation'Class;
+                                   E : out Events.Event) return Boolean;
+   function After_Flow_Seq_Item (P : in out Parser_Implementation'Class;
+                                 E : out Events.Event) return Boolean;
+   function After_Flow_Map_Sep (P : in out Parser_Implementation'Class;
+                                E : out Events.Event) return Boolean;
+   function After_Flow_Seq_Sep (P : in out Parser_Implementation'Class;
+                                E : out Events.Event) return Boolean;
 end Yaml.Parsing;

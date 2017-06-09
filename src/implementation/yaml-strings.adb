@@ -1,36 +1,8 @@
 with Ada.Unchecked_Deallocation;
-with Ada.Unchecked_Conversion;
 
 package body Yaml.Strings is
    use System;
    use System.Storage_Elements;
-
-   --  this is the dope vector of each string allocated in a Chunk. it is put
-   --  immediately before the string's value. note that the First and Last
-   --  elements are at the exact positions where GNAT searches for the string's
-   --  boundary dope. this allows us to access those values for maintaining the
-   --  ring list.
-   type Header is record
-      Pool : Pool_Data_Access;
-      Chunk_Index : Chunk_Index_Type;
-      Refcount : Refcount_Type := 1;
-      First, Last : Storage_Offset;
-   end record;
-
-   Chunk_Index_Start : constant := Standard'Address_Size;
-   Refcount_Start    : constant := Standard'Address_Size + 8;
-   First_Start       : constant := Standard'Address_Size + 32;
-   Last_Start        : constant := First_Start + Integer'Size;
-   Header_End        : constant := Last_Start + Integer'Size - 1;
-
-   for Header use record
-      Pool        at 0 range 0 .. Chunk_Index_Start - 1;
-      Chunk_Index at 0 range Chunk_Index_Start .. Refcount_Start - 1;
-      Refcount    at 0 range Refcount_Start .. First_Start - 1;
-      First       at 0 range First_Start .. Last_Start - 1;
-      Last        at 0 range Last_Start .. Header_End;
-   end record;
-   for Header'Size use Header_End + 1;
 
    type Header_Access is access Header;
    for Header_Access'Size use Standard'Address_Size;
@@ -166,7 +138,9 @@ package body Yaml.Strings is
          declare
             H : constant access Header := Header_Of (Object.Data);
          begin
-            H.Refcount := H.Refcount + 1;
+            if H.Pool /= null then
+               H.Refcount := H.Refcount + 1;
+            end if;
          end;
       end if;
    end Adjust;
@@ -198,26 +172,28 @@ package body Yaml.Strings is
          declare
             H : constant access Header := Header_Of (Reference);
          begin
-            H.Refcount := H.Refcount - 1;
-            if H.Refcount = 0 then
-               declare
-                  C : constant Chunk := H.Pool.Chunks (H.Chunk_Index);
-                  Pos : constant Storage_Offset := H.all'Address - C (1)'Address;
-               begin
-                  while H.Last + Pos < H.Pool.Chunks (H.Chunk_Index)'Last loop
-                     declare
-                        Next : Header with Import;
-                        for Next'Address use C (Pos + Round_To_Header_Size (H.Last))'Address;
-                     begin
-                        if Next.Refcount = 0 then
-                           H.Last := H.Last + Header_Size + Next.Last;
-                        else
-                           exit;
-                        end if;
-                     end;
-                  end loop;
-               end;
-               Decrease_Usage (H.Pool, H.Chunk_Index);
+            if H.Pool /= null then
+               H.Refcount := H.Refcount - 1;
+               if H.Refcount = 0 then
+                  declare
+                     C : constant Chunk := H.Pool.Chunks (H.Chunk_Index);
+                     Pos : constant Storage_Offset := H.all'Address - C (1)'Address;
+                  begin
+                     while H.Last + Pos < H.Pool.Chunks (H.Chunk_Index)'Last loop
+                        declare
+                           Next : Header with Import;
+                           for Next'Address use C (Pos + Round_To_Header_Size (H.Last))'Address;
+                        begin
+                           if Next.Refcount = 0 then
+                              H.Last := H.Last + Header_Size + Next.Last;
+                           else
+                              exit;
+                           end if;
+                        end;
+                     end loop;
+                  end;
+                  Decrease_Usage (H.Pool, H.Chunk_Index);
+               end if;
             end if;
          end;
       end if;
@@ -258,4 +234,8 @@ package body Yaml.Strings is
          end loop;
       end return;
    end Current_Chunk_As_String;
+
+   function Held (Holder : Constant_Content_Holder) return Content is
+     ((Content'(Ada.Finalization.Controlled with
+                Data => To_UTF_8_String_Access (Holder.S'Address))));
 end Yaml.Strings;
