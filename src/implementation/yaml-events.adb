@@ -8,7 +8,7 @@ package body Yaml.Events is
               " @" & Value (Content_Stacks.Element (Ann, Start).all) &
            Ann_String (Ann, Start + 1));
 
-      function Attr_String (A : Attributes) return String is
+      function Prop_String (A : Properties) return String is
         ((if A.Tag = Null_Content then "" else " <" & Value (A.Tag) & '>') &
          (if A.Anchor = Null_Content then "" else " &" & Value (A.Anchor)) &
          Ann_String (A.Annotations));
@@ -55,15 +55,15 @@ package body Yaml.Events is
          when Document_End =>
             return "-DOC" & (if E.Implicit_End then "" else " ...");
          when Mapping_Start =>
-            return "+MAP" & Attr_String (E.Collection_Attributes);
+            return "+MAP" & Prop_String (E.Collection_Properties);
          when Mapping_End =>
             return "-MAP";
          when Sequence_Start =>
-            return "+SEQ" & Attr_String (E.Collection_Attributes);
+            return "+SEQ" & Prop_String (E.Collection_Properties);
          when Sequence_End =>
             return "-SEQ";
          when Scalar =>
-            return "=VAL" & Attr_String (E.Scalar_Attributes) &
+            return "=VAL" & Prop_String (E.Scalar_Properties) &
               Scalar_Indicator (E.Scalar_Style) & Escaped (E.Value);
          when Alias =>
             return "=ALI *" & Value (E.Target);

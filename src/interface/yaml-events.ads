@@ -11,7 +11,7 @@ package Yaml.Events is
 
    package Content_Stacks is new Stacks (Strings.Content);
 
-   type Attributes is record
+   type Properties is record
       Anchor, Tag : Strings.Content := Strings.Null_Content;
       Annotations : Content_Stacks.Stack;
    end record;
@@ -28,9 +28,9 @@ package Yaml.Events is
             Implicit_End : Boolean;
          when Mapping_Start | Sequence_Start =>
             Collection_Style : Collection_Style_Type;
-            Collection_Attributes : Attributes;
+            Collection_Properties : Properties;
          when Scalar =>
-            Scalar_Attributes : Attributes;
+            Scalar_Properties : Properties;
             Value : Strings.Content;
             Scalar_Style : Scalar_Style_Type;
          when Alias =>

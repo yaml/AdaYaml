@@ -18,7 +18,8 @@ package body Yaml.Parsing is
          PI : constant not null access Parser_Implementation :=
            new Parser_Implementation'(Streams.Stream_Implementation with
               L => <>, Pool => Pool, Levels => Level_Stacks.New_Stack (32),
-              Current => <>, Cached => <>, Implicit_Key => False,
+              Current => <>, Cached => <>, Header_Props => <>,
+              Inline_Props => <>, Header_Start => <>, Inline_Start => <>,
               Tag_Handles => <>);
       begin
          Lexing.Init (PI.L, Input, Pool);
@@ -35,7 +36,8 @@ package body Yaml.Parsing is
          PI : constant not null access Parser_Implementation :=
            new Parser_Implementation'(Streams.Stream_Implementation with
               L => <>, Pool => Pool, Levels => Level_Stacks.New_Stack (32),
-              Current => <>, Cached => <>, Implicit_Key => False,
+              Current => <>, Cached => <>, Header_Props => <>,
+              Inline_Props => <>, Header_Start => <>, Inline_Start => <>,
               Tag_Handles => <>);
       begin
          Lexing.Init (PI.L, Input, Pool);
@@ -85,6 +87,19 @@ package body Yaml.Parsing is
         (P.Pool, Value (Holder.Value) & Value (Lexing.Current_Content (P.L)));
    end Parse_Tag;
 
+   function Is_Empty (Props : Events.Properties) return Boolean is
+     ((Props.Anchor = Null_Content and then Props.Tag = Null_Content and then
+       Events.Content_Stacks.Length (Props.Annotations) = 0));
+
+   function To_Style (T : Lexing.Scalar_Token_Kind)
+                      return Events.Scalar_Style_Type is
+     (case T is
+         when Lexing.Plain_Scalar => Events.Plain,
+         when Lexing.Single_Quoted_Scalar => Events.Single_Quoted,
+         when Lexing.Double_Quoted_Scalar => Events.Double_Quoted,
+         when Lexing.Literal_Scalar => Events.Literal,
+         when Lexing.Folded_Scalar => Events.Folded) with Inline;
+
    function At_Stream_Start (P : in out Parser_Implementation'Class;
                              E : out Events.Event) return Boolean is
    begin
@@ -124,7 +139,7 @@ package body Yaml.Parsing is
                                   Implicit_Start => False,
                                   Version => Version);
                P.Levels.Top.State := Before_Doc_End'Access;
-               P.Levels.Push ((State => Before_Block_Item'Access,
+               P.Levels.Push ((State => After_Directives_End'Access,
                                  Indentation => -1));
                return True;
             when Lexing.Stream_End =>
@@ -137,7 +152,7 @@ package body Yaml.Parsing is
                                   Implicit_Start => True,
                                   Version => Version);
                P.Levels.Top.State := Before_Doc_End'Access;
-               P.Levels.Push ((State => Before_Block_Item'Access,
+               P.Levels.Push ((State => Before_Implicit_Root'Access,
                                  Indentation => -1));
                return True;
             when Lexing.Yaml_Directive =>
@@ -189,6 +204,390 @@ package body Yaml.Parsing is
       end loop;
    end Before_Doc;
 
+   function After_Directives_End (P : in out Parser_Implementation'Class;
+                                  E : out Events.Event) return Boolean is
+      pragma Unreferenced (E);
+   begin
+      case P.Current.Kind is
+         when Lexing.Node_Property_Kind =>
+            P.Inline_Start := P.Current.Start_Pos;
+            P.Levels.Push ((State => Before_Node_Properties'Access,
+                              Indentation => <>));
+            return False;
+         when Lexing.Indentation =>
+            P.Levels.Top.State := At_Block_Indentation'Access;
+            return False;
+         when others =>
+            raise Parser_Error with "Illegal content at '---' line: " &
+              P.Current.Kind'Img;
+      end case;
+   end After_Directives_End;
+
+   function Before_Implicit_Root (P : in out Parser_Implementation'Class;
+                                  E : out Events.Event) return Boolean is
+      pragma Unreferenced (E);
+   begin
+      if P.Current.Kind /= Lexing.Indentation then
+         raise Parser_Error with "Unexpected token (expected line start) :" &
+           P.Current.Kind'Img;
+      end if;
+      P.Inline_Start := P.Current.End_Pos;
+      P.Levels.Top.Indentation := Lexing.Recent_Indentation (P.L);
+      P.Current := Lexing.Next_Token (P.L);
+      case P.Current.Kind is
+         when Lexing.Seq_Item_Ind | Lexing.Map_Key_Ind =>
+            P.Levels.Top.State := After_Block_Parent'Access;
+            return False;
+         when Lexing.Scalar_Token_Kind =>
+            P.Levels.Top.State := Require_Implicit_Map_Start'Access;
+            return False;
+         when Lexing.Node_Property_Kind =>
+            P.Levels.Top.State := Require_Implicit_Map_Start'Access;
+            P.Levels.Push ((State => Before_Node_Properties'Access,
+                            Indentation => <>));
+            return False;
+         when Lexing.Flow_Map_Start | Lexing.Flow_Seq_Start =>
+            P.Levels.Top.State := After_Block_Parent_Props'Access;
+            return False;
+         when others =>
+            raise Parser_Error with
+              "Unexpected token (expected collection start): " &
+              P.Current.Kind'Img;
+      end case;
+   end Before_Implicit_Root;
+
+   function Require_Implicit_Map_Start (P : in out Parser_Implementation'Class;
+                                        E : out Events.Event) return Boolean is
+      Header_End : Mark;
+   begin
+      case P.Current.Kind is
+         when Lexing.Flow_Scalar_Token_Kind | Lexing.Alias =>
+            if P.Current.Kind = Lexing.Alias then
+               E := Events.Event'(Start_Position => P.Inline_Start,
+                                  End_Position   => P.Current.End_Pos,
+                                  Kind => Events.Alias,
+                                  Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
+            else
+               E := Events.Event'(Start_Position => P.Inline_Start,
+                                  End_Position   => P.Current.End_Pos,
+                                  Kind => Events.Scalar,
+                                  Scalar_Properties => P.Inline_Props,
+                                  Scalar_Style => To_Style (P.Current.Kind),
+                                  Value => Lexing.Current_Content (P.L));
+            end if;
+            P.Inline_Props := (others => <>);
+            Header_End := P.Current.Start_Pos;
+            P.Current := Lexing.Next_Token (P.L);
+            if P.Current.Kind = Lexing.Map_Value_Ind then
+               P.Cached := E;
+               E := Events.Event'(Start_Position => P.Header_Start,
+                                  End_Position   => Header_End,
+                                  Kind => Events.Mapping_Start,
+                                  Collection_Properties => P.Header_Props,
+                                  Collection_Style => Events.Block);
+               P.Header_Props := (others => <>);
+               P.Levels.Top.State := After_Implicit_Map_Start'Access;
+            elsif P.Current.Kind in Lexing.Flow_Scalar_Token_Kind then
+               raise Parser_Error with
+                 "Scalar at root level requires '---' and node properties " &
+                 "(if any) must occur after '---'";
+            else
+               if not Is_Empty (P.Header_Props) then
+                  raise Parser_Error with "Alias may not have properties";
+               end if;
+               --  alias is allowed on document root without '---'
+               P.Levels.Pop;
+            end if;
+            return True;
+         when others =>
+            raise Parser_Error with
+              "Unexpected token (expected implicit mapping key): " &
+              P.Current.Kind'Img;
+      end case;
+   end Require_Implicit_Map_Start;
+
+   function At_Block_Indentation (P : in out Parser_Implementation'Class;
+                                  E : out Events.Event) return Boolean is
+      Header_End : Mark;
+   begin
+      if P.Current.Kind /= Lexing.Indentation then
+         raise Parser_Error with "Unexpected token (expected line start): " &
+           P.Current.Kind'Img;
+      end if;
+      if Lexing.Current_Indentation (P.L) <= P.Levels.Top.Indentation then
+         -- empty element is empty scalar
+         E := Events.Event'(Start_Position => P.Header_Start,
+                            End_Position   => P.Header_Start,
+                            Kind => Events.Scalar,
+                            Scalar_Properties => P.Header_Props,
+                            Scalar_Style => Events.Plain,
+                            Value => Null_Content);
+         P.Header_Props := (others => <>);
+         P.Levels.Pop;
+         return True;
+      end if;
+      P.Current := Lexing.Next_Token (P.L);
+      P.Levels.Top.Indentation := Lexing.Recent_Indentation (P.L);
+      case P.Current.Kind is
+         when Lexing.Node_Property_Kind =>
+            if Is_Empty (P.Header_Props) then
+               P.Levels.Top.State := Require_Inline_Block_Item'Access;
+            else
+               P.Levels.Top.State := Require_Implicit_Map_Start'Access;
+            end if;
+            P.Levels.Push ((State => Before_Node_Properties'Access,
+                            Indentation => <>));
+            return False;
+         when Lexing.Flow_Scalar_Token_Kind | Lexing.Alias =>
+            if P.Current.Kind = Lexing.Alias then
+               E := Events.Event'(Start_Position => P.Inline_Start,
+                                  End_Position   => P.Current.End_Pos,
+                                  Kind => Events.Alias,
+                                  Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
+            else
+               E := Events.Event'(Start_Position => P.Inline_Start,
+                                  End_Position   => P.Current.End_Pos,
+                                  Kind => Events.Scalar,
+                                  Scalar_Properties => P.Inline_Props,
+                                  Scalar_Style => To_Style (P.Current.Kind),
+                                  Value => Lexing.Current_Content (P.L));
+            end if;
+            P.Inline_Props := (others => <>);
+            Header_End := P.Current.Start_Pos;
+            P.Current := Lexing.Next_Token (P.L);
+            if P.Current.Kind = Lexing.Map_Value_Ind then
+               P.Cached := E;
+               E := Events.Event'(Start_Position => P.Header_Start,
+                                  End_Position   => Header_End,
+                                  Kind => Events.Mapping_Start,
+                                  Collection_Properties => P.Header_Props,
+                                  Collection_Style => Events.Block);
+               P.Header_Props := (others => <>);
+               P.Levels.Top.State := After_Implicit_Map_Start'Access;
+            elsif P.Current.Kind in Lexing.Flow_Scalar_Token_Kind then
+               raise Parser_Error with
+                 "Scalar at root level requires '---' and node properties " &
+                 "(if any) must occur after '---'";
+            else
+               if not Is_Empty (P.Header_Props) then
+                  raise Parser_Error with "Alias may not have properties";
+               end if;
+               --  alias is allowed on document root without '---'
+               P.Levels.Pop;
+            end if;
+            return True;
+         when Lexing.Flow_Map_Start =>
+            E := Events.Event'(Start_Position => P.Header_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Mapping_Start,
+                               Collection_Properties => P.Header_Props,
+                               Collection_Style => Events.Flow);
+            P.Header_Props := (others => <>);
+            P.Levels.Top.State := After_Flow_Map_Sep'Access;
+            P.Current := Lexing.Next_Token (P.L);
+            return True;
+         when Lexing.Flow_Seq_Start =>
+            E := Events.Event'(Start_Position => P.Header_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Sequence_Start,
+                               Collection_Properties => P.Header_Props,
+                               Collection_Style => Events.Flow);
+            P.Header_Props := (others => <>);
+            P.Levels.Top.State := After_Flow_Seq_Sep'Access;
+            P.Current := Lexing.Next_Token (P.L);
+            return True;
+         when Lexing.Seq_Item_Ind =>
+            E := Events.Event'(Start_Position => P.Header_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Sequence_Start,
+                               Collection_Properties => P.Header_Props,
+                               Collection_Style => Events.Block);
+            P.Header_Props := (others => <>);
+            P.Levels.Top.State := In_Block_Seq'Access;
+            P.Levels.Push ((State => After_Block_Parent'Access,
+                            Indentation => Lexing.Recent_Indentation (P.L)));
+            P.Current := Lexing.Next_Token (P.L);
+            return True;
+         when Lexing.Map_Key_Ind =>
+            E := Events.Event'(Start_Position => P.Header_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Mapping_Start,
+                               Collection_Properties => P.Header_Props,
+                               Collection_Style => Events.Block);
+            P.Header_Props := (others => <>);
+            P.Levels.Top.State := Before_Block_Map_Value'Access;
+            P.Levels.Push ((State => After_Block_Parent'Access,
+                            Indentation => Lexing.Recent_Indentation (P.L)));
+            P.Current := Lexing.Next_Token (P.L);
+            return True;
+         when others =>
+            raise Parser_Error with
+              "Unexpected token (expected block content): " &
+              P.Current.Kind'Img;
+      end case;
+   end At_Block_Indentation;
+
+   function Before_Node_Properties (P : in out Parser_Implementation'Class;
+                                    E : out Events.Event) return Boolean is
+      pragma Unreferenced (E);
+   begin
+      case P.Current.Kind is
+         when Lexing.Tag_Handle =>
+            if P.Inline_Props.Tag /= Null_Content then
+               raise Parser_Error with "Only one tag allowed per element";
+            end if;
+            P.Inline_Props.Tag := Parse_Tag (P);
+         when Lexing.Verbatim_Tag =>
+            if P.Inline_Props.Tag /= Null_Content then
+               raise Parser_Error with "Only one tag allowed per element";
+            end if;
+            P.Inline_Props.Tag := Lexing.Current_Content (P.L);
+         when Lexing.Anchor =>
+            if P.Inline_Props.Anchor /= Null_Content then
+               raise Parser_Error with "Only one anchor allowed per element";
+            end if;
+            P.Inline_Props.Anchor :=
+              From_String (P.Pool, Lexing.Short_Lexeme (P.L));
+         when Lexing.Annotation =>
+            P.Inline_Props.Annotations.Push
+              (Strings.From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
+         when Lexing.Indentation =>
+            P.Header_Props := P.Inline_Props;
+            P.Inline_Props := (others => <>);
+            P.Levels.Pop;
+            return False;
+         when Lexing.Alias =>
+            raise Parser_Error with "Alias may not have properties";
+         when others =>
+            P.Levels.Pop;
+            return False;
+      end case;
+      P.Current := Lexing.Next_Token (P.L);
+      return False;
+   end Before_Node_Properties;
+
+   function After_Block_Parent (P : in out Parser_Implementation'Class;
+                                E : out Events.Event) return Boolean is
+   begin
+      P.Levels.Top.Indentation := Lexing.Recent_Indentation (P.L);
+      P.Inline_Start := P.Current.Start_Pos;
+      case P.Current.Kind is
+         when Lexing.Node_Property_Kind =>
+            P.Levels.Top.State := After_Block_Parent_Props'Access;
+            P.Levels.Push ((State => Before_Node_Properties'Access,
+                            Indentation => <>));
+         when Lexing.Seq_Item_Ind =>
+            E := Events.Event'(Start_Position => P.Header_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Sequence_Start,
+                               Collection_Properties => P.Header_Props,
+                               Collection_Style => Events.Block);
+            P.Header_Props := (others => <>);
+            P.Levels.Top.State := In_Block_Seq'Access;
+            P.Levels.Push ((State => After_Block_Parent'Access,
+                            Indentation => Lexing.Recent_Indentation (P.L)));
+            P.Current := Lexing.Next_Token (P.L);
+            return True;
+         when Lexing.Map_Key_Ind =>
+            E := Events.Event'(Start_Position => P.Header_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Mapping_Start,
+                               Collection_Properties => P.Header_Props,
+                               Collection_Style => Events.Block);
+            P.Header_Props := (others => <>);
+            P.Levels.Top.State := Before_Block_Map_Value'Access;
+            P.Levels.Push ((State => After_Block_Parent'Access,
+                            Indentation => Lexing.Recent_Indentation (P.L)));
+            P.Current := Lexing.Next_Token (P.L);
+            return True;
+         when others =>
+            P.Levels.Top.State := After_Block_Parent_Props'Access;
+            return False;
+      end case;
+      return False;
+   end After_Block_Parent;
+
+   function After_Block_Parent_Props (P : in out Parser_Implementation'Class;
+                                      E : out Events.Event) return Boolean is
+      Header_End : Mark;
+   begin
+      case P.Current.Kind is
+         when Lexing.Indentation =>
+            P.Header_Start := P.Inline_Start;
+            P.Levels.Top.all :=
+              (State => At_Block_Indentation'Access,
+               Indentation => P.Levels.Element (P.Levels.Length - 1).Indentation);
+            return False;
+         when Lexing.Scalar_Token_Kind | Lexing.Alias =>
+            if P.Current.Kind = Lexing.Alias then
+               E := Events.Event'(Start_Position => P.Inline_Start,
+                                  End_Position   => P.Current.End_Pos,
+                                  Kind => Events.Alias,
+                                  Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
+            else
+               E := Events.Event'(Start_Position => P.Inline_Start,
+                                  End_Position   => P.Current.End_Pos,
+                                  Kind => Events.Scalar,
+                                  Scalar_Properties => P.Inline_Props,
+                                  Scalar_Style => To_Style (P.Current.Kind),
+                                  Value => Lexing.Current_Content (P.L));
+               P.Inline_Props := (others => <>);
+            end if;
+            Header_End := P.Current.Start_Pos;
+            P.Current := Lexing.Next_Token (P.L);
+            if P.Current.Kind = Lexing.Map_Value_Ind then
+               P.Cached := E;
+               E := Events.Event'(Start_Position => Header_End,
+                                  End_Position   => Header_End,
+                                  Kind => Events.Mapping_Start,
+                                  Collection_Properties => (others => <>),
+                                  Collection_Style => Events.Block);
+               P.Levels.Top.State := After_Implicit_Map_Start'Access;
+            else
+               P.Levels.Pop;
+            end if;
+            return True;
+         when Lexing.Flow_Map_Start =>
+            E := Events.Event'(Start_Position => P.Header_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Mapping_Start,
+                               Collection_Properties => P.Inline_Props,
+                               Collection_Style => Events.Flow);
+            P.Inline_Props := (others => <>);
+            P.Levels.Top.State := After_Flow_Map_Sep'Access;
+            P.Current := Lexing.Next_Token (P.L);
+            return True;
+         when Lexing.Flow_Seq_Start =>
+            E := Events.Event'(Start_Position => P.Header_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Sequence_Start,
+                               Collection_Properties => P.Inline_Props,
+                               Collection_Style => Events.Flow);
+            P.Inline_Props := (others => <>);
+            P.Levels.Top.State := After_Flow_Seq_Sep'Access;
+            P.Current := Lexing.Next_Token (P.L);
+            return True;
+         when others =>
+            raise Parser_Error with
+              "Unexpected token (expected newline or flow item start): " &
+              P.Current.Kind'Img;
+      end case;
+   end After_Block_Parent_Props;
+
+   function Require_Inline_Block_Item (P : in out Parser_Implementation'Class;
+                                       E : out Events.Event) return Boolean is
+      pragma Unreferenced (E);
+   begin
+      case P.Current.Kind is
+         when Lexing.Indentation =>
+            raise Parser_Error with
+              "Node properties may not stand alone on a line";
+         when others =>
+            P.Levels.Top.State := After_Block_Parent_Props'Access;
+            return False;
+      end case;
+   end Require_Inline_Block_Item;
+
    function Before_Doc_End (P : in out Parser_Implementation'Class;
                                E : out Events.Event) return Boolean is
    begin
@@ -220,166 +619,6 @@ package body Yaml.Parsing is
       end case;
       return True;
    end Before_Doc_End;
-
-   function To_Style (T : Lexing.Scalar_Token_Kind)
-                      return Events.Scalar_Style_Type is
-     (case T is
-         when Lexing.Plain_Scalar => Events.Plain,
-         when Lexing.Single_Quoted_Scalar => Events.Single_Quoted,
-         when Lexing.Double_Quoted_Scalar => Events.Double_Quoted,
-         when Lexing.Literal_Scalar => Events.Literal,
-         when Lexing.Folded_Scalar => Events.Folded) with Inline;
-
-   function Is_Empty (A : Events.Attributes) return Boolean is
-     (A.Anchor = Null_Content and A.Tag = Null_Content and
-      Events.Content_Stacks.Length (A.Annotations) = 0);
-
-   function Before_Block_Item (P : in out Parser_Implementation'Class;
-                               E : out Events.Event) return Boolean is
-      Collection_Attrs : Events.Attributes;
-      Attrs : Events.Attributes;
-   begin
-      loop
-         case P.Current.Kind is
-            when Lexing.Indentation =>
-               if Lexing.Current_Indentation (P.L) <=
-                 P.Levels.Top.Indentation then
-                  if P.Implicit_Key then
-                     raise Parser_Error with "Missing mapping value";
-                  end if;
-                  -- empty element is empty scalar
-                  E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                     End_Position   => P.Current.End_Pos,
-                                     Kind => Events.Scalar,
-                                     Scalar_Attributes => Attrs,
-                                     Scalar_Style => Events.Plain,
-                                     Value => Null_Content);
-                  P.Levels.Pop;
-                  return True;
-               elsif P.Implicit_Key then
-                  raise Parser_Error with
-                    "Implicit mapping key must occur on single line";
-               end if;
-               Collection_Attrs := Attrs;
-               Attrs := (others => <>);
-               P.Current := Lexing.Next_Token (P.L);
-            when Lexing.Anchor =>
-               if Attrs.Anchor /= Null_Content then
-                  raise Parser_Error with "Only one anchor allowed per element";
-               end if;
-               Attrs.Anchor := From_String (P.Pool, Lexing.Short_Lexeme (P.L));
-               P.Current := Lexing.Next_Token (P.L);
-            when Lexing.Tag_Handle =>
-               if Attrs.Tag /= Null_Content then
-                  raise Parser_Error with "Only one tag allowed per element";
-               end if;
-               Attrs.Tag := Parse_Tag (P);
-               P.Current := Lexing.Next_Token (P.L);
-            when Lexing.Verbatim_Tag =>
-               if Attrs.Tag /= Null_Content then
-                  raise Parser_Error with "Only one tag allowed per element";
-               end if;
-               Attrs.Tag := Lexing.Current_Content (P.L);
-               P.Current := Lexing.Next_Token (P.L);
-            when Lexing.Annotation =>
-               Attrs.Annotations.Push
-                 (Strings.From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
-               P.Current := Lexing.Next_Token (P.L);
-            when Lexing.Map_Key_Ind =>
-               if not Is_Empty (Attrs) then
-                  raise Parser_Error with
-                    "properties not allowed in front of '?'";
-               end if;
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.Start_Pos,
-                                  Kind => Events.Mapping_Start,
-                                  Collection_Attributes => Collection_Attrs,
-                                  Collection_Style => Events.Block);
-               P.Levels.Top.all := (State => Before_Block_Map_Value'Access,
-                                Indentation => Lexing.Recent_Indentation (P.L));
-               P.Levels.Push ((State => Before_Block_Item'Access,
-                               Indentation => Lexing.Recent_Indentation (P.L)));
-               P.Current := Lexing.Next_Token (P.L);
-               return True;
-            when Lexing.Scalar_Token_Kind | Lexing.Alias =>
-               declare
-                  Indent : constant Indentation_Type :=
-                    Lexing.Recent_Indentation (P.L);
-               begin
-                  if P.Current.Kind = Lexing.Alias then
-                     E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Alias,
-                                  Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
-                  else
-                     E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                        End_Position   => P.Current.End_Pos,
-                                        Kind => Events.Scalar,
-                                        Scalar_Attributes => Attrs,
-                                        Scalar_Style => To_Style (P.Current.Kind),
-                                        Value => Lexing.Current_Content (P.L));
-                  end if;
-                  P.Current := Lexing.Next_Token (P.L);
-                  if P.Implicit_Key then
-                     return True;
-                  end if;
-                  P.Levels.Pop;
-                  if P.Current.Kind = Lexing.Map_Value_Ind then
-                     P.Cached := E;
-                     E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                        End_Position   => P.Current.Start_Pos,
-                                        Kind => Events.Mapping_Start,
-                                        Collection_Attributes => Collection_Attrs,
-                                        Collection_Style => Events.Block);
-                     P.Levels.Push
-                       ((State => After_Implicit_Map_Start'Access,
-                         Indentation => Indent));
-                  else
-                     -- TODO: check collection attrs
-                     null;
-                  end if;
-               end;
-               return True;
-            when Lexing.Seq_Item_Ind =>
-               if not Is_Empty (Attrs) then
-                  raise Parser_Error with
-                    "properties not allowed in front of '-'";
-               end if;
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Sequence_Start,
-                                  Collection_Attributes => Collection_Attrs,
-                                  Collection_Style => Events.Block);
-               P.Levels.Top.all :=
-                 (State => In_Block_Seq'Access,
-                  Indentation => Lexing.Recent_Indentation (P.L));
-               P.Levels.Push ((State => Before_Block_Item'Access,
-                               Indentation => Lexing.Recent_Indentation (P.L)));
-               P.Current := Lexing.Next_Token (P.L);
-               return True;
-            when Lexing.Flow_Map_Start =>
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Mapping_Start,
-                                  Collection_Attributes => Attrs,
-                                  Collection_Style => Events.Flow);
-               P.Levels.Top.State := After_Flow_Map_Sep'Access;
-               P.Current := Lexing.Next_Token (P.L);
-               return True;
-            when Lexing.Flow_Seq_Start =>
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Sequence_Start,
-                                  Collection_Attributes => Attrs,
-                                  Collection_Style => Events.Flow);
-               P.Levels.Top.State := After_Flow_Seq_Sep'Access;
-               P.Current := Lexing.Next_Token (P.L);
-               return True;
-            when others =>
-               raise Parser_Error with "not implemented: " & P.Current.Kind'Img;
-         end case;
-      end loop;
-   end Before_Block_Item;
 
    function In_Block_Seq (P : in out Parser_Implementation'Class;
                           E : out Events.Event) return Boolean is
@@ -416,7 +655,7 @@ package body Yaml.Parsing is
       end if;
       P.Current := Lexing.Next_Token (P.L);
       P.Levels.Push
-        ((State => Before_Block_Item'Access, Indentation => Indent));
+        ((State => After_Block_Parent'Access, Indentation => Indent));
       return False;
    end In_Block_Seq;
 
@@ -460,35 +699,57 @@ package body Yaml.Parsing is
 
    function At_Block_Map_Key (P : in out Parser_Implementation'Class;
                               E : out Events.Event) return Boolean is
+      pragma Unreferenced (E);
    begin
       case P.Current.Kind is
          when Lexing.Map_Key_Ind =>
             P.Levels.Top.State := Before_Block_Map_Value'Access;
             P.Levels.Push
-              ((State => Before_Block_Item'Access,
+              ((State => After_Block_Parent'Access,
                 Indentation => P.Levels.Top.Indentation));
             P.Current := Lexing.Next_Token (P.L);
             return False;
-         when Lexing.Flow_Scalar_Token_Kind | Lexing.Node_Property_Kind =>
-            P.Implicit_Key := True;
-            if Before_Block_Item (P, E) then null; end if;
-            P.Implicit_Key := False;
-            P.Levels.Top.State := After_Implicit_Key'Access;
-            return True;
-         when Lexing.Alias =>
-            E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                               End_Position   => P.Current.End_Pos,
-                               Kind => Events.Alias,
-                               Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
-            P.Current := Lexing.Next_Token (P.L);
-            P.Levels.Top.State := After_Implicit_Key'Access;
-            return True;
+         when Lexing.Node_Property_Kind =>
+            P.Levels.Top.State := At_Block_Map_Key_Props'Access;
+            P.Levels.Push ((State => Before_Node_Properties'Access,
+                            Indentation => <>));
+            return False;
+         when Lexing.Flow_Scalar_Token_Kind | Lexing.Alias =>
+            P.Levels.Top.State := At_Block_Map_Key_Props'Access;
+            return False;
          when others =>
             raise Parser_Error with
               "Unexpected token (expected mapping key): " &
               P.Current.Kind'Img;
       end case;
    end At_Block_Map_Key;
+
+   function At_Block_Map_Key_Props (P : in out Parser_Implementation'Class;
+                                    E : out Events.Event) return Boolean is
+   begin
+      case P.Current.Kind is
+         when Lexing.Alias =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Alias,
+                               Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
+         when Lexing.Flow_Scalar_Token_Kind =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Scalar,
+                               Scalar_Properties => P.Inline_Props,
+                               Scalar_Style => To_Style (P.Current.Kind),
+                               Value => Lexing.Current_Content (P.L));
+            P.Inline_Props := (others => <>);
+         when others =>
+            raise Parser_Error with
+              "Unexpected token (expected implicit mapping key): " &
+              P.Current.Kind'Img;
+      end case;
+      P.Current := Lexing.Next_Token (P.L);
+      P.Levels.Top.State := After_Implicit_Key'Access;
+      return True;
+   end At_Block_Map_Key_Props;
 
    function After_Implicit_Key (P : in out Parser_Implementation'Class;
                                 E : out Events.Event) return Boolean is
@@ -501,7 +762,7 @@ package body Yaml.Parsing is
       P.Current := Lexing.Next_Token (P.L);
       P.Levels.Top.State := Before_Block_Map_Key'Access;
       P.Levels.Push
-        ((State => Before_Block_Item'Access,
+        ((State => After_Block_Parent'Access,
           Indentation => P.Levels.Top.Indentation));
       return False;
    end After_Implicit_Key;
@@ -518,7 +779,7 @@ package body Yaml.Parsing is
                 E := Events.Event'(Start_Position => P.Current.Start_Pos,
                                    End_Position   => P.Current.End_Pos,
                                    Kind => Events.Scalar,
-                                   Scalar_Attributes => (others => <>),
+                                   Scalar_Properties => (others => <>),
                                    Scalar_Style => Events.Plain,
                                    Value => Null_Content);
                 P.Levels.Top.State := Before_Block_Map_Key'Access;
@@ -531,7 +792,7 @@ package body Yaml.Parsing is
             E := Events.Event'(Start_Position => P.Current.Start_Pos,
                                End_Position   => P.Current.End_Pos,
                                Kind => Events.Scalar,
-                               Scalar_Attributes => (others => <>),
+                               Scalar_Properties => (others => <>),
                                Scalar_Style => Events.Plain,
                                Value => Null_Content);
             P.Levels.Top.State := Before_Block_Map_Key'Access;
@@ -545,7 +806,7 @@ package body Yaml.Parsing is
          when Lexing.Map_Value_Ind =>
             P.Levels.Top.State := Before_Block_Map_Key'Access;
             P.Levels.Push
-              ((State => Before_Block_Item'Access,
+              ((State => After_Block_Parent'Access,
                 Indentation => P.Levels.Top.Indentation));
             P.Current := Lexing.Next_Token (P.L);
             return False;
@@ -554,7 +815,7 @@ package body Yaml.Parsing is
             E := Events.Event'(Start_Position => P.Current.Start_Pos,
                                End_Position   => P.Current.End_Pos,
                                Kind => Events.Scalar,
-                               Scalar_Attributes => (others => <>),
+                               Scalar_Properties => (others => <>),
                                Scalar_Style => Events.Plain,
                                Value => Null_Content);
             P.Levels.Top.State := At_Block_Map_Key'Access;
@@ -568,84 +829,72 @@ package body Yaml.Parsing is
 
    function Before_Flow_Item (P : in out Parser_Implementation'Class;
                               E : out Events.Event) return Boolean is
-      Attrs : Events.Attributes;
    begin
-      loop
-         case P.Current.Kind is
-            when Lexing.Scalar_Token_Kind =>
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Scalar,
-                                  Scalar_Attributes => Attrs,
-                                  Scalar_Style => To_Style (P.Current.Kind),
-                                  Value => Lexing.Current_Content (P.L));
-               P.Current := Lexing.Next_Token (P.L);
-               P.Levels.Pop;
-               return True;
-            when Lexing.Alias =>
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Alias,
-                                  Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
-               P.Current := Lexing.Next_Token (P.L);
-               P.Levels.Pop;
-               return True;
-            when Lexing.Flow_Map_Start =>
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Mapping_Start,
-                                  Collection_Attributes => Attrs,
-                                  Collection_Style => Events.Flow);
-               P.Levels.Top.State := After_Flow_Map_Sep'Access;
-               P.Current := Lexing.Next_Token (P.L);
-               return True;
-            when Lexing.Flow_Seq_Start =>
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Sequence_Start,
-                                  Collection_Attributes => Attrs,
-                                  Collection_Style => Events.Flow);
-               P.Levels.Top.State := After_Flow_Seq_Sep'Access;
-               P.Current := Lexing.Next_Token (P.L);
-               return True;
-            when Lexing.Flow_Map_End | Lexing.Flow_Seq_End |
-                 Lexing.Flow_Separator | Lexing.Map_Value_Ind =>
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Scalar,
-                                  Scalar_Attributes => Attrs,
-                                  Scalar_Style => Events.Plain,
-                                  Value => Null_Content);
-               P.Levels.Pop;
-               return True;
-            when Lexing.Anchor =>
-               if Attrs.Anchor /= Null_Content then
-                  raise Parser_Error with "Only one anchor allowed per element";
-               end if;
-               Attrs.Anchor := From_String (P.Pool, Lexing.Short_Lexeme (P.L));
-               P.Current := Lexing.Next_Token (P.L);
-            when Lexing.Tag_Handle =>
-               if Attrs.Tag /= Null_Content then
-                  raise Parser_Error with "Only one tag allowed per element";
-               end if;
-               Attrs.Tag := Parse_Tag (P);
-               P.Current := Lexing.Next_Token (P.L);
-            when Lexing.Verbatim_Tag =>
-               if Attrs.Tag /= Null_Content then
-                  raise Parser_Error with "Only one tag allowed per element";
-               end if;
-               Attrs.Tag := Lexing.Current_Content (P.L);
-               P.Current := Lexing.Next_Token (P.L);
-            when Lexing.Annotation =>
-               Attrs.Annotations.Push
-                 (Strings.From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
-               P.Current := Lexing.Next_Token (P.L);
-            when others =>
-               raise Parser_Error with
-                 "Unexpected token (expected flow node): " & P.Current.Kind'Img;
-         end case;
-      end loop;
+      P.Inline_Start := P.Current.Start_Pos;
+      case P.Current.Kind is
+         when Lexing.Node_Property_Kind =>
+            P.Levels.Top.State := Before_Flow_Item_Props'Access;
+            P.Levels.Push ((State => Before_Node_Properties'Access,
+                            Indentation => <>));
+         when Lexing.Alias =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Alias,
+                               Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
+            P.Current := Lexing.Next_Token (P.L);
+            P.Levels.Pop;
+            return True;
+         when others =>
+            P.Levels.Top.State := Before_Flow_Item_Props'Access;
+      end case;
+      return False;
    end Before_Flow_Item;
+
+   function Before_Flow_Item_Props (P : in out Parser_Implementation'Class;
+                                    E : out Events.Event) return Boolean is
+   begin
+      case P.Current.Kind is
+         when Lexing.Scalar_Token_Kind =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Scalar,
+                               Scalar_Properties => P.Inline_Props,
+                               Scalar_Style => To_Style (P.Current.Kind),
+                               Value => Lexing.Current_Content (P.L));
+            P.Current := Lexing.Next_Token (P.L);
+            P.Levels.Pop;
+         when Lexing.Flow_Map_Start =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Mapping_Start,
+                               Collection_Properties => P.Inline_Props,
+                               Collection_Style => Events.Flow);
+            P.Levels.Top.State := After_Flow_Map_Sep'Access;
+            P.Current := Lexing.Next_Token (P.L);
+         when Lexing.Flow_Seq_Start =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Sequence_Start,
+                               Collection_Properties => P.Inline_Props,
+                               Collection_Style => Events.Flow);
+            P.Levels.Top.State := After_Flow_Seq_Sep'Access;
+            P.Current := Lexing.Next_Token (P.L);
+         when Lexing.Flow_Map_End | Lexing.Flow_Seq_End |
+              Lexing.Flow_Separator | Lexing.Map_Value_Ind =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Scalar,
+                               Scalar_Properties => P.Inline_Props,
+                               Scalar_Style => Events.Plain,
+                               Value => Null_Content);
+            P.Levels.Pop;
+         when others =>
+            raise Parser_Error with
+              "Unexpected token (expected flow node): " & P.Current.Kind'Img;
+      end case;
+      P.Inline_Props := (others => <>);
+      return True;
+   end Before_Flow_Item_Props;
 
    function After_Flow_Map_Key (P : in out Parser_Implementation'Class;
                                 E : out Events.Event) return Boolean is
@@ -660,7 +909,7 @@ package body Yaml.Parsing is
             E := Events.Event'(Start_Position => P.Current.Start_Pos,
                                End_Position   => P.Current.End_Pos,
                                Kind => Events.Scalar,
-                               Scalar_Attributes => (others => <>),
+                               Scalar_Properties => (others => <>),
                                Scalar_Style => Events.Plain,
                                Value => Null_Content);
             P.Levels.Top.State := After_Flow_Map_Value'Access;
@@ -756,7 +1005,7 @@ package body Yaml.Parsing is
             E := Events.Event'(Start_Position => P.Current.Start_Pos,
                                End_Position   => P.Current.Start_Pos,
                                Kind => Events.Scalar,
-                               Scalar_Attributes => (others => <>),
+                               Scalar_Properties => (others => <>),
                                Scalar_Style => Events.Plain,
                                Value => Null_Content);
             P.Current := Lexing.Next_Token (P.L);
