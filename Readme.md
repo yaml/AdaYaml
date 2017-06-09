@@ -4,6 +4,17 @@ This is an implementation of the upcoming YAML 1.3 standard. This library is
 currently under construction. Be wary of errors, I have not even proven it
 correct.
 
+## Status
+
+Current YAML test suite status:
+
+```
+Total Tests Run:   193
+Successful Tests:  71
+Failed Assertions: 41
+Unexpected Errors: 81
+```
+
 ## YAML 1.3 Features
 
 Status of YAML 1.3 features, taken from [this list][1]:
@@ -11,7 +22,7 @@ Status of YAML 1.3 features, taken from [this list][1]:
 | Number  | Desciption                                       | Status
 |---------|--------------------------------------------------|----------
 | RFC-001 | Remove the 1024 character limit                  | Implemented
-| RFC-002 | Limit content allowed after the '---' header     | Needs testing
+| RFC-002 | Limit content allowed after the '---' header     | Implemented
 | RFC-003 | Characters that can appear in anchor             | Implemented
 | RFC-004 | Block sequence entries must use space after dash | Implemented
 | RFC-005 | Restrict default implicit types to JSON semantics| Not applicable
@@ -19,7 +30,7 @@ Status of YAML 1.3 features, taken from [this list][1]:
 | RFC-007 | Disallow flow collections as implicit keys       | Implemented
 | RFC-008 | Annotations                                      | Can be parsed
 | RFC-009 | Allow unresolvable aliases                       | Implemented
-| RFC-010 | Fixed position of properties and block scalars   | Not implemented
+| RFC-010 | Fixed position of properties and block scalars   | Implemented
 | RFC-011 | Indentation of block scalars                     | Implemented
 | RFC-012 | Remove wiki-like syntax from folded block scalars| Implemented
 | RFC-013 | *retracted*                                      | Not implemented
@@ -34,23 +45,40 @@ Status of YAML 1.3 features, taken from [this list][1]:
  - [ ] Implement fancy error reporting (starting line of error with marker)
  - [ ] Do some benchmarks
  - [ ] Web demo
- - [ ] Implement UTF-16 and UTF-32 encodings 
+ - [ ] Implement UTF-16 and UTF-32 encodings
  - [ ] Make AdaYaml a drop-in replacement for libyaml (provide the C interface)
  - [ ] As proof-of-concept, implement the [Transformations extension][2]
  - [ ] Maybe provide a DOM API
 
-## Status
-
-Current YAML test suite status:
-
-```
-Total Tests Run:   193
-Successful Tests:  71
-Failed Assertions: 41
-Unexpected Errors: 81
-```
-
 **TODO:** Exclude tests that are not valid YAML 1.3
+
+## Hacking
+
+After cloning, to fetch the yaml test suite, do:
+
+    git submodule init
+    git submodule update
+
+These commands may be useful for toying around:
+
+    make adayaml
+
+This builds the library. Not really useful right now.
+
+    make test
+
+This builds the unit tests. The executables will be located in the
+`test/bin` directory (be sure that the root folder is the working directory when
+executing).
+
+    make utils
+
+This builds a small utility that reads a YAML files and outputs a stream of
+events to the command line. It is located in `util/bin` afterwards. The tool
+reads either the file specified as first command line parameter, or, in absense
+of that parameter, from stdin.
+
+To edit the code, you can use GNAT Programming Studio to open the `*.gpr` files.
 
 ## License
 
