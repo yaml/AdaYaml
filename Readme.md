@@ -10,10 +10,12 @@ Current YAML test suite status:
 
 ```
 Total Tests Run:   193
-Successful Tests:  71
-Failed Assertions: 41
-Unexpected Errors: 81
+Successful Tests:  90
+Failed Assertions: 19
+Unexpected Errors: 84
 ```
+
+**TODO:** Exclude tests that are not valid YAML 1.3
 
 ## YAML 1.3 Features
 
@@ -49,8 +51,6 @@ Status of YAML 1.3 features, taken from [this list][1]:
  - [ ] Make AdaYaml a drop-in replacement for libyaml (provide the C interface)
  - [ ] As proof-of-concept, implement the [Transformations extension][2]
  - [ ] Maybe provide a DOM API
-
-**TODO:** Exclude tests that are not valid YAML 1.3
 
 ## Hacking
 

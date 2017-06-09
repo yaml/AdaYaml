@@ -16,8 +16,13 @@ package body Yaml.Parsing.Event_Test is
            and Dir_Name /= "tags" and Dir_Name /= "name" then
             Open (Title_File, In_File,
                   Compose (Full_Name (Directory_Entry), "==="));
-            Register_Routine (T, Execute_Next_Test'Access,
-                              '[' & Dir_Name & "] " & Get_Line (Title_File));
+            if Exists (Compose (Full_Name (Directory_Entry), "error")) then
+               Register_Routine (T, Execute_Error_Test'Access,
+                                 '[' & Dir_Name & "] " & Get_Line (Title_File));
+            else
+               Register_Routine (T, Execute_Next_Test'Access,
+                                 '[' & Dir_Name & "] " & Get_Line (Title_File));
+            end if;
             Close (Title_File);
             T.Test_Cases.Append (Simple_Name (Directory_Entry));
          end if;
@@ -72,5 +77,35 @@ package body Yaml.Parsing.Event_Test is
          Close (Expected);
          raise;
    end Execute_Next_Test;
+
+   procedure Execute_Error_Test (T : in out Test_Cases.Test_Case'Class) is
+      Test_Dir : constant String :=
+        Compose ("yaml-test-suite", TC (T).Test_Cases.Element (TC (T).Cur));
+      P : Parser;
+      Output : Unbounded_String;
+      Cur : Events.Event;
+      Expected_Error : File_Type;
+      use type Events.Event_Kind;
+   begin
+      TC (T).Cur := TC (T).Cur + 1;
+      Parse (P, Sources.Files.As_Source (Compose (Test_Dir, "in.yaml")));
+      loop
+         Cur := Streams.Next (P);
+         Append (Output, Events.To_String (Cur) & Character'Val (10));
+         exit when Cur.Kind = Events.Stream_End;
+      end loop;
+      Open (Expected_Error, In_File, Compose (Test_Dir, "error"));
+      declare
+         Expected_Message : constant String := Get_Line (Expected_Error);
+      begin
+         Close (Expected_Error);
+         Assert (False, "Parsed without error; expected error: " &
+                   Expected_Message & Character'Val (10) & "Output: " &
+                Character'Val (10) & Character'Val (10) & To_String (Output));
+      end;
+   exception when Lexer_Error | Parser_Error =>
+         null;
+   end Execute_Error_Test;
+
 
 end Yaml.Parsing.Event_Test;

@@ -7,8 +7,6 @@ private with Yaml.Stacks;
 private with Yaml.String_Sets;
 
 package Yaml.Parsing is
-   Parser_Error : exception;
-
    type Parser is new Streams.Event_Stream with private;
 
    procedure Parse (P : in out Parser; Input : Sources.Source_Access);

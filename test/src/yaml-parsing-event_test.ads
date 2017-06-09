@@ -16,4 +16,5 @@ package Yaml.Parsing.Event_Test is
    function Name (T : TC) return Message_String;
 
    procedure Execute_Next_Test (T : in out Test_Cases.Test_Case'Class);
+   procedure Execute_Error_Test (T : in out Test_Cases.Test_Case'Class);
 end Yaml.Parsing.Event_Test;

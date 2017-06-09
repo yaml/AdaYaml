@@ -9,8 +9,6 @@ private package Yaml.Lexing is
 
    type Lexer is limited private;
 
-   Lexer_Error : exception;
-
    procedure Init
      (L : in out Lexer; Input : Sources.Source_Access;
       Pool : Strings.String_Pool;
