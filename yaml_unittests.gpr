@@ -1,0 +1,19 @@
+with "yaml";
+with "aunit";
+
+project Yaml_Unittests is
+   for Languages use ("ada");
+
+   for Object_Dir use "test/obj";
+   for Library_Dir use "test/lib";
+   for Exec_Dir use "test/bin";
+
+   for Main use ("yaml-lexing-harness.adb", "yaml-strings-harness.adb",
+                 "yaml-to_events.adb");
+
+   package Builder renames Yaml.Builder;
+   package Compiler renames Yaml.Compiler;
+   package Ide renames Yaml.Ide;
+
+   for Source_Dirs use ("test/src");
+end Yaml_Unittests;
