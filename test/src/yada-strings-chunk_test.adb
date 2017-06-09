@@ -13,7 +13,7 @@ package body Yada.Strings.Chunk_Test is
 
    procedure Set_Up (T : in out TC) is
    begin
-      Initialize (T.Pool, 128);
+      Create (T.Pool, 128);
    end Set_Up;
 
    function Name (T : TC) return Message_String is

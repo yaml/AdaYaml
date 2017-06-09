@@ -3,6 +3,8 @@ with Yada.Strings;
 with Ada.Strings.UTF_Encoding;
 
 private package Yada.Lexing is
+   pragma Preelaborate;
+
    use Ada.Strings.UTF_Encoding;
 
    Default_Initial_Buffer_Size : constant := 8096;
@@ -11,16 +13,14 @@ private package Yada.Lexing is
 
    Lexer_Error : exception;
 
-   function From_Source
-     (Input : Sources.Source_Access; Pool : Strings.String_Pool;
-      Initial_Buffer_Size : Positive := Default_Initial_Buffer_Size)
-      return Lexer;
+   procedure Init
+     (L : in out Lexer; Input : Sources.Source_Access;
+      Pool : Strings.String_Pool;
+      Initial_Buffer_Size : Positive := Default_Initial_Buffer_Size);
+   procedure Init (L : in out Lexer; Input : UTF_String;
+                   Pool  : Strings.String_Pool);
 
-   function From_String (Input : UTF_String;
-                         Pool  : Strings.String_Pool)
-                         return Lexer;
-
-   type Token is
+   type Token_Kind is
      (Yaml_Directive,    --  `%YAML`
       Tag_Directive,     --  `%TAG`
       Unknown_Directive, --  any directive but `%YAML` and `%TAG`
@@ -31,7 +31,11 @@ private package Yada.Lexing is
       Document_End,      --  explicit `...`
       Stream_End,        --  end of input
       Indentation,       --  yielded at beginning of non-empty line
-      Scalar,            --  a scalar.
+      Plain_Scalar,
+      Single_Quoted_Scalar,
+      Double_Quoted_Scalar,
+      Literal_Scalar,
+      Folded_Scalar,
       Seq_Item_Ind,      --  block sequence item indicator `- `
       Map_Key_Ind,       --  mapping key indicator `? `
       Map_Value_Ind,     --  mapping value indicator `: `
@@ -46,8 +50,20 @@ private package Yada.Lexing is
       Verbatim_Tag,      --  a verbatim tag, e.g. `!<tag:yaml.org,2002:str>`
       Anchor,            --  an anchor property of a node, e.g. `&anchor`
       Alias,             --  an alias property of a node, e.g. `*alias`
-      Attribute          --  an attribute property of a node, e.g. `@attribute`
+      Annotation         --  an annotation property of a node, e.g. `@ann`
      );
+   subtype Scalar_Token_Kind is Token_Kind range Plain_Scalar .. Folded_Scalar;
+   subtype Flow_Scalar_Token_Kind is
+     Token_Kind range Plain_Scalar .. Double_Quoted_Scalar;
+   subtype Node_Property_Kind is Token_Kind with Static_Predicate =>
+     Node_Property_Kind in Tag_Handle | Verbatim_Tag | Anchor | Annotation;
+
+   type Token is record
+      Kind : Token_Kind;
+      --  Start_Pos is first character, End_Pos is after last character. This
+      --  is necessary for zero-length tokens (stream end)
+      Start_Pos, End_Pos : Mark;
+   end record;
 
    function Next_Token (L : in out Lexer) return Token with Inline;
 
@@ -58,13 +74,17 @@ private package Yada.Lexing is
    --  return the current lexeme including the first character. This is useful
    --  for tokens that do not have a leading indicator char.
    function Full_Lexeme (L : Lexer) return String with Inline;
+
+   function Current_Content (L : Lexer) return Strings.Content with Inline;
+
+   subtype Indentation_Type is Integer range -1 .. Integer'Last;
+   function Current_Indentation (L : Lexer) return Indentation_Type with Inline;
+   function Recent_Indentation (L : Lexer) return Indentation_Type with Inline;
 private
    type Buffer_Type is access all UTF_8_String;
 
-   type Lexer_State is not null access function
+   type Lexer_State is access function
      (L : in out Lexer; T : out Token) return Boolean;
-
-   subtype Indentation_Type is Integer range -1 .. Integer'Last;
 
    type Lexer is limited record
       Cur_Line    : Positive;  --  index of the line at the current position
@@ -155,6 +175,10 @@ private
    function Escaped (C : Strings.Content) return String with Inline;
 
    function Next_Is_Plain_Safe (L : Lexer) return Boolean with Inline;
+
+   procedure Start_Token (L : in out Lexer; T : out Token) with Inline;
+   function Cur_Mark (L : Lexer; Offset : Integer := -1) return Mark
+     with Inline;
 
    -----------------------------------------------------------------------------
    --  lexer states

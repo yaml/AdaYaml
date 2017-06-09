@@ -5,18 +5,18 @@ with AUnit.Assertions; use AUnit.Assertions;
 package body Yada.Lexing.Tokenization_Test is
    use Yada.Strings;
 
-   subtype Evaluated_Token is Token with Static_Predicate =>
-     Evaluated_Token in Scalar | Tag_Uri | Verbatim_Tag;
-   subtype Short_Lexeme_Token is Token with Static_Predicate =>
+   subtype Evaluated_Token is Token_Kind with Static_Predicate =>
+     Evaluated_Token in Scalar_Token_Kind | Tag_Uri | Verbatim_Tag;
+   subtype Short_Lexeme_Token is Token_Kind with Static_Predicate =>
      Short_Lexeme_Token in Unknown_Directive | Anchor | Alias;
-   subtype Full_Lexeme_Token is Token with Static_Predicate =>
+   subtype Full_Lexeme_Token is Token_Kind with Static_Predicate =>
      Full_Lexeme_Token in Directive_Param | Tag_Handle;
-   subtype Value_Token is Token with Static_Predicate =>
+   subtype Value_Token is Token_Kind with Static_Predicate =>
      Value_Token in Evaluated_Token | Short_Lexeme_Token | Full_Lexeme_Token;
-   subtype Empty_Token is Token with Static_Predicate =>
+   subtype Empty_Token is Token_Kind with Static_Predicate =>
      not (Empty_Token in Value_Token | Indentation);
 
-   type Token_With_Value_Holder (Kind : Token) is record
+   type Token_With_Value_Holder (Kind : Token_Kind) is record
       Refcount : Natural := 1;
       case Kind is
          when Value_Token => Value : Content;
@@ -80,9 +80,21 @@ package body Yada.Lexing.Tokenization_Test is
       end return;
    end With_String;
 
-   function TS (T : in out Test_Cases.Test_Case'Class;
+   function TPS (T : in out Test_Cases.Test_Case'Class;
                 Content : String) return Token_With_Value is
-     (With_String (Scalar, Content, T));
+     (With_String (Plain_Scalar, Content, T));
+   function TSQS (T : in out Test_Cases.Test_Case'Class;
+                  Content : String) return Token_With_Value is
+     (With_String (Single_Quoted_Scalar, Content, T));
+   function TDQS (T : in out Test_Cases.Test_Case'Class;
+                  Content : String) return Token_With_Value is
+     (With_String (Double_Quoted_Scalar, Content, T));
+   function TLS (T : in out Test_Cases.Test_Case'Class;
+                Content : String) return Token_With_Value is
+     (With_String (Literal_Scalar, Content, T));
+   function TFS (T : in out Test_Cases.Test_Case'Class;
+                Content : String) return Token_With_Value is
+     (With_String (Folded_Scalar, Content, T));
    TStrE : constant Token_With_Value :=
      (Ada.Finalization.Controlled with Reference =>
          new Token_With_Value_Holder'(Refcount => 1, Kind => Stream_End));
@@ -145,7 +157,7 @@ package body Yada.Lexing.Tokenization_Test is
                   return Token_With_Value is
      (With_String (Alias, Content, T));
 
-   function To_String (L : Lexer; T : Token) return String is
+   function To_String (L : Lexer; T : Token_Kind) return String is
      (T'Img & (case T is
          when Evaluated_Token => '(' & Escaped (L.Value) & ')',
          when Short_Lexeme_Token => '(' & Escaped (Short_Lexeme (L)) & ')',
@@ -155,20 +167,21 @@ package body Yada.Lexing.Tokenization_Test is
 
    procedure Assert_Equals (Pool : String_Pool;
                             Input : String; Expected : Token_List) is
-      L : Lexer := From_String (Input, Pool);
+      L : Lexer;
       I : Natural := 0;
    begin
+      Lexing.Init (L, Input, Pool);
       for Expected_Token of Expected loop
          I := I + 1;
          declare
             T : constant Token := Next_Token (L);
          begin
-            Assert (T = Expected_Token.Reference.Kind,
+            Assert (T.Kind = Expected_Token.Reference.Kind,
                     "Wrong token kind at #" & I'Img & ": Expected " &
                       To_String (Expected_Token) & ", got " &
-                      To_String (L, T));
-            if T = Expected_Token.Reference.Kind then
-               case T is
+                      To_String (L, T.Kind));
+            if T.Kind = Expected_Token.Reference.Kind then
+               case T.Kind is
                when Evaluated_Token =>
                   Assert (L.Value = Expected_Token.Reference.Value,
                           "Wrong content at #" & I'Img & ": Expected " &
@@ -176,12 +189,12 @@ package body Yada.Lexing.Tokenization_Test is
                             ", got " & Escaped (L.Value));
                when Full_Lexeme_Token =>
                   Assert (Full_Lexeme (L) = Value (Expected_Token.Reference.Value),
-                          "Wrong " & T'Img & " at #" & I'Img & ": Expected " &
+                          "Wrong " & T.Kind'Img & " at #" & I'Img & ": Expected " &
                             Escaped (Expected_Token.Reference.Value) &
                             ", got " & Escaped (Full_Lexeme (L)));
                when Short_Lexeme_Token =>
                   Assert (Short_Lexeme (L) = Value (Expected_Token.Reference.Value),
-                          "Wrong " & T'Img & "at #" & I'Img & ": Expected " &
+                          "Wrong " & T.Kind'Img & "at #" & I'Img & ": Expected " &
                             Escaped (Expected_Token.Reference.Value) &
                             ", got " & Escaped (Short_Lexeme (L)));
                when Indentation =>
@@ -242,46 +255,46 @@ package body Yada.Lexing.Tokenization_Test is
    procedure Single_Line_Scalar (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "scalar",
-                     (TI (0), TS (T, "scalar"), TStrE));
+                     (TI (0), TPS (T, "scalar"), TStrE));
    end Single_Line_Scalar;
 
    procedure Multiline_Scalar (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "scalar" & Line_Feed & "  line two",
-                     (TI (0), TS (T, "scalar line two"), TStrE));
+                     (TI (0), TPS (T, "scalar line two"), TStrE));
    end Multiline_Scalar;
 
    procedure Single_Line_Mapping (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "key: value",
-                     (TI (0), TS (T, "key"), TMV, TS (T, "value"), TStrE));
+                     (TI (0), TPS (T, "key"), TMV, TPS (T, "value"), TStrE));
    end Single_Line_Mapping;
 
    procedure Multiline_Mapping (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "key:" & Line_Feed & "  value",
-                     (TI (0), TS (T, "key"), TMV, TI (2), TS (T, "value"),
+                     (TI (0), TPS (T, "key"), TMV, TI (2), TPS (T, "value"),
                       TStrE));
    end Multiline_Mapping;
 
    procedure Explicit_Mapping (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "? key" & Line_Feed & ": value",
-                     (TI (0), TMK, TS (T, "key"), TI (0), TMV, TS (T, "value"),
-                      TStrE));
+                     (TI (0), TMK, TPS (T, "key"), TI (0), TMV,
+                      TPS (T, "value"), TStrE));
    end Explicit_Mapping;
 
    procedure Sequence (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "- a" & Line_Feed & "- b",
-                     (TI (0), TSI, TS (T, "a"), TI (0), TSI, TS (T, "b"),
+                     (TI (0), TSI, TPS (T, "a"), TI (0), TSI, TPS (T, "b"),
                       TStrE));
    end Sequence;
 
    procedure Single_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "'quoted scalar'",
-                     (TI (0), TS (T, "quoted scalar"), TStrE));
+                     (TI (0), TSQS (T, "quoted scalar"), TStrE));
    end Single_Quoted_Scalar;
 
    procedure Multiline_Single_Quoted_Scalar
@@ -290,14 +303,14 @@ package body Yada.Lexing.Tokenization_Test is
       Assert_Equals (TC (T).Pool, "'quoted" & Line_Feed &
                        "  multi line  " & Line_Feed & Line_Feed & "scalar'",
                      (TI (0),
-                      TS (T, "quoted multi line" & Line_Feed & "scalar"),
+                      TSQS (T, "quoted multi line" & Line_Feed & "scalar"),
                       TStrE));
    end Multiline_Single_Quoted_Scalar;
 
    procedure Double_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, """quoted scalar""",
-                     (TI (0), TS (T, "quoted scalar"), TStrE));
+                     (TI (0), TDQS (T, "quoted scalar"), TStrE));
    end Double_Quoted_Scalar;
 
    procedure Multiline_Double_Quoted_Scalar
@@ -306,14 +319,14 @@ package body Yada.Lexing.Tokenization_Test is
       Assert_Equals (TC (T).Pool, """quoted" & Line_Feed &
                        "  multi line  " & Line_Feed & Line_Feed & "scalar""",
                      (TI (0),
-                      TS (T, "quoted multi line" & Line_Feed & "scalar"),
+                      TDQS (T, "quoted multi line" & Line_Feed & "scalar"),
                       TStrE));
    end Multiline_Double_Quoted_Scalar;
 
    procedure Escape_Sequences (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, """\n\x31\u0032\U00000033""",
-                     (TI (0), TS (T, Line_Feed & "123"), TStrE));
+                     (TI (0), TDQS (T, Line_Feed & "123"), TStrE));
    end Escape_Sequences;
 
    procedure Block_Scalar (T : in out Test_Cases.Test_Case'Class) is
@@ -321,7 +334,7 @@ package body Yada.Lexing.Tokenization_Test is
       Assert_Equals (TC (T).Pool, "|" & Line_Feed & "  a" & Line_Feed &
                        Line_Feed & "  b" & Line_Feed & " # comment",
                      (TI (0),
-                      TS (T, "a" & Line_Feed & Line_Feed & "b" & Line_Feed),
+                      TLS (T, "a" & Line_Feed & Line_Feed & "b" & Line_Feed),
                       TStrE));
    end Block_Scalar;
 
@@ -330,9 +343,9 @@ package body Yada.Lexing.Tokenization_Test is
       Assert_Equals (TC (T).Pool, "one : >2-" & Line_Feed & "   foo" &
                        Line_Feed & "  bar" & Line_Feed & "two: |+" & Line_Feed &
                        " bar" & Line_Feed & "  baz" & Line_Feed & Line_Feed,
-                     (TI (0), TS (T, "one"), TMV, TS (T, " foo bar"), TI (0),
-                      TS (T, "two"), TMV,
-                      TS (T, "bar" & Line_Feed & " baz" & Line_Feed & Line_Feed),
+                     (TI (0), TPS (T, "one"), TMV, TFS (T, " foo bar"), TI (0),
+                      TPS (T, "two"), TMV,
+                      TLS (T, "bar" & Line_Feed & " baz" & Line_Feed & Line_Feed),
                       TStrE));
    end Block_Scalars;
 
@@ -341,8 +354,9 @@ package body Yada.Lexing.Tokenization_Test is
       Assert_Equals (TC (T).Pool, "%YAML 1.3" & Line_Feed & "---" &
                        Line_Feed & "%TAG" & Line_Feed & "..." & Line_Feed &
                        Line_Feed & "%TAG ! example%20.html",
-                     (TYD, TDP (T, "1.3"), TDirE, TI (0), TS (T, "%TAG"), TDocE,
-                      TTD, TTH (T, "!"), TTU (T, "example .html"), TStrE));
+                     (TYD, TDP (T, "1.3"), TDirE, TI (0), TPS (T, "%TAG"),
+                      TDocE, TTD, TTH (T, "!"), TTU (T, "example .html"),
+                      TStrE));
    end Directives;
 
    procedure Markers (T : in out Test_Cases.Test_Case'Class) is
@@ -356,17 +370,17 @@ package body Yada.Lexing.Tokenization_Test is
    procedure Flow_Indicators (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "bla]: {c: d, [e]: f}",
-                     (TI (0), TS (T, "bla]"), TMV, TMS, TS (T, "c"), TMV,
-                      TS (T, "d"), TSep, TSS, TS (T, "e"), TSE, TMV,
-                      TS (T, "f"), TME, TStrE));
+                     (TI (0), TPS (T, "bla]"), TMV, TMS, TPS (T, "c"), TMV,
+                      TPS (T, "d"), TSep, TSS, TPS (T, "e"), TSE, TMV,
+                      TPS (T, "f"), TME, TStrE));
    end Flow_Indicators;
 
    procedure Adjacent_Map_Values (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "{""foo"":bar, [1]" & Line_Feed &
                        ":egg}",
-                     (TI (0), TMS, TS (T, "foo"), TMV, TS (T, "bar"), TSep, TSS,
-                      TS (T, "1"), TSE, TMV, TS (T, "egg"), TME, TStrE));
+                     (TI (0), TMS, TDQS (T, "foo"), TMV, TPS (T, "bar"), TSep,
+                      TSS, TPS (T, "1"), TSE, TMV, TPS (T, "egg"), TME, TStrE));
    end Adjacent_Map_Values;
 
    procedure Tag_Handles (T : in out Test_Cases.Test_Case'Class) is
@@ -374,24 +388,24 @@ package body Yada.Lexing.Tokenization_Test is
       Assert_Equals (TC (T).Pool, "- !!str string" & Line_Feed &
                        "- !local%21 local" & Line_Feed & "- !e! e",
                      (TI (0), TSI, TTH (T, "!!"), TTU (T, "str"),
-                      TS (T, "string"), TI (0), TSI, TTH (T, "!"),
-                      TTU (T, "local!"), TS (T, "local"), TI (0), TSI,
-                      TTH (T, "!e!"), TTU (T, ""), TS (T, "e"), TStrE));
+                      TPS (T, "string"), TI (0), TSI, TTH (T, "!"),
+                      TTU (T, "local!"), TPS (T, "local"), TI (0), TSI,
+                      TTH (T, "!e!"), TTU (T, ""), TPS (T, "e"), TStrE));
    end Tag_Handles;
 
    procedure Verbatim_Tag_Handle (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "!<tag:yaml.org,2002:str> string",
                      (TI (0), TTV (T, "tag:yaml.org,2002:str"),
-                      TS (T, "string"), TStrE));
+                      TPS (T, "string"), TStrE));
    end Verbatim_Tag_Handle;
 
    procedure Anchors_And_Aliases (T : in out Test_Cases.Test_Case'Class) is
    begin
       Assert_Equals (TC (T).Pool, "&a foo: {&b b: *a, *b : c}",
-                     (TI (0), TAn (T, "a"), TS (T, "foo"), TMV, TMS,
-                      TAn (T, "b"), TS (T, "b"), TMV, TAli (T, "a"), TSep,
-                      TAli (T, "b"), TMV, TS (T, "c"), TME, TStrE));
+                     (TI (0), TAn (T, "a"), TPS (T, "foo"), TMV, TMS,
+                      TAn (T, "b"), TPS (T, "b"), TMV, TAli (T, "a"), TSep,
+                      TAli (T, "b"), TMV, TPS (T, "c"), TME, TStrE));
    end Anchors_And_Aliases;
 
    procedure Empty_Lines (T : in out Test_Cases.Test_Case'Class) is
@@ -401,11 +415,11 @@ package body Yada.Lexing.Tokenization_Test is
                        "flow: {" & Line_Feed & "  foo" & Line_Feed & Line_Feed &
                        "  bar: baz" & Line_Feed & Line_Feed & Line_Feed &
                        "  mi" & Line_Feed & "}",
-                     (TI (0), TS (T, "block"), TMV,
-                      TS (T, "foo" & Line_Feed & "bar" & Line_Feed & "baz"),
-                      TI (0), TS (T, "flow"), TMV, TMS,
-                      TS (T, "foo" & Line_Feed & "bar"), TMV,
-                      TS (T, "baz" & Line_Feed & Line_Feed & "mi"),
+                     (TI (0), TPS (T, "block"), TMV,
+                      TPS (T, "foo" & Line_Feed & "bar" & Line_Feed & "baz"),
+                      TI (0), TPS (T, "flow"), TMV, TMS,
+                      TPS (T, "foo" & Line_Feed & "bar"), TMV,
+                      TPS (T, "baz" & Line_Feed & Line_Feed & "mi"),
                      TME, TStrE));
    end Empty_Lines;
 end Yada.Lexing.Tokenization_Test;

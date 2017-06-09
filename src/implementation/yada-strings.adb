@@ -1,8 +1,6 @@
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 
-with Ada.Text_IO;
-
 package body Yada.Strings is
    use System;
    use System.Storage_Elements;
@@ -82,8 +80,9 @@ package body Yada.Strings is
      (Accessor'(Data => Object.Data, Hold => Object));
 
    function "=" (Left, Right : Content) return Boolean is
-     (if Left.Data = null then Right.Data = null else
-         Left.Data.all = Right.Data.all);
+     (Left.Data = Right.Data or else
+        (Left.Data /= null and then Right.Data /= null and then
+         Left.Data.all = Right.Data.all));
 
    function From_String (Pool : in out String_Pool'Class; Data : String)
                          return Content is
@@ -181,14 +180,12 @@ package body Yada.Strings is
    begin
       Pool.Usage (Chunk_Index) := Pool.Usage (Chunk_Index) - 1;
       if Pool.Usage (Chunk_Index) = 0 then
-         Ada.Text_IO.Put_Line ("Freeing chunk" & Chunk_Index'Img & "!");
          Free_Chunk (Pool.Chunks (Chunk_Index));
          for I in Chunk_Index_Type loop
             if Pool.Chunks (I) /= null then
                return;
             end if;
          end loop;
-         Ada.Text_IO.Put_Line ("Freeing pool!");
          Free_Data (Pool);
       end if;
    end Decrease_Usage;

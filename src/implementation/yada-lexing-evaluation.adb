@@ -7,16 +7,16 @@ package body Yada.Lexing.Evaluation is
    --  constant UTF-8 strings that may be generated from escape sequences
    -----------------------------------------------------------------------------
 
-   Next_Line : constant Ada.Strings.UTF_Encoding.UTF_8_String :=
-     Ada.Strings.UTF_Encoding.Strings.Encode ("" & Character'Val (16#85#));
-   Non_Breaking_Space : constant Ada.Strings.UTF_Encoding.UTF_8_String :=
-     Ada.Strings.UTF_Encoding.Strings.Encode ("" & Character'Val (16#A0#));
-   Line_Separator : constant Ada.Strings.UTF_Encoding.UTF_8_String :=
-     Ada.Strings.UTF_Encoding.Wide_Strings.Encode
-       ("" & Wide_Character'Val (16#2028#));
-   Paragraph_Separator : constant Ada.Strings.UTF_Encoding.UTF_8_String :=
-     Ada.Strings.UTF_Encoding.Wide_Strings.Encode
-       ("" & Wide_Character'Val (16#2029#));
+   function Next_Line return Ada.Strings.UTF_Encoding.UTF_8_String is
+     (Ada.Strings.UTF_Encoding.Strings.Encode ("" & Character'Val (16#85#)));
+   function Non_Breaking_Space return Ada.Strings.UTF_Encoding.UTF_8_String is
+     (Ada.Strings.UTF_Encoding.Strings.Encode ("" & Character'Val (16#A0#)));
+   function Line_Separator return Ada.Strings.UTF_Encoding.UTF_8_String is
+     (Ada.Strings.UTF_Encoding.Wide_Strings.Encode
+       ("" & Wide_Character'Val (16#2028#)));
+   function Paragraph_Separator return Ada.Strings.UTF_Encoding.UTF_8_String is
+     (Ada.Strings.UTF_Encoding.Wide_Strings.Encode
+       ("" & Wide_Character'Val (16#2029#)));
 
    -----------------------------------------------------------------------------
    --  buffer for generating scalars
@@ -47,7 +47,7 @@ package body Yada.Lexing.Evaluation is
    --  implementation
    -----------------------------------------------------------------------------
 
-   procedure Read_Plain_Scalar (L : in out Lexer) is
+   procedure Read_Plain_Scalar (L : in out Lexer; T : out Token) is
       --  our scalar cannot possibly have more content than the size of our
       --  buffer. Therefore, we read its value into a string of the same size
       --  so we never have to do any bounds checking and growing of the string.
@@ -56,13 +56,15 @@ package body Yada.Lexing.Evaluation is
         (if L.Flow_Depth = 0 then Line_Indentation'Access
            else Inside_Line'Access);
    begin
-      L.Token_Start := L.Pos;
+      Start_Token (L, T);
+      T.Kind := Plain_Scalar;
       Multiline_Loop : loop
          Inline_Loop : loop
             Add (Result, L.Cur);
             L.Cur := Next (L);
             case L.Cur is
                when ' ' =>
+                  T.End_Pos := Cur_Mark (L);
                   declare
                      Space_Start : constant Positive := L.Pos;
                   begin
@@ -97,17 +99,21 @@ package body Yada.Lexing.Evaluation is
                   end;
                when ':' =>
                   if not Next_Is_Plain_Safe (L) then
+                     T.End_Pos := Cur_Mark (L);
                      L.State := Inside_Line'Access;
                      exit Multiline_Loop;
                   end if;
                when Flow_Indicator =>
                   if L.Flow_Depth > 0 then
+                     T.End_Pos := Cur_Mark (L);
                      L.State := Inside_Line'Access;
                      exit Multiline_Loop;
                   end if;
                when Line_Feed | Carriage_Return =>
+                  T.End_Pos := Cur_Mark (L);
                   exit Inline_Loop;
                when End_Of_Input =>
+                  T.End_Pos := Cur_Mark (L);
                   L.State := Stream_End'Access;
                   exit Multiline_Loop;
                when others => null;
@@ -120,7 +126,7 @@ package body Yada.Lexing.Evaluation is
          begin
             Newline_Loop : loop
                if Line_Start (L, T) then
-                  case T is
+                  case T.Kind is
                      when Indentation =>
                         if L.Pos - L.Line_Start - 1 <= L.Indentation then
                            L.State := After_Newline_State;
@@ -199,10 +205,11 @@ package body Yada.Lexing.Evaluation is
       end if;
    end Process_Quoted_Whitespace;
 
-   procedure Read_Single_Quoted_Scalar (L : in out Lexer) is
+   procedure Read_Single_Quoted_Scalar (L : in out Lexer; T : out Token) is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
-      L.Token_Start := L.Pos;
+      Start_Token (L, T);
+      T.Kind := Single_Quoted_Scalar;
       L.Cur := Next (L);
       loop
          case L.Cur is
@@ -224,6 +231,7 @@ package body Yada.Lexing.Evaluation is
                L.Cur := Next (L);
          end case;
       end loop;
+      T.End_Pos := Cur_Mark (L);
       L.Value := New_Content_From (L.Pool, Result);
    end Read_Single_Quoted_Scalar;
 
@@ -253,10 +261,11 @@ package body Yada.Lexing.Evaluation is
            "" & Wide_Wide_Character'Val (Char_Pos)));
    end Read_Hex_Sequence;
 
-   procedure Read_Double_Quoted_Scalar (L : in out Lexer) is
+   procedure Read_Double_Quoted_Scalar (L : in out Lexer; T : out Token) is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
-      L.Token_Start := L.Pos;
+      Start_Token (L, T);
+      T.Kind := Double_Quoted_Scalar;
       L.Cur := Next (L);
       loop
          <<Handle_Char>>
@@ -303,21 +312,21 @@ package body Yada.Lexing.Evaluation is
          L.Cur := Next (L);
       end loop;
       L.Cur := Next (L);
+      T.End_Pos := Cur_Mark (L);
       L.Value := New_Content_From (L.Pool, Result);
    end Read_Double_Quoted_Scalar;
 
-   procedure Read_Block_Scalar (L : in out Lexer) is
+   procedure Read_Block_Scalar (L : in out Lexer; T : out Token) is
       type Chomp_Style is (Clip, Strip, Keep);
-      type Line_Style is (Literal, Folded);
 
       Chomp : Chomp_Style := Clip;
-      Lines : constant Line_Style  := (if L.Cur = '>' then Folded else Literal);
       Indent : Natural := 0;
       Separation_Lines : Natural := 0;
 
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
-      L.Token_Start := L.Pos;
+      Start_Token (L, T);
+      T.Kind := (if L.Cur = '>' then Folded_Scalar else Literal_Scalar);
 
       --  header
       loop
@@ -432,7 +441,7 @@ package body Yada.Lexing.Evaluation is
          end loop;
 
          --  line folding
-         if Lines = Literal then
+         if T.Kind = Literal_Scalar then
             Add (Result, (1 .. Separation_Lines + 1 => Line_Feed));
          elsif Separation_Lines = 0 then
             Add (Result, ' ');

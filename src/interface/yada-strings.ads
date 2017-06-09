@@ -3,6 +3,7 @@ with Ada.Finalization;
 with System.Storage_Elements;
 
 package Yada.Strings is
+   pragma Preelaborate;
    --  this package defines a reference-counted string pointer type called
    --  Content. it is used for all YAML data entities and relieves the user from
    --  the need to manually dispose events created by the parser.
@@ -54,6 +55,8 @@ package Yada.Strings is
    --  within the pool.
    function From_String (Pool : in out String_Pool'Class; Data : String)
                          return Content;
+
+   Null_Content : constant Content;
 private
    --  this forces GNAT to store the First and Last dope values right before
    --  the first element of the String. we use that to our advantage.
@@ -124,4 +127,8 @@ private
 
    --  for debugging
    function Current_Chunk_As_String (Pool : String_Pool) return String;
+
+   Null_Content : constant Content :=
+     (Ada.Finalization.Controlled with Data => null);
+
 end Yada.Strings;

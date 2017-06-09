@@ -30,8 +30,9 @@ package body Yada.Lexing.Buffering_Test is
       Expected : constant String := Utils.File_Content (Data_Path) & End_Of_Input;
 
       S : constant Sources.Source_Access := Sources.Files .As_Source (Data_Path);
-      L : Lexer := From_Source (S, TC (T).Pool, 64);
+      L : Lexer;
    begin
+      Lexing.Init (L, S, TC (T).Pool, 64);
       Assert (L.Buffer.all'Length = 64, "Buffer length does not match! Val:" & L.Buffer.all'Length'Img);
       for I in Expected'Range loop
          Assert (Expected (I) = L.Cur, "Buffer contents at" & I'Img &
@@ -51,9 +52,9 @@ package body Yada.Lexing.Buffering_Test is
       Expected : constant String := Utils.File_Content (Data_Path);
 
       S : constant Sources.Source_Access := Sources.Files.As_Source (Data_Path);
-      L : Lexer := From_Source (S, TC (T).Pool, 64);
-
+      L : Lexer;
    begin
+      Lexing.Init (L, S, TC (T).Pool, 64);
       Assert (L.Buffer.all'Length = 64, "Buffer length does not match! Val: " & L.Buffer.all'Length'Img);
       for I in Expected'Range loop
          Assert (Expected (I) = L.Cur, "Buffer contents at" & I'Img &
