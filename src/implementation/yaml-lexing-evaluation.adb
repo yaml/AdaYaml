@@ -139,6 +139,8 @@ package body Yaml.Lexing.Evaluation is
                      when Document_End =>
                         L.State := Line_Doc_End'Access;
                         exit Multiline_Loop;
+                     when Stream_End =>
+                        exit Multiline_Loop;
                      when others =>
                         null; --  never happens
                   end case;
@@ -348,7 +350,17 @@ package body Yaml.Lexing.Evaluation is
                end if;
                Indent := Natural'Max (0, L.Indentation) +
                  Character'Pos (L.Cur) - Character'Pos ('0');
-            when Space_Or_Line_End => exit;
+            when ' ' =>
+               while L.Cur = ' ' loop
+                  L.Cur := Next (L);
+               end loop;
+               if not (L.Cur in Comment_Or_Line_End) then
+                  raise Lexer_Error with
+                    "Illegal character after block scalar header: " &
+                    Escaped (L.Cur);
+               end if;
+               exit;
+            when Line_End => exit;
             when others =>
                raise Lexer_Error with
                  "Illegal character in block scalar header: " & Escaped (L.Cur);
@@ -394,7 +406,6 @@ package body Yaml.Lexing.Evaluation is
                   end if;
                   exit;
             end case;
-            End_Line (L);
          end loop;
          if Separation_Lines > 0 then
             Add (Result, (1 .. Separation_Lines => Line_Feed));

@@ -30,7 +30,7 @@ Status of YAML 1.3 features, taken from [this list][1]:
  - [x] Have a basic working lexer
  - [x] Have a basic working parser
  - [ ] Have a basic working representer
- - [ ] Test against the YAML test suite
+ - [x] Test against the YAML test suite
  - [ ] Implement fancy error reporting (starting line of error with marker)
  - [ ] Do some benchmarks
  - [ ] Web demo
@@ -38,6 +38,19 @@ Status of YAML 1.3 features, taken from [this list][1]:
  - [ ] Make AdaYaml a drop-in replacement for libyaml (provide the C interface)
  - [ ] As proof-of-concept, implement the [Transformations extension][2]
  - [ ] Maybe provide a DOM API
+
+## Status
+
+Current YAML test suite status:
+
+```
+Total Tests Run:   193
+Successful Tests:  71
+Failed Assertions: 41
+Unexpected Errors: 81
+```
+
+**TODO:** Exclude tests that are not valid YAML 1.3
 
 ## License
 

@@ -118,6 +118,16 @@ package body Yaml.Lexing is
       L.Cur := Next (L);
    end Init;
 
+   procedure Finish (L : in out Lexer) is
+      procedure Free is new Ada.Unchecked_Deallocation
+        (Sources.Source'Class, Sources.Source_Access);
+      use type Sources.Source_Access;
+   begin
+      if L.Input /= null then
+         Free (L.Input);
+      end if;
+   end Finish;
+
    -----------------------------------------------------------------------------
    --  interface and utilities
    -----------------------------------------------------------------------------
@@ -490,11 +500,16 @@ package body Yaml.Lexing is
             while L.Cur = ' ' loop
                L.Cur := Next (L);
             end loop;
-            if L.Cur in Comment_Or_Line_End then
-               End_Line (L);
-               return False;
-            end if;
-            return Line_Indentation (L, T);
+            case L.Cur is
+               when '#' | Line_Feed | Carriage_Return =>
+                  End_Line (L);
+                  return False;
+               when End_Of_Input =>
+                  L.State := Stream_End'Access;
+                  return Stream_End (L, T);
+               when others =>
+                  return Line_Indentation (L, T);
+            end case;
       end case;
    end Line_Start;
 

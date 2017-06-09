@@ -127,81 +127,82 @@ package body Yaml.Parsing is
                          E : out Events.Event) return Boolean is
       Version : Content := Null_Content;
    begin
-      loop
-         case P.Current.Kind is
-            when Lexing.Document_End =>
-               Reset_Tag_Handles (P);
-            when Lexing.Directives_End =>
-               P.Current := Lexing.Next_Token (P.L);
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position => P.Current.End_Pos,
-                                  Kind => Events.Document_Start,
-                                  Implicit_Start => False,
-                                  Version => Version);
-               P.Levels.Top.State := Before_Doc_End'Access;
-               P.Levels.Push ((State => After_Directives_End'Access,
-                                 Indentation => -1));
-               return True;
-            when Lexing.Stream_End =>
-               P.Levels.Pop;
-               return False;
-            when Lexing.Indentation =>
-               E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Document_Start,
-                                  Implicit_Start => True,
-                                  Version => Version);
-               P.Levels.Top.State := Before_Doc_End'Access;
-               P.Levels.Push ((State => Before_Implicit_Root'Access,
-                                 Indentation => -1));
-               return True;
-            when Lexing.Yaml_Directive =>
-               P.Current := Lexing.Next_Token (P.L);
-               if P.Current.Kind /= Lexing.Directive_Param then
-                  raise Parser_Error with
-                    "Invalid token (expected YAML version string): " &
-                    P.Current.Kind'Img;
-               elsif Version /= Null_Content then
-                  raise Parser_Error with
-                    "Duplicate YAML directive";
-               end if;
-               Version := From_String (P.Pool, Lexing.Full_Lexeme (P.L));
-               P.Current := Lexing.Next_Token (P.L);
-            when Lexing.Tag_Directive =>
-               P.Current := Lexing.Next_Token (P.L);
-               if P.Current.Kind /= Lexing.Tag_Handle then
-                  raise Parser_Error with
-                    "Invalid token (expected tag handle): " & P.Current.Kind'Img;
-               end if;
-               declare
-                  Tag_Handle : constant String := Lexing.Full_Lexeme (P.L);
-                  Holder : access Tag_Handle_Sets.Holder;
-               begin
-                  P.Current := Lexing.Next_Token (P.L);
-                  if P.Current.Kind /= Lexing.Tag_Uri then
-                     raise Parser_Error with
-                       "Invalid token (expected tag URI): " & P.Current.Kind'Img;
-                  end if;
-                  if Tag_Handle = "!" or Tag_Handle = "!!" then
-                     Holder := Tag_Handle_Sets.Get (P.Tag_Handles, Tag_Handle, False);
-                     Holder.Value := Lexing.Current_Content (P.L);
-                  else
-                     if not Tag_Handle_Sets.Set (P.Tag_Handles, Tag_Handle,
-                                                 Lexing.Current_Content (P.L)) then
-                        raise Parser_Error with
-                          "Redefinition of tag handle " & Tag_Handle;
-                     end if;
-                  end if;
-               end;
-               P.Current := Lexing.Next_Token (P.L);
-            when Lexing.Unknown_Directive =>
-               raise Parser_Error with "Not implemented: unknown directives";
-            when others =>
+      case P.Current.Kind is
+         when Lexing.Document_End =>
+            Reset_Tag_Handles (P);
+            return False;
+         when Lexing.Directives_End =>
+            P.Current := Lexing.Next_Token (P.L);
+            E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                               End_Position => P.Current.End_Pos,
+                               Kind => Events.Document_Start,
+                               Implicit_Start => False,
+                               Version => Version);
+            P.Levels.Top.State := Before_Doc_End'Access;
+            P.Levels.Push ((State => After_Directives_End'Access,
+                              Indentation => -1));
+            return True;
+         when Lexing.Stream_End =>
+            P.Levels.Pop;
+            return False;
+         when Lexing.Indentation =>
+            E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Document_Start,
+                               Implicit_Start => True,
+                               Version => Version);
+            P.Levels.Top.State := Before_Doc_End'Access;
+            P.Levels.Push ((State => Before_Implicit_Root'Access,
+                              Indentation => -1));
+            return True;
+         when Lexing.Yaml_Directive =>
+            P.Current := Lexing.Next_Token (P.L);
+            if P.Current.Kind /= Lexing.Directive_Param then
                raise Parser_Error with
-                 "Unexpected token (expected directive or document start): " &
+                 "Invalid token (expected YAML version string): " &
                  P.Current.Kind'Img;
-         end case;
-      end loop;
+            elsif Version /= Null_Content then
+               raise Parser_Error with
+                 "Duplicate YAML directive";
+            end if;
+            Version := From_String (P.Pool, Lexing.Full_Lexeme (P.L));
+            P.Current := Lexing.Next_Token (P.L);
+            return False;
+         when Lexing.Tag_Directive =>
+            P.Current := Lexing.Next_Token (P.L);
+            if P.Current.Kind /= Lexing.Tag_Handle then
+               raise Parser_Error with
+                 "Invalid token (expected tag handle): " & P.Current.Kind'Img;
+            end if;
+            declare
+               Tag_Handle : constant String := Lexing.Full_Lexeme (P.L);
+               Holder : access Tag_Handle_Sets.Holder;
+            begin
+               P.Current := Lexing.Next_Token (P.L);
+               if P.Current.Kind /= Lexing.Tag_Uri then
+                  raise Parser_Error with
+                    "Invalid token (expected tag URI): " & P.Current.Kind'Img;
+               end if;
+               if Tag_Handle = "!" or Tag_Handle = "!!" then
+                  Holder := Tag_Handle_Sets.Get (P.Tag_Handles, Tag_Handle, False);
+                  Holder.Value := Lexing.Current_Content (P.L);
+               else
+                  if not Tag_Handle_Sets.Set (P.Tag_Handles, Tag_Handle,
+                                              Lexing.Current_Content (P.L)) then
+                     raise Parser_Error with
+                       "Redefinition of tag handle " & Tag_Handle;
+                  end if;
+               end if;
+            end;
+            P.Current := Lexing.Next_Token (P.L);
+            return False;
+         when Lexing.Unknown_Directive =>
+            raise Parser_Error with "Not implemented: unknown directives";
+         when others =>
+            raise Parser_Error with
+              "Unexpected token (expected directive or document start): " &
+              P.Current.Kind'Img;
+      end case;
    end Before_Doc;
 
    function After_Directives_End (P : in out Parser_Implementation'Class;
@@ -1016,5 +1017,11 @@ package body Yaml.Parsing is
             return False;
       end case;
    end After_Flow_Seq_Sep;
+
+
+   procedure Close_Stream (Stream : in out Parser_Implementation) is
+   begin
+      Lexing.Finish (Stream.L);
+   end Close_Stream;
 
 end Yaml.Parsing;

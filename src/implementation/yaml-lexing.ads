@@ -18,6 +18,8 @@ private package Yaml.Lexing is
    procedure Init (L : in out Lexer; Input : UTF_String;
                    Pool  : Strings.String_Pool);
 
+   procedure Finish (L : in out Lexer);
+
    type Token_Kind is
      (Yaml_Directive,    --  `%YAML`
       Tag_Directive,     --  `%TAG`

@@ -17,6 +17,7 @@ package body Yaml.Streams is
       if Reference /= null then
          Reference.Refcount := Reference.Refcount - 1;
          if Reference.Refcount = 0 then
+            Reference.Close_Stream;
             Free (Reference);
          end if;
       end if;

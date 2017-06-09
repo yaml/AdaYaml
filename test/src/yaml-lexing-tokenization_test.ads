@@ -18,6 +18,7 @@ package Yaml.Lexing.Tokenization_Test is
    procedure Multiline_Mapping (T : in out Test_Cases.Test_Case'Class);
    procedure Explicit_Mapping (T : in out Test_Cases.Test_Case'Class);
    procedure Sequence (T : in out Test_Cases.Test_Case'Class);
+   procedure Sequence_With_Block_Mappings (T : in out Test_Cases.Test_Case'Class);
    procedure Single_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class);
    procedure Multiline_Single_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class);
    procedure Double_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class);

@@ -19,6 +19,9 @@ package Yaml.Streams is
    procedure Fetch (Stream : in out Stream_Implementation;
                     E : out Events.Event) is abstract;
 
+   --  override this if you have cleanup to do.
+   procedure Close_Stream (Stream : in out Stream_Implementation) is null;
+
    procedure Create (Stream : in out Event_Stream'Class;
                      Implementation : Implementation_Access);
 private

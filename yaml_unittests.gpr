@@ -8,7 +8,8 @@ project Yaml_Unittests is
    for Library_Dir use "test/lib";
    for Exec_Dir use "test/bin";
 
-   for Main use ("yaml-lexing-harness.adb", "yaml-strings-harness.adb");
+   for Main use ("yaml-lexing-harness.adb", "yaml-strings-harness.adb",
+                 "yaml-parsing-harness.adb");
 
    package Builder renames Yaml.Builder;
    package Compiler renames Yaml.Compiler;

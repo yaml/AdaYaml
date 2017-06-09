@@ -43,8 +43,10 @@ private
       Header_Start, Inline_Start : Mark;
    end record;
 
-   procedure Fetch (Stream : in out Parser_Implementation;
-                    E : out Events.Event);
+   overriding procedure Close_Stream (Stream : in out Parser_Implementation);
+
+   overriding procedure Fetch (Stream : in out Parser_Implementation;
+                               E : out Events.Event);
 
    -----------------------------------------------------------------------------
    --  parser states

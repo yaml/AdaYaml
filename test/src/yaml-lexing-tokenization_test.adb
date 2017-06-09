@@ -219,6 +219,7 @@ package body Yaml.Lexing.Tokenization_Test is
       Register_Routine (T, Multiline_Mapping'Access, "Multiline mapping");
       Register_Routine (T, Explicit_Mapping'Access, "Explicit mapping");
       Register_Routine (T, Sequence'Access, "Sequence");
+      Register_Routine (T, Sequence_With_Block_Mappings'Access, "Sequence with block mappings");
       Register_Routine (T, Single_Quoted_Scalar'Access, "Single-line single quoted scalar");
       Register_Routine (T, Multiline_Single_Quoted_Scalar'Access, "Multiline single quoted scalar");
       Register_Routine (T, Double_Quoted_Scalar'Access, "Single-line double quoted scalar");
@@ -290,6 +291,13 @@ package body Yaml.Lexing.Tokenization_Test is
                      (TI (0), TSI, TPS (T, "a"), TI (0), TSI, TPS (T, "b"),
                       TStrE));
    end Sequence;
+
+   procedure Sequence_With_Block_Mappings (T : in out Test_Cases.Test_Case'Class) is
+   begin
+      Assert_Equals (TC (T).Pool, "-" & Line_Feed & "  avg:  0.228",
+                     (TI (0), TSI, TI (2), TPS (T, "avg"), TMV,
+                      TPS (T, "0.228"), TStrE));
+   end Sequence_With_Block_Mappings;
 
    procedure Single_Quoted_Scalar (T : in out Test_Cases.Test_Case'Class) is
    begin
