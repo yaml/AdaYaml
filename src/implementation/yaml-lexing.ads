@@ -103,6 +103,10 @@ private
         --  this is important for internal processing of multiline tokens, as
         --  they must have at least one space of indentation more than their
         --  parents on all lines.
+      Proposed_Indentation : Indentation_Type;
+        --  number of indentation spaces of the recently started set of node
+        --  properties. This is only necessary for implicit scalar keys with
+        --  properties, to get the proper indentation value for those.
       State       : Lexer_State;
         --  pointer to the implementation of the current lexer state
       Line_Start_State : Lexer_State;

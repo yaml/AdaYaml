@@ -57,6 +57,10 @@ package body Yaml.Lexing.Evaluation is
            else Inside_Line'Access);
    begin
       Start_Token (L, T);
+      if L.Proposed_Indentation /= -1 then
+         L.Indentation := L.Proposed_Indentation;
+         L.Proposed_Indentation := -1;
+      end if;
       T.Kind := Plain_Scalar;
       Multiline_Loop : loop
          Inline_Loop : loop
@@ -211,6 +215,10 @@ package body Yaml.Lexing.Evaluation is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
       Start_Token (L, T);
+      if L.Proposed_Indentation /= -1 then
+         L.Indentation := L.Proposed_Indentation;
+         L.Proposed_Indentation := -1;
+      end if;
       T.Kind := Single_Quoted_Scalar;
       L.Cur := Next (L);
       loop
@@ -267,6 +275,10 @@ package body Yaml.Lexing.Evaluation is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
       Start_Token (L, T);
+      if L.Proposed_Indentation /= -1 then
+         L.Indentation := L.Proposed_Indentation;
+         L.Proposed_Indentation := -1;
+      end if;
       T.Kind := Double_Quoted_Scalar;
       L.Cur := Next (L);
       loop

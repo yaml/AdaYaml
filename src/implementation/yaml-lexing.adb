@@ -99,6 +99,7 @@ package body Yaml.Lexing is
       L.Json_Enabling_State := Inside_Line'Access;
       L.Pool := Pool;
       L.Line_Start := Buffer.all'First;
+      L.Proposed_Indentation := -1;
    end Basic_Init;
 
    procedure Init
@@ -506,6 +507,8 @@ package body Yaml.Lexing is
                   return False;
                when End_Of_Input =>
                   L.State := Stream_End'Access;
+                  --  important since plain scalar parsing depends on Line_Start
+                  --  returning True when hitting the stream end
                   return Stream_End (L, T);
                when others =>
                   return Line_Indentation (L, T);
@@ -733,8 +736,12 @@ package body Yaml.Lexing is
       Cached_Indentation : constant Natural := L.Pos - L.Line_Start - 1;
    begin
       return Ret : constant Boolean := Inside_Line (L, T) do
-         if Ret and L.Flow_Depth = 0 then
-            L.Indentation := Cached_Indentation;
+         if Ret and then L.Flow_Depth = 0 then
+            if T.Kind in Node_Property_Kind then
+               L.Proposed_Indentation := Cached_Indentation;
+            else
+               L.Indentation := Cached_Indentation;
+            end if;
          end if;
       end return;
    end Indentation_Setting_Token;
@@ -809,6 +816,7 @@ package body Yaml.Lexing is
             End_Pos => Cur_Mark (L), Kind => Directives_End);
       L.State := Inside_Line'Access;
       L.Indentation := -1;
+      L.Proposed_Indentation := -1;
       return True;
    end Line_Dir_End;
 

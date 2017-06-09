@@ -39,6 +39,7 @@ private
       Tag_Handles : Tag_Handle_Sets.String_Set;
       Header_Props, Inline_Props : Events.Properties;
       Header_Start, Inline_Start : Mark;
+      Block_Indentation : Indentation_Type;
    end record;
 
    overriding procedure Close_Stream (Stream : in out Parser_Implementation);
@@ -86,6 +87,9 @@ private
    function At_Block_Indentation (P : in out Parser_Implementation'Class;
                                   E : out Events.Event) return Boolean;
 
+   function At_Block_Indentation_Props (P : in out Parser_Implementation'Class;
+                                        E : out Events.Event) return Boolean;
+
    --  state inside a block line where a new node may start in compact notation,
    --  e.g. after a `-` or `:`. this only sets the node start position and then
    --  advances to After_Block_Parent_Props while possibly reading node
@@ -112,8 +116,6 @@ private
                                       E : out Events.Event) return Boolean;
    function Before_Block_Map_Key (P : in out Parser_Implementation'Class;
                                   E : out Events.Event) return Boolean;
-   function At_Block_Map_Key (P : in out Parser_Implementation'Class;
-                              E : out Events.Event) return Boolean;
    function At_Block_Map_Key_Props (P : in out Parser_Implementation'Class;
                                     E : out Events.Event) return Boolean;
    function After_Implicit_Key (P : in out Parser_Implementation'Class;
