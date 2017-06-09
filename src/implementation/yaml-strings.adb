@@ -1,13 +1,11 @@
 with Ada.Unchecked_Deallocation;
 
 package body Yaml.Strings is
-   use System;
-   use System.Storage_Elements;
-
    type Header_Access is access Header;
    for Header_Access'Size use Standard'Address_Size;
+   use type System.Storage_Elements.Storage_Offset;
 
-   Header_Size : constant Storage_Offset := Header'Size / Storage_Unit;
+   Header_Size : constant Pool_Offset := Header'Size / System.Storage_Unit;
 
    --  it is important that all allocated strings are aligned to the header
    --  length. else, it may happen that we generate a region of free memory that
@@ -15,15 +13,15 @@ package body Yaml.Strings is
    --  there to hold information for the ring list. therefore, whenever we
    --  calculate offsets, we use this to round them up to a multiple of
    --  Header_Size.
-   function Round_To_Header_Size (Length : Storage_Offset)
-                                  return Storage_Offset is
+   function Round_To_Header_Size (Length : Pool_Offset)
+                                  return Pool_Offset is
      ((Length + Header_Size - 1) / Header_Size * Header_Size);
 
    procedure Create (Pool : in out String_Pool;
-                     Initial_Size : System.Storage_Elements.Storage_Count)
+                     Initial_Size : Pool_Offset)
    is
-     Initial_Chunk : constant Chunk := new Storage_Array
-          (1 .. Round_To_Header_Size (Initial_Size));
+     Initial_Chunk : constant Chunk := new Pool_Array
+          (Pool_Offset (1) .. Round_To_Header_Size (Initial_Size));
    begin
       if Pool.Data /= null then
          Finalize (Pool);
@@ -36,7 +34,7 @@ package body Yaml.Strings is
          for H'Address use Initial_Chunk.all (1)'Address;
       begin
          H.Refcount := 0;
-         H.Last := Initial_Chunk'Last - Header_Size;
+         H.Last := Pool_Offset (Initial_Chunk'Last) - Header_Size;
       end;
    end Create;
 
@@ -44,8 +42,9 @@ package body Yaml.Strings is
      with Inline is
       function Convert is new Ada.Unchecked_Conversion
         (System.Address, Header_Access);
+      use System.Storage_Elements;
    begin
-      return Convert (S.all'Address - Header_Size);
+      return Convert (S.all'Address - Storage_Offset (Header_Size));
    end Header_Of;
 
    function Value (Object : Content) return Accessor is
@@ -58,11 +57,11 @@ package body Yaml.Strings is
 
    function From_String (Pool : in out String_Pool'Class; Data : String)
                          return Content is
-      Necessary : constant Storage_Offset :=
+      Necessary : constant Pool_Offset :=
         Round_To_Header_Size (Data'Length);
 
       function Fitting_Position return System.Address is
-         Cur : Storage_Offset := Pool.Data.Pos;
+         Cur : Pool_Offset := Pool.Data.Pos;
       begin
          loop
             declare
@@ -78,6 +77,7 @@ package body Yaml.Strings is
                      declare
                         Next : Header with Import;
                         for Next'Address use C (Pool.Data.Pos)'Address;
+                        use System.Storage_Elements;
                      begin
                         Next.Refcount := 0;
                         Next.Last := H.Last - Data'Length - Header_Size;
@@ -112,8 +112,8 @@ package body Yaml.Strings is
 
                   <<Found>>
 
-                  Pool.Data.Chunks (Next) := new Storage_Array
-                    (1 .. Storage_Offset'Max (
+                  Pool.Data.Chunks (Next) := new Pool_Array
+                    (Pool_Offset (1) .. Pool_Offset'Max (
                      Pool.Data.Chunks (Pool.Data.Cur)'Length * 2,
                      Necessary + Header_Size));
                   Pool.Data.Cur := Next;
@@ -148,7 +148,7 @@ package body Yaml.Strings is
    procedure Decrease_Usage (Pool : in out Pool_Data_Access;
                              Chunk_Index : Chunk_Index_Type) is
       procedure Free_Chunk is new Ada.Unchecked_Deallocation
-        (System.Storage_Elements.Storage_Array, Chunk);
+        (Pool_Array, Chunk);
       procedure Free_Data is new Ada.Unchecked_Deallocation
         (Pool_Data, Pool_Data_Access);
    begin
@@ -176,8 +176,9 @@ package body Yaml.Strings is
                H.Refcount := H.Refcount - 1;
                if H.Refcount = 0 then
                   declare
+                     use System.Storage_Elements;
                      C : constant Chunk := H.Pool.Chunks (H.Chunk_Index);
-                     Pos : constant Storage_Offset := H.all'Address - C (1)'Address;
+                     Pos : constant Pool_Offset := H.all'Address - C (1)'Address;
                   begin
                      while H.Last + Pos < H.Pool.Chunks (H.Chunk_Index)'Last loop
                         declare

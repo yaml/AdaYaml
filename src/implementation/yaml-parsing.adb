@@ -475,6 +475,14 @@ package body Yaml.Parsing is
             P.Implicit_Key := False;
             P.Levels.Top.State := After_Implicit_Key'Access;
             return True;
+         when Lexing.Alias =>
+            E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Alias,
+                               Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
+            P.Current := Lexing.Next_Token (P.L);
+            P.Levels.Top.State := After_Implicit_Key'Access;
+            return True;
          when others =>
             raise Parser_Error with
               "Unexpected token (expected mapping key): " &
