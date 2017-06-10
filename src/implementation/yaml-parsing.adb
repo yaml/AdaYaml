@@ -1,5 +1,4 @@
 with Ada.Containers;
-with Ada.Text_IO;
 
 package body Yaml.Parsing is
    use type Lexing.Token_Kind;
@@ -208,7 +207,6 @@ package body Yaml.Parsing is
 
    function After_Directives_End (P : in out Parser_Implementation'Class;
                                   E : out Events.Event) return Boolean is
-      pragma Unreferenced (E);
    begin
       case P.Current.Kind is
          when Lexing.Node_Property_Kind =>
@@ -219,6 +217,27 @@ package body Yaml.Parsing is
          when Lexing.Indentation =>
             P.Levels.Top.State := At_Block_Indentation'Access;
             return False;
+         when Lexing.Document_End =>
+            E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Scalar,
+                               Scalar_Properties => P.Inline_Props,
+                               Scalar_Style => Events.Plain,
+                               Value => Null_Content);
+            P.Levels.Pop;
+            return True;
+         when Lexing.Folded_Scalar | Lexing.Literal_Scalar =>
+            E := Events.Event'(
+              Start_Position => P.Current.Start_Pos,
+              End_Position   => P.Current.End_Pos,
+              Kind => Events.Scalar,
+              Scalar_Properties => P.Inline_Props,
+              Scalar_Style => (if P.Current.Kind = Lexing.Folded_Scalar then
+                                  Events.Folded else Events.Literal),
+              Value => Lexing.Current_Content (P.L));
+            P.Levels.Pop;
+            P.Current := Lexing.Next_Token (P.L);
+            return True;
          when others =>
             raise Parser_Error with "Illegal content at '---' line: " &
               P.Current.Kind'Img;
@@ -237,7 +256,7 @@ package body Yaml.Parsing is
       P.Levels.Top.Indentation := Lexing.Recent_Indentation (P.L);
       P.Current := Lexing.Next_Token (P.L);
       case P.Current.Kind is
-         when Lexing.Seq_Item_Ind | Lexing.Map_Key_Ind =>
+         when Lexing.Seq_Item_Ind | Lexing.Map_Key_Ind | Lexing.Map_Value_Ind =>
             P.Levels.Top.State := After_Block_Parent'Access;
             return False;
          when Lexing.Scalar_Token_Kind =>
@@ -323,10 +342,6 @@ package body Yaml.Parsing is
          (P.Current.Kind /= Lexing.Seq_Item_Ind or else
           P.Levels.Element (P.Levels.Length - 1).State = In_Block_Seq'Access))
       then
-         Ada.Text_IO.Put_Line ("empty scalar because cur ind =" &
-                                 P.Block_Indentation'Img & ", top level ind =" &
-                                 P.Levels.Top.Indentation'Img & ", cur = " &
-                              P.Current.Kind'Img);
          -- empty element is empty scalar
          E := Events.Event'(Start_Position => P.Header_Start,
                             End_Position   => P.Header_Start,
@@ -386,6 +401,22 @@ package body Yaml.Parsing is
    begin
       P.Levels.Top.Indentation := Lexing.Recent_Indentation (P.L);
       case P.Current.Kind is
+         when Lexing.Map_Value_Ind =>
+            P.Cached := Events.Event'(Start_Position => P.Inline_Start,
+                                      End_Position   => P.Current.End_Pos,
+                                      Kind => Events.Scalar,
+                                      Scalar_Properties => P.Inline_Props,
+                                      Scalar_Style => Events.Plain,
+                                      Value => Null_Content);
+            P.Inline_Props := (others => <>);
+            E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Mapping_Start,
+                               Collection_Properties => P.Header_Props,
+                               Collection_Style => Events.Block);
+            P.Header_Props := (others => <>);
+            P.Levels.Top.State := After_Implicit_Map_Start'Access;
+            return True;
          when Lexing.Flow_Scalar_Token_Kind =>
             E := Events.Event'(Start_Position => P.Inline_Start,
                                End_Position   => P.Current.End_Pos,
@@ -552,6 +583,31 @@ package body Yaml.Parsing is
               (State => At_Block_Indentation'Access,
                Indentation => P.Levels.Element (P.Levels.Length - 1).Indentation);
             return False;
+         when Lexing.Stream_End | Lexing.Document_End | Lexing.Directives_End =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position => P.Current.Start_Pos,
+                               Kind => Events.Scalar,
+                               Scalar_Properties => P.Inline_Props,
+                               Scalar_Style => Events.Plain,
+                               Value => Null_Content);
+            P.Inline_Props := (others => <>);
+            P.Levels.Pop;
+            return True;
+         when Lexing.Map_Value_Ind =>
+            P.Cached := Events.Event'(Start_Position => P.Inline_Start,
+                                      End_Position   => P.Current.End_Pos,
+                                      Kind => Events.Scalar,
+                                      Scalar_Properties => P.Inline_Props,
+                                      Scalar_Style => Events.Plain,
+                                      Value => Null_Content);
+            P.Inline_Props := (others => <>);
+            E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                               End_Position   => P.Current.Start_Pos,
+                               Kind => Events.Mapping_Start,
+                               Collection_Properties => (others => <>),
+                               Collection_Style => Events.Block);
+            P.Levels.Top.State := After_Implicit_Map_Start'Access;
+            return True;
          when Lexing.Scalar_Token_Kind | Lexing.Alias =>
             if P.Current.Kind = Lexing.Alias then
                E := Events.Event'(Start_Position => P.Inline_Start,
@@ -752,6 +808,15 @@ package body Yaml.Parsing is
          when Lexing.Flow_Scalar_Token_Kind | Lexing.Alias =>
             P.Levels.Top.State := At_Block_Map_Key_Props'Access;
             return False;
+         when Lexing.Map_Value_Ind =>
+            E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Scalar,
+                               Scalar_Properties => (others => <>),
+                               Scalar_Style => Events.Plain,
+                               Value => Null_Content);
+            P.Levels.Top.State := Before_Block_Map_Value'Access;
+            return True;
          when others =>
             raise Parser_Error with
               "Unexpected token (expected mapping key): " &
@@ -776,6 +841,16 @@ package body Yaml.Parsing is
                                Scalar_Style => To_Style (P.Current.Kind),
                                Value => Lexing.Current_Content (P.L));
             P.Inline_Props := (others => <>);
+         when Lexing.Map_Value_Ind =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.Start_Pos,
+                               Kind => Events.Scalar,
+                               Scalar_Properties => P.Inline_Props,
+                               Scalar_Style => Events.Plain,
+                               Value => Null_Content);
+            P.Inline_Props := (others => <>);
+            P.Levels.Top.State := After_Implicit_Key'Access;
+            return True;
          when others =>
             raise Parser_Error with
               "Unexpected token (expected implicit mapping key): " &

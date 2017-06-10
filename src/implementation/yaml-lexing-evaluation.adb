@@ -406,7 +406,7 @@ package body Yaml.Lexing.Evaluation is
                when others =>
                   if Indent = 0 then
                      Indent := L.Pos - L.Line_Start - 1;
-                     if Indent < L.Indentation then
+                     if Indent <= Indentation_Type'Max (0, L.Indentation) then
                         L.State := Line_Indentation'Access;
                         goto Finish;
                      elsif Indent < Max_Leading_Spaces then
@@ -473,7 +473,7 @@ package body Yaml.Lexing.Evaluation is
          end if;
       end loop Block_Content;
 
-      if L.Pos - L.Line_Start - 1 > L.Indentation then
+      if L.Pos - L.Line_Start - 1 > Indentation_Type'Max (0, L.Indentation) then
          if L.Cur = '#' then
             L.State := Expect_Line_End'Access;
          else

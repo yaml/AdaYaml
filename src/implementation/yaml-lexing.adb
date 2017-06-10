@@ -289,7 +289,7 @@ package body Yaml.Lexing is
          when '-' =>
             Start_Token (L, T);
             if Is_Directives_End (L) then
-               L.State := Inside_Line'Access;
+               L.State := After_Token'Access;
                T.Kind := Directives_End;
             else
                L.State := Indentation_Setting_Token'Access;
@@ -659,6 +659,12 @@ package body Yaml.Lexing is
       case L.Cur is
          when ':' =>
             Check_Indicator_Char (L, Map_Value_Ind, T);
+            if T.Kind = Map_Value_Ind and then L.Proposed_Indentation /= -1 then
+               --  necessary in the case of an empty scalar with node props
+               --  in an implicit block map key
+               L.Indentation := L.Proposed_Indentation;
+               L.Proposed_Indentation := -1;
+            end if;
             return True;
          when '?' =>
             Check_Indicator_Char (L, Map_Key_Ind, T);
@@ -814,7 +820,7 @@ package body Yaml.Lexing is
    begin
       T := (Start_Pos => (Line => L.Cur_Line, Column => 1, Index => 1),
             End_Pos => Cur_Mark (L), Kind => Directives_End);
-      L.State := Inside_Line'Access;
+      L.State := After_Token'Access;
       L.Indentation := -1;
       L.Proposed_Indentation := -1;
       return True;
