@@ -336,6 +336,7 @@ package body Yaml.Parsing is
 
    function At_Block_Indentation (P : in out Parser_Implementation'Class;
                                   E : out Events.Event) return Boolean is
+      Header_End : Mark;
    begin
       if P.Current.Kind /= Lexing.Indentation then
          raise Parser_Error with "Unexpected token (expected line start): " &
@@ -394,6 +395,30 @@ package body Yaml.Parsing is
             P.Levels.Push ((State => After_Block_Parent'Access,
                             Indentation => Lexing.Recent_Indentation (P.L)));
             P.Current := Lexing.Next_Token (P.L);
+            return True;
+         when Lexing.Flow_Scalar_Token_Kind =>
+            P.Levels.Top.Indentation := Lexing.Recent_Indentation (P.L);
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Scalar,
+                               Scalar_Properties => P.Header_Props,
+                               Scalar_Style => To_Style (P.Current.Kind),
+                               Value => Lexing.Current_Content (P.L));
+            P.Header_Props := (others => <>);
+            Header_End := P.Current.Start_Pos;
+            P.Current := Lexing.Next_Token (P.L);
+            if P.Current.Kind = Lexing.Map_Value_Ind then
+               P.Cached := E;
+               E := Events.Event'(Start_Position => P.Header_Start,
+                                  End_Position   => Header_End,
+                                  Kind => Events.Mapping_Start,
+                                  Collection_Properties => P.Cached.Scalar_Properties,
+                                  Collection_Style => Events.Block);
+               P.Cached.Scalar_Properties := (others => <>);
+               P.Levels.Top.State := After_Implicit_Map_Start'Access;
+            else
+               P.Levels.Pop;
+            end if;
             return True;
          when others =>
             P.Levels.Top.State := At_Block_Indentation_Props'Access;

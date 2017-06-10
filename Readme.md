@@ -9,13 +9,11 @@ correct.
 Current YAML test suite status:
 
 ```
-Total Tests Run:   193
-Successful Tests:  170
-Failed Assertions: 19
-Unexpected Errors: 4
+Total Tests Run:   181
+Successful Tests:  171
+Failed Assertions: 5
+Unexpected Errors: 5
 ```
-
-**TODO:** Exclude tests that are not valid YAML 1.3
 
 ## YAML 1.3 Features
 

@@ -12,14 +12,15 @@ package body Yaml.Parsing.Event_Test is
       package Test_Sets is new Ada.Containers.Hashed_Sets
         (Test_Case_Name, Ada.Strings.Hash, Standard."=");
       Error_Set : Test_Sets.Set;
+      Ignored_Set : Test_Sets.Set;
 
       procedure Add_Test (Directory_Entry : Directory_Entry_Type) is
          Title_File : File_Type;
          use AUnit.Test_Cases.Registration;
          Dir_Name : constant String := Simple_Name (Directory_Entry);
       begin
-         if Dir_Name /= "." and Dir_Name /= ".." and Dir_Name /= "meta"
-           and Dir_Name /= "tags" and Dir_Name /= "name" then
+         if Dir_Name'Length = 4 and then
+           (not Ignored_Set.Contains (Dir_Name)) then
             Open (Title_File, In_File,
                   Compose (Full_Name (Directory_Entry), "==="));
             if Error_Set.Contains (Dir_Name) then
@@ -42,9 +43,21 @@ package body Yaml.Parsing.Event_Test is
       begin
          Error_Set.Include (Simple_Name (Directory_Entry));
       end Add_To_Error_Set;
+
+      procedure Add_To_Ignored_Set (Directory_Entry : Directory_Entry_Type) is
+      begin
+         Ignored_Set.Include (Simple_Name (Directory_Entry));
+      end Add_To_Ignored_Set;
+
+      Tag_Dir : constant String := Compose ("yaml-test-suite", "tags");
    begin
-      Search (Compose (Compose ("yaml-test-suite", "tags"), "1.3-err"), "",
+      Ignored_Set.Include ("meta");
+      Ignored_Set.Include ("tags");
+      Ignored_Set.Include ("name");
+      Search (Compose (Tag_Dir, "1.3-err"), "",
               (Directory => False, others => True), Add_To_Error_Set'Access);
+      Search (Compose (Tag_Dir, "upto-1.2"), "",
+              (Directory => False, others => True), Add_To_Ignored_Set'Access);
       Search ("yaml-test-suite", "", (Directory => True, others => False),
               Add_Test'Access);
       T.Cur := 1;
