@@ -78,6 +78,7 @@ private package Yaml.Lexing is
    subtype Indentation_Type is Integer range -1 .. Integer'Last;
    function Current_Indentation (L : Lexer) return Indentation_Type with Inline;
    function Recent_Indentation (L : Lexer) return Indentation_Type with Inline;
+   function Last_Scalar_Was_Multiline (L : Lexer) return Boolean with Inline;
 private
    type Buffer_Type is access all UTF_8_String;
 
@@ -121,6 +122,8 @@ private
       Value : Strings.Content;
         --  content of the recently read scalar or URI, if any.
       Pool : Strings.String_Pool; --  used for generating Content
+      Seen_Multiline : Boolean;
+        --  remember whether the last scalar was multiline
    end record;
 
    --  The following stuff is declared here so that it can be unit-tested.

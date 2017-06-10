@@ -874,6 +874,8 @@ package body Yaml.Parsing is
       if P.Current.Kind /= Lexing.Map_Value_Ind then
          raise Parser_Error with "Unexpected token (expected ':'): " &
            P.Current.Kind'Img;
+      elsif Lexing.Last_Scalar_Was_Multiline (P.L) then
+         raise Parser_Error with "Implicit mapping key may not be multiline";
       end if;
       P.Current := Lexing.Next_Token (P.L);
       P.Levels.Top.State := Before_Block_Map_Key'Access;
@@ -1139,6 +1141,7 @@ package body Yaml.Parsing is
                                Kind => Events.Mapping_Start,
                                Collection_Properties => (others => <>),
                                Collection_Style => Events.Flow);
+            P.Current := Lexing.Next_Token (P.L);
             P.Levels.Push ((State => Before_Pair_Value'Access, others => <>));
             P.Levels.Push ((State => Before_Flow_Item'Access, others => <>));
             return True;

@@ -9,8 +9,8 @@ package body Yaml.Events is
            Ann_String (Ann, Start + 1));
 
       function Prop_String (A : Properties) return String is
-        ((if A.Tag = Null_Content then "" else " <" & Value (A.Tag) & '>') &
-         (if A.Anchor = Null_Content then "" else " &" & Value (A.Anchor)) &
+        ((if A.Anchor = Null_Content then "" else " &" & Value (A.Anchor)) &
+         (if A.Tag = Null_Content then "" else " <" & Value (A.Tag) & '>') &
          Ann_String (A.Annotations));
 
       function Scalar_Indicator (S : Scalar_Style_Type) return String is
@@ -27,6 +27,12 @@ package body Yaml.Events is
       begin
          for I in UTF_8_String'(Value (C))'Range loop
             case Value (C) (I) is
+               when Character'Val (7) =>
+                  Ret (Pos .. Pos + 1) := "\a";
+                  Pos := Pos + 2;
+               when Character'Val (8) =>
+                  Ret (Pos .. Pos + 1) := "\b";
+                  Pos := Pos + 2;
                when Character'Val (9) =>
                   Ret (Pos .. Pos + 1) := "\t";
                   Pos := Pos + 2;

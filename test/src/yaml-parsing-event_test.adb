@@ -1,5 +1,7 @@
 with Ada.Directories; use Ada.Directories;
 with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Containers.Hashed_Sets;
+with Ada.Strings.Hash;
 with Yaml.Sources.Files;
 with Yaml.Events;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
@@ -7,6 +9,10 @@ with AUnit.Assertions; use AUnit.Assertions;
 
 package body Yaml.Parsing.Event_Test is
    procedure Register_Tests (T : in out TC) is
+      package Test_Sets is new Ada.Containers.Hashed_Sets
+        (Test_Case_Name, Ada.Strings.Hash, Standard."=");
+      Error_Set : Test_Sets.Set;
+
       procedure Add_Test (Directory_Entry : Directory_Entry_Type) is
          Title_File : File_Type;
          use AUnit.Test_Cases.Registration;
@@ -16,7 +22,11 @@ package body Yaml.Parsing.Event_Test is
            and Dir_Name /= "tags" and Dir_Name /= "name" then
             Open (Title_File, In_File,
                   Compose (Full_Name (Directory_Entry), "==="));
-            if Exists (Compose (Full_Name (Directory_Entry), "error")) then
+            if Error_Set.Contains (Dir_Name) then
+               Register_Routine (T, Execute_Error_Test'Access,
+                                 '[' & Dir_Name & "] [1.3-err] " &
+                                   Get_Line (Title_File));
+            elsif Exists (Compose (Full_Name (Directory_Entry), "error")) then
                Register_Routine (T, Execute_Error_Test'Access,
                                  '[' & Dir_Name & "] " & Get_Line (Title_File));
             else
@@ -28,7 +38,13 @@ package body Yaml.Parsing.Event_Test is
          end if;
       end Add_Test;
 
+      procedure Add_To_Error_Set (Directory_Entry : Directory_Entry_Type) is
+      begin
+         Error_Set.Include (Simple_Name (Directory_Entry));
+      end Add_To_Error_Set;
    begin
+      Search (Compose (Compose ("yaml-test-suite", "tags"), "1.3-err"), "",
+              (Directory => False, others => True), Add_To_Error_Set'Access);
       Search ("yaml-test-suite", "", (Directory => True, others => False),
               Add_Test'Access);
       T.Cur := 1;

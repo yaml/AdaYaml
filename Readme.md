@@ -10,9 +10,9 @@ Current YAML test suite status:
 
 ```
 Total Tests Run:   193
-Successful Tests:  141
-Failed Assertions: 31
-Unexpected Errors: 21
+Successful Tests:  169
+Failed Assertions: 20
+Unexpected Errors: 4
 ```
 
 **TODO:** Exclude tests that are not valid YAML 1.3
@@ -58,6 +58,10 @@ After cloning, to fetch the yaml test suite, do:
 
     git submodule init
     git submodule update
+
+For updating the test suite, always use
+
+    git submodule update --remote
 
 These commands may be useful for toying around:
 

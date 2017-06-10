@@ -56,6 +56,7 @@ package body Yaml.Lexing.Evaluation is
         (if L.Flow_Depth = 0 then Line_Indentation'Access
            else Flow_Line_Indentation'Access);
    begin
+      L.Seen_Multiline := False;
       Start_Token (L, T);
       if L.Proposed_Indentation /= -1 then
          L.Indentation := L.Proposed_Indentation;
@@ -158,6 +159,7 @@ package body Yaml.Lexing.Evaluation is
                L.State := After_Newline_State;
                exit Multiline_Loop;
             end if;
+            L.Seen_Multiline := True;
             if Newlines = 1 then
                Add (Result, ' ');
             else
@@ -188,6 +190,7 @@ package body Yaml.Lexing.Evaluation is
          end case;
          L.Cur := Next (L);
       end loop;
+      L.Seen_Multiline := True;
       Result.Pos := Before_Space;
       loop
          case L.Cur is
@@ -214,6 +217,7 @@ package body Yaml.Lexing.Evaluation is
    procedure Read_Single_Quoted_Scalar (L : in out Lexer; T : out Token) is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
+      L.Seen_Multiline := False;
       Start_Token (L, T);
       if L.Proposed_Indentation /= -1 then
          L.Indentation := L.Proposed_Indentation;

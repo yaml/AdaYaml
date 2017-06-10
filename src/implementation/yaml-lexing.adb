@@ -213,7 +213,10 @@ package body Yaml.Lexing is
      (L.Pos - L.Line_Start - 1);
 
    function Recent_Indentation (L : Lexer) return Indentation_Type is
-      (L.Indentation);
+     (L.Indentation);
+
+   function Last_Scalar_Was_Multiline (L : Lexer) return Boolean is
+     (L.Seen_Multiline);
 
    -----------------------------------------------------------------------------
    --                            Tokenization                                 --
