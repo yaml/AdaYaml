@@ -127,29 +127,30 @@ package body Yaml.Lexing.Evaluation is
          End_Line (L);
          declare
             Newlines : Positive := 1;
-            T : Token;
          begin
             Newline_Loop : loop
-               if Line_Start (L, T) then
-                  case T.Kind is
-                     when Indentation =>
-                        if L.Pos - L.Line_Start - 1 <= L.Indentation then
-                           L.State := After_Newline_State;
-                           exit Multiline_Loop;
-                        end if;
-                        exit Newline_Loop;
-                     when Directives_End =>
-                        L.State := Line_Dir_End'Access;
+               case Start_Line (L) is
+                  when Content =>
+                     if L.Pos - L.Line_Start - 1 <= L.Indentation then
+                        L.State := After_Newline_State;
                         exit Multiline_Loop;
-                     when Document_End =>
-                        L.State := Line_Doc_End'Access;
-                        exit Multiline_Loop;
-                     when Stream_End =>
-                        exit Multiline_Loop;
-                     when others =>
-                        null; --  never happens
-                  end case;
-               end if;
+                     end if;
+                     exit Newline_Loop;
+                  when Directives_End_Marker =>
+                     L.State := Line_Dir_End'Access;
+                     exit Multiline_Loop;
+                  when Document_End_Marker =>
+                     L.State := Line_Doc_End'Access;
+                     exit Multiline_Loop;
+                  when Stream_End =>
+                     exit Multiline_Loop;
+                  when Comment =>
+                     End_Line (L);
+                     L.State := Line_Start'Access;
+                     exit Multiline_Loop;
+                  when Newline =>
+                     End_Line (L);
+               end case;
                Newlines := Newlines + 1;
             end loop Newline_Loop;
             if

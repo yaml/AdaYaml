@@ -218,10 +218,6 @@ package body Yaml.Lexing is
    function Last_Scalar_Was_Multiline (L : Lexer) return Boolean is
      (L.Seen_Multiline);
 
-   -----------------------------------------------------------------------------
-   --                            Tokenization                                 --
-   -----------------------------------------------------------------------------
-
    --  to be called whenever a '-' is read as first character in a line. this
    --  function checks for whether this is a directives end marker ('---'). if
    --  yes, the lexer position is updated to be after the marker.
@@ -261,6 +257,31 @@ package body Yaml.Lexing is
       end if;
       return False;
    end Is_Document_End;
+
+   function Start_Line (L : in out Lexer) return Line_Start_Kind is
+   begin
+      case L.Cur is
+         when '-' =>
+            return (if Is_Directives_End (L) then Directives_End_Marker else
+                       Content);
+         when '.' =>
+            return (if Is_Document_End (L) then Document_End_Marker else
+                       Content);
+         when others =>
+            while L.Cur = ' ' loop
+               L.Cur := Next (L);
+            end loop;
+            return (case L.Cur is
+                    when '#' => Comment,
+                    when Line_Feed | Carriage_Return => Newline,
+                    when End_Of_Input => Stream_End,
+                    when others => Content);
+      end case;
+   end Start_Line;
+
+   -----------------------------------------------------------------------------
+   --                            Tokenization                                 --
+   -----------------------------------------------------------------------------
 
    function Outside_Doc (L : in out Lexer; T : out Token) return Boolean is
    begin
@@ -487,35 +508,19 @@ package body Yaml.Lexing is
 
    function Line_Start (L : in out Lexer; T : out Token) return Boolean is
    begin
-      case L.Cur is
-         when '-' =>
-            if Is_Directives_End (L) then
-               return Line_Dir_End (L, T);
-            else
-               return Line_Indentation (L, T);
-            end if;
-         when '.' =>
-            if Is_Document_End (L) then
-               return Line_Doc_End (L, T);
-            else
-               return Line_Indentation (L, T);
-            end if;
-         when others =>
-            while L.Cur = ' ' loop
-               L.Cur := Next (L);
-            end loop;
-            case L.Cur is
-               when '#' | Line_Feed | Carriage_Return =>
-                  End_Line (L);
-                  return False;
-               when End_Of_Input =>
-                  L.State := Stream_End'Access;
-                  --  important since plain scalar parsing depends on Line_Start
-                  --  returning True when hitting the stream end
-                  return Stream_End (L, T);
-               when others =>
-                  return Line_Indentation (L, T);
-            end case;
+      case Start_Line (L) is
+         when Directives_End_Marker =>
+            return Line_Dir_End (L, T);
+         when Document_End_Marker =>
+            return Line_Doc_End (L, T);
+         when Comment | Newline =>
+            End_Line (L);
+            return False;
+         when Stream_End =>
+            L.State := Stream_End'Access;
+            return False;
+         when Content =>
+            return Line_Indentation (L, T);
       end case;
    end Line_Start;
 

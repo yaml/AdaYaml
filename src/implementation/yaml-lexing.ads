@@ -185,6 +185,10 @@ private
    function Cur_Mark (L : Lexer; Offset : Integer := -1) return Mark
      with Inline;
 
+   type Line_Start_Kind is (Directives_End_Marker, Document_End_Marker,
+                            Comment, Newline, Stream_End, Content);
+   function Start_Line (L : in out Lexer) return Line_Start_Kind;
+
    -----------------------------------------------------------------------------
    --  lexer states
    -----------------------------------------------------------------------------
