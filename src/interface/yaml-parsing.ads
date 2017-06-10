@@ -136,4 +136,12 @@ private
                                 E : out Events.Event) return Boolean;
    function After_Flow_Seq_Sep (P : in out Parser_Implementation'Class;
                                 E : out Events.Event) return Boolean;
+   function After_Flow_Seq_Sep_Props (P : in out Parser_Implementation'Class;
+                                      E : out Events.Event) return Boolean;
+   function Before_Pair_Value (P : in out Parser_Implementation'Class;
+                               E : out Events.Event) return Boolean;
+   function After_Implicit_Pair_Start (P : in out Parser_Implementation'Class;
+                                       E : out Events.Event) return Boolean;
+   function After_Pair_Value (P : in out Parser_Implementation'Class;
+                              E : out Events.Event) return Boolean;
 end Yaml.Parsing;

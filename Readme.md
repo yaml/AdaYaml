@@ -10,8 +10,8 @@ Current YAML test suite status:
 
 ```
 Total Tests Run:   193
-Successful Tests:  136
-Failed Assertions: 36
+Successful Tests:  141
+Failed Assertions: 31
 Unexpected Errors: 21
 ```
 

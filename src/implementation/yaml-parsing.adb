@@ -1124,6 +1124,24 @@ package body Yaml.Parsing is
                                Value => Null_Content);
             P.Current := Lexing.Next_Token (P.L);
             return True;
+         when Lexing.Node_Property_Kind =>
+            P.Levels.Top.State := After_Flow_Seq_Sep_Props'Access;
+            P.Levels.Push ((State => Before_Node_Properties'Access,
+                            Indentation => <>));
+            return False;
+         when Lexing.Flow_Scalar_Token_Kind =>
+            P.Levels.Top.State := After_Flow_Seq_Sep_Props'Access;
+            return False;
+         when Lexing.Map_Key_Ind =>
+            P.Levels.Top.State := After_Flow_Seq_Item'Access;
+            E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Mapping_Start,
+                               Collection_Properties => (others => <>),
+                               Collection_Style => Events.Flow);
+            P.Levels.Push ((State => Before_Pair_Value'Access, others => <>));
+            P.Levels.Push ((State => Before_Flow_Item'Access, others => <>));
+            return True;
          when others =>
             P.Levels.Top.State := After_Flow_Seq_Item'Access;
             P.Levels.Push ((State => Before_Flow_Item'Access, others => <>));
@@ -1131,6 +1149,77 @@ package body Yaml.Parsing is
       end case;
    end After_Flow_Seq_Sep;
 
+   function After_Flow_Seq_Sep_Props (P : in out Parser_Implementation'Class;
+                                      E : out Events.Event) return Boolean is
+   begin
+      P.Levels.Top.State := After_Flow_Seq_Item'Access;
+      if P.Current.Kind in Lexing.Flow_Scalar_Token_Kind then
+         E := Events.Event'(Start_Position => P.Inline_Start,
+                            End_Position   => P.Current.End_Pos,
+                            Kind => Events.Scalar,
+                            Scalar_Properties => P.Inline_Props,
+                            Scalar_Style => To_Style (P.Current.Kind),
+                            Value => Lexing.Current_Content (P.L));
+         P.Inline_Props := (others => <>);
+         P.Current := Lexing.Next_Token (P.L);
+         if P.Current.Kind = Lexing.Map_Value_Ind then
+            P.Cached := E;
+            E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                               End_Position   => P.Current.Start_Pos,
+                               Kind => Events.Mapping_Start,
+                               Collection_Properties => (others => <>),
+                               Collection_Style => Events.Flow);
+
+            P.Levels.Push ((State => After_Implicit_Pair_Start'Access,
+                            Indentation => <>));
+         end if;
+         return True;
+      else
+         P.Levels.Push ((State => Before_Flow_Item_Props'Access, others => <>));
+         return False;
+      end if;
+   end After_Flow_Seq_Sep_Props;
+
+   function Before_Pair_Value (P : in out Parser_Implementation'Class;
+                               E : out Events.Event) return Boolean is
+   begin
+      if P.Current.Kind = Lexing.Map_Value_Ind then
+         P.Levels.Top.State := After_Pair_Value'Access;
+         P.Levels.Push ((State => Before_Flow_Item'Access, others => <>));
+         P.Current := Lexing.Next_Token (P.L);
+         return False;
+      else
+         --  pair ends here without value.
+         E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                            End_Position   => P.Current.End_Pos,
+                            Kind => Events.Scalar,
+                            Scalar_Properties => (others => <>),
+                            Scalar_Style => Events.Plain,
+                            Value => Null_Content);
+         P.Levels.Pop;
+         return True;
+      end if;
+   end Before_Pair_Value;
+
+   function After_Implicit_Pair_Start (P : in out Parser_Implementation'Class;
+                                       E : out Events.Event) return Boolean is
+   begin
+      E := P.Cached;
+      P.Current := Lexing.Next_Token (P.L);
+      P.Levels.Top.State := After_Pair_Value'Access;
+      P.Levels.Push ((State => Before_Flow_Item'Access, others => <>));
+      return True;
+   end After_Implicit_Pair_Start;
+
+   function After_Pair_Value (P : in out Parser_Implementation'Class;
+                              E : out Events.Event) return Boolean is
+   begin
+      E := Events.Event'(Start_Position => P.Current.Start_Pos,
+                         End_Position   => P.Current.End_Pos,
+                         Kind => Events.Mapping_End);
+      P.Levels.Pop;
+      return True;
+   end After_Pair_Value;
 
    procedure Close_Stream (Stream : in out Parser_Implementation) is
    begin
