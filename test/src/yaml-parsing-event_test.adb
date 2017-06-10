@@ -96,7 +96,9 @@ package body Yaml.Parsing.Event_Test is
       end loop;
       Open (Expected_Error, In_File, Compose (Test_Dir, "error"));
       declare
-         Expected_Message : constant String := Get_Line (Expected_Error);
+         Expected_Message : constant String :=
+           (if End_Of_File (Expected_Error) then "" else
+                 Get_Line (Expected_Error));
       begin
          Close (Expected_Error);
          Assert (False, "Parsed without error; expected error: " &

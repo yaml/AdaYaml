@@ -54,7 +54,7 @@ package body Yaml.Lexing.Evaluation is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
       After_Newline_State : constant Lexer_State :=
         (if L.Flow_Depth = 0 then Line_Indentation'Access
-           else Inside_Line'Access);
+           else Flow_Line_Indentation'Access);
    begin
       Start_Token (L, T);
       if L.Proposed_Indentation /= -1 then
@@ -153,7 +153,7 @@ package body Yaml.Lexing.Evaluation is
             end loop Newline_Loop;
             if
               (L.Cur = ':' and then not Next_Is_Plain_Safe (L)) or else
-              L.Cur = '#'
+              L.Cur = '#' or else (L.Cur in Flow_Indicator and L.Flow_Depth > 0)
             then
                L.State := After_Newline_State;
                exit Multiline_Loop;
@@ -397,7 +397,8 @@ package body Yaml.Lexing.Evaluation is
             end if;
             case L.Cur is
                when Line_Feed | Carriage_Return =>
-                  Max_Leading_Spaces := L.Pos - L.Line_Start;
+                  Max_Leading_Spaces :=
+                    Natural'Max (Max_Leading_Spaces, L.Pos - 1 - L.Line_Start);
                   End_Line (L);
                   Separation_Lines := Separation_Lines + 1;
                when End_Of_Input =>

@@ -224,6 +224,10 @@ private
    --  the surrounding block element.
    function Flow_Line_Start (L : in out Lexer; T : out Token) return Boolean;
 
+   --  similar to Line_Indentation but for inside flow content
+   function Flow_Line_Indentation (L : in out Lexer; T : out Token)
+                                   return Boolean;
+
    --  state inside a line in block mode.
    function Inside_Line (L : in out Lexer; T : out Token) return Boolean;
 

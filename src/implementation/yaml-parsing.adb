@@ -321,6 +321,12 @@ package body Yaml.Parsing is
                P.Levels.Pop;
             end if;
             return True;
+         when Lexing.Flow_Map_Start | Lexing.Flow_Seq_Start =>
+            P.Levels.Top.State := Before_Flow_Item_Props'Access;
+            return False;
+         when Lexing.Indentation =>
+              raise Parser_Error with
+                "Stand-alone node properties not allowed on non-header line";
          when others =>
             raise Parser_Error with
               "Unexpected token (expected implicit mapping key): " &
@@ -917,7 +923,8 @@ package body Yaml.Parsing is
                 Indentation => P.Levels.Top.Indentation));
             P.Current := Lexing.Next_Token (P.L);
             return False;
-         when Lexing.Map_Key_Ind =>
+         when Lexing.Map_Key_Ind | Lexing.Flow_Scalar_Token_Kind |
+            Lexing.Node_Property_Kind =>
             --  the value is allowed to be missing after an explicit key
             E := Events.Event'(Start_Position => P.Current.Start_Pos,
                                End_Position   => P.Current.End_Pos,
@@ -929,7 +936,7 @@ package body Yaml.Parsing is
             return True;
          when others =>
             raise Parser_Error with
-              "Unexpected token (expected mapping key): " &
+              "Unexpected token (expected mapping value): " &
               P.Current.Kind'Img;
       end case;
    end Before_Block_Map_Value;

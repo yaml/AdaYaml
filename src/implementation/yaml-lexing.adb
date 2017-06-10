@@ -96,7 +96,7 @@ package body Yaml.Lexing is
       L.State := Outside_Doc'Access;
       L.Flow_Depth := 0;
       L.Line_Start_State := Outside_Doc'Access;
-      L.Json_Enabling_State := Inside_Line'Access;
+      L.Json_Enabling_State := After_Token'Access;
       L.Pool := Pool;
       L.Line_Start := Buffer.all'First;
       L.Proposed_Indentation := -1;
@@ -549,6 +549,18 @@ package body Yaml.Lexing is
       return False;
    end Flow_Line_Start;
 
+   function Flow_Line_Indentation (L : in out Lexer; T : out Token)
+                                   return Boolean is
+      pragma Unreferenced (T);
+   begin
+      if L.Pos - L.Line_Start - 1 < L.Indentation then
+         raise Lexer_Error with
+           "Too few indentation spaces (must surpass surrounding block element)";
+      end if;
+      L.State := Inside_Line'Access;
+      return False;
+   end Flow_Line_Indentation;
+
    procedure Check_Indicator_Char (L : in out Lexer; Kind : Token_Kind;
                                    T : out Token) is
    begin
@@ -569,6 +581,7 @@ package body Yaml.Lexing is
       if L.Flow_Depth = 0 then
          L.Json_Enabling_State := After_Json_Enabling_Token'Access;
          L.Line_Start_State := Flow_Line_Start'Access;
+         L.Proposed_Indentation := -1;
       end if;
       L.Flow_Depth := L.Flow_Depth + 1;
       L.State := After_Token'Access;
