@@ -662,24 +662,40 @@ package body Yaml.Parsing is
                                Collection_Style => Events.Block);
             P.Levels.Top.State := After_Implicit_Map_Start'Access;
             return True;
-         when Lexing.Scalar_Token_Kind | Lexing.Alias =>
-            if P.Current.Kind = Lexing.Alias then
-               E := Events.Event'(Start_Position => P.Inline_Start,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Alias,
-                                  Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
-            else
-               E := Events.Event'(Start_Position => P.Inline_Start,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Scalar,
-                                  Scalar_Properties => P.Inline_Props,
-                                  Scalar_Style => To_Style (P.Current.Kind),
-                                  Value => Lexing.Current_Content (P.L));
-               P.Inline_Props := (others => <>);
-            end if;
+         when Lexing.Alias =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Alias,
+                               Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
             Header_End := P.Current.Start_Pos;
             P.Current := Lexing.Next_Token (P.L);
             if P.Current.Kind = Lexing.Map_Value_Ind then
+               P.Cached := E;
+               E := Events.Event'(Start_Position => Header_End,
+                                  End_Position   => Header_End,
+                                  Kind => Events.Mapping_Start,
+                                  Collection_Properties => (others => <>),
+                                  Collection_Style => Events.Block);
+               P.Levels.Top.State := After_Implicit_Map_Start'Access;
+            else
+               P.Levels.Pop;
+            end if;
+            return True;
+         when Lexing.Scalar_Token_Kind =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Scalar,
+                               Scalar_Properties => P.Inline_Props,
+                               Scalar_Style => To_Style (P.Current.Kind),
+                               Value => Lexing.Current_Content (P.L));
+            P.Inline_Props := (others => <>);
+            Header_End := P.Current.Start_Pos;
+            P.Current := Lexing.Next_Token (P.L);
+            if P.Current.Kind = Lexing.Map_Value_Ind then
+               if Lexing.Last_Scalar_Was_Multiline (P.L) then
+                  raise Parser_Error with
+                    "Implicit mapping key may not be multiline";
+               end if;
                P.Cached := E;
                E := Events.Event'(Start_Position => Header_End,
                                   End_Position   => Header_End,

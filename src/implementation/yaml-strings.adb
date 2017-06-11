@@ -55,10 +55,10 @@ package body Yaml.Strings is
    function From_String (Pool : in out String_Pool'Class; Data : String)
                          return Content is
       Necessary : constant Pool_Offset :=
-        Round_To_Header_Size (Data'Length);
+        Round_To_Header_Size (Data'Length + 1);
 
       function Fitting_Position return System.Address is
-         Cur : Pool_Offset;
+         Cur : Pool_Offset := Pool.Data.Pos;
 
          procedure Allocate_Next_Chunk is
             Next : Chunk_Index_Type;
@@ -83,7 +83,6 @@ package body Yaml.Strings is
          end Allocate_Next_Chunk;
       begin
          loop
-            Cur := Pool.Data.Pos;
             declare
                C : constant Chunk := Pool.Data.Chunks (Pool.Data.Cur);
                pragma Warnings (Off, C);
@@ -91,6 +90,8 @@ package body Yaml.Strings is
                H : Header with Import;
                for H'Address use C (Cur)'Address;
             begin
+               <<Check_Length>>
+
                if H.Last >= Necessary then
                   Pool.Data.Pos := Cur + Header_Size + Necessary;
                   if H.Last > Necessary then
@@ -117,7 +118,7 @@ package body Yaml.Strings is
                         begin
                            exit when Next.Refcount = 0;
                            Pool.Data.Pos := Pool.Data.Pos + Header_Size +
-                             Round_To_Header_Size (Next.Last);
+                             Round_To_Header_Size (Next.Last + 1);
                         end;
                      end loop;
                   end if;
@@ -129,25 +130,56 @@ package body Yaml.Strings is
                   Pool.Data.Usage (Pool.Data.Cur) :=
                     Pool.Data.Usage (Pool.Data.Cur) + 1;
                   return H'Address + Header_Size;
+               else
+                  declare
+                     Next_Pos : constant Pool_Offset := Cur + Header_Size + H.Last;
+                  begin
+                     if Next_Pos <= C.all'Last then
+                        declare
+                           Next : Header with Import;
+                           for Next'Address use C (Next_Pos)'Address;
+                        begin
+                           if Next.Refcount = 0 then
+                              H.Last := H.Last + Header_Size + Next.Last;
+                              goto Check_Length;
+                           end if;
+                        end;
+                     end if;
+                  end;
                end if;
-               Cur := Cur + Round_To_Header_Size (H.Last) + Header_Size;
+               Cur := Cur + H.Last + Header_Size;
+               loop
+                  if Cur >= C.all'Last then
+                     Cur := 1;
+                  end if;
+                  if Cur = Pool.Data.Pos then
+                     Allocate_Next_Chunk;
+                     exit;
+                  end if;
+                  declare
+                     Next : Header with Import;
+                     for Next'Address use C (Cur)'Address;
+                  begin
+                     exit when Next.Refcount = 0;
+                     Cur := Cur + Round_To_Header_Size (Next.Last + 1);
+                  end;
+               end loop;
             end;
-            if Cur >= Pool.Data.Chunks (Pool.Data.Cur)'Last then
-               Cur := 1;
-            end if;
-            if Cur = Pool.Data.Pos then
-               Allocate_Next_Chunk;
-            end if;
          end loop;
       end Fitting_Position;
 
       function Convert is new Ada.Unchecked_Conversion
         (System.Address, UTF_8_String_Access);
 
-      Copied_Data : constant UTF_8_String_Access := Convert (Fitting_Position);
+      New_String_Address : constant System.Address := Fitting_Position;
+      Target_Data : constant UTF_8_String_Access :=
+        Convert (New_String_Address);
+      Null_Terminator : Character with Import;
+      for Null_Terminator'Address use New_String_Address + Data'Length;
    begin
-      Copied_Data.all := UTF_8_String (Data);
-      return (Ada.Finalization.Controlled with Data => Copied_Data);
+      Null_Terminator := Character'Val (0);
+      Target_Data.all := UTF_8_String (Data);
+      return (Ada.Finalization.Controlled with Data => Target_Data);
    end From_String;
 
    procedure Adjust (Object : in out Content) is
@@ -194,24 +226,6 @@ package body Yaml.Strings is
                H.Refcount := H.Refcount - 1;
                if H.Refcount = 0 then
                   H.Last := Round_To_Header_Size (H.Last);
-                  declare
-                     use System.Storage_Elements;
-                     C : constant Chunk := H.Pool.Chunks (H.Chunk_Index);
-                     Pos : constant Pool_Offset := H.all'Address - C (1)'Address + 1 + Header_Size;
-                  begin
-                     while Pos + H.Last <= C.all'Last loop
-                        declare
-                           Next : Header with Import;
-                           for Next'Address use C (Pos + H.Last)'Address;
-                        begin
-                           if Next.Refcount = 0 then
-                              H.Last := H.Last + Header_Size + Next.Last;
-                           else
-                              exit;
-                           end if;
-                        end;
-                     end loop;
-                  end;
                   Decrease_Usage (H.Pool, H.Chunk_Index);
                end if;
             end if;
