@@ -10,9 +10,9 @@ Current YAML test suite status:
 
 ```
 Total Tests Run:   181
-Successful Tests:  171
-Failed Assertions: 5
-Unexpected Errors: 5
+Successful Tests:  175
+Failed Assertions: 4
+Unexpected Errors: 2
 ```
 
 ## YAML 1.3 Features

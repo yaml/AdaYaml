@@ -130,6 +130,7 @@ package body Yaml.Parsing is
       case P.Current.Kind is
          when Lexing.Document_End =>
             Reset_Tag_Handles (P);
+            P.Current := Lexing.Next_Token (P.L);
             return False;
          when Lexing.Directives_End =>
             P.Current := Lexing.Next_Token (P.L);

@@ -100,6 +100,7 @@ package body Yaml.Lexing is
       L.Pool := Pool;
       L.Line_Start := Buffer.all'First;
       L.Proposed_Indentation := -1;
+      L.Seen_Multiline := False;
    end Basic_Init;
 
    procedure Init
@@ -215,8 +216,12 @@ package body Yaml.Lexing is
    function Recent_Indentation (L : Lexer) return Indentation_Type is
      (L.Indentation);
 
-   function Last_Scalar_Was_Multiline (L : Lexer) return Boolean is
-     (L.Seen_Multiline);
+   function Last_Scalar_Was_Multiline (L : in out Lexer) return Boolean is
+   begin
+      return Ret : constant Boolean := L.Seen_Multiline do
+         L.Seen_Multiline := False;
+      end return;
+   end Last_Scalar_Was_Multiline;
 
    --  to be called whenever a '-' is read as first character in a line. this
    --  function checks for whether this is a directives end marker ('---'). if

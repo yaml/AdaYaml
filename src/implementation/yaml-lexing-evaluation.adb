@@ -486,6 +486,8 @@ package body Yaml.Lexing.Evaluation is
             raise Lexer_Error with
               "This line at " & Escaped (L.Cur) & " is less indented than necessary." & L.Cur_Line'Img;
          end if;
+      elsif L.Pos = L.Line_Start + 1 then
+         L.State := Line_Start'Access;
       else
          L.State := Line_Indentation'Access;
       end if;

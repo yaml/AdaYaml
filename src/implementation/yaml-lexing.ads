@@ -78,7 +78,8 @@ private package Yaml.Lexing is
    subtype Indentation_Type is Integer range -1 .. Integer'Last;
    function Current_Indentation (L : Lexer) return Indentation_Type with Inline;
    function Recent_Indentation (L : Lexer) return Indentation_Type with Inline;
-   function Last_Scalar_Was_Multiline (L : Lexer) return Boolean with Inline;
+   function Last_Scalar_Was_Multiline (L : in out Lexer) return Boolean
+     with Inline;
 private
    type Buffer_Type is access all UTF_8_String;
 

@@ -139,6 +139,10 @@ private
    end record;
    for Header'Size use Header_End + 1;
 
+   use type System.Storage_Elements.Storage_Offset;
+
+   Header_Size : constant Pool_Offset := Header'Size / System.Storage_Unit;
+
    type Constant_Content_Holder (Length : Natural) is record
       H : Header;
       S : aliased String (1 .. Length);
@@ -154,7 +158,7 @@ private
 
    type String_Pool is new Ada.Finalization.Controlled with record
       Data : Pool_Data_Access;
-   end record;
+   end record with Type_Invariant => String_Pool.Data.Pos mod Header_Size = 1;
 
    overriding procedure Adjust (Object : in out String_Pool);
    overriding procedure Finalize (Object : in out String_Pool);

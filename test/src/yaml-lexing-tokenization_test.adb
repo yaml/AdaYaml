@@ -19,7 +19,7 @@ package body Yaml.Lexing.Tokenization_Test is
    type Token_With_Value_Holder (Kind : Token_Kind) is record
       Refcount : Natural := 1;
       case Kind is
-         when Value_Token => Value : Content;
+         when Value_Token => Value : Strings.Content;
          when Indentation => Depth : Natural;
          when others      => null;
       end case;

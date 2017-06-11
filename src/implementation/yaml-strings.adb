@@ -3,9 +3,6 @@ with Ada.Unchecked_Deallocation;
 package body Yaml.Strings is
    type Header_Access is access Header;
    for Header_Access'Size use Standard'Address_Size;
-   use type System.Storage_Elements.Storage_Offset;
-
-   Header_Size : constant Pool_Offset := Header'Size / System.Storage_Unit;
 
    --  it is important that all allocated strings are aligned to the header
    --  length. else, it may happen that we generate a region of free memory that
@@ -61,9 +58,32 @@ package body Yaml.Strings is
         Round_To_Header_Size (Data'Length);
 
       function Fitting_Position return System.Address is
-         Cur : Pool_Offset := Pool.Data.Pos;
+         Cur : Pool_Offset;
+
+         procedure Allocate_Next_Chunk is
+            Next : Chunk_Index_Type;
+         begin
+            for I in Chunk_Index_Type loop
+               if Pool.Data.Chunks (I) = null then
+                  Next := I;
+                  goto Found;
+               end if;
+            end loop;
+
+            raise Storage_Error with "String pool depleted.";
+
+            <<Found>>
+
+            Pool.Data.Chunks (Next) := new Pool_Array
+              (Pool_Offset (1) .. Pool_Offset'Max (
+               Pool.Data.Chunks (Pool.Data.Cur)'Length * 2,
+               Necessary + Header_Size));
+            Pool.Data.Cur := Next;
+            Pool.Data.Pos := 1;
+         end Allocate_Next_Chunk;
       begin
          loop
+            Cur := Pool.Data.Pos;
             declare
                C : constant Chunk := Pool.Data.Chunks (Pool.Data.Cur);
                pragma Warnings (Off, C);
@@ -72,16 +92,34 @@ package body Yaml.Strings is
                for H'Address use C (Cur)'Address;
             begin
                if H.Last >= Necessary then
+                  Pool.Data.Pos := Cur + Header_Size + Necessary;
                   if H.Last > Necessary then
-                     Pool.Data.Pos := Cur + Necessary + Header_Size;
                      declare
                         Next : Header with Import;
                         for Next'Address use C (Pool.Data.Pos)'Address;
                         use System.Storage_Elements;
                      begin
                         Next.Refcount := 0;
-                        Next.Last := H.Last - Data'Length - Header_Size;
+                        Next.Last := H.Last - Necessary - Header_Size;
                      end;
+                  else
+                     loop
+                        if Pool.Data.Pos > C.all'Last then
+                           Pool.Data.Pos := 1;
+                        end if;
+                        if Pool.Data.Pos = Cur then
+                           Allocate_Next_Chunk;
+                           exit;
+                        end if;
+                        declare
+                           Next : Header with Import;
+                           for Next'Address use C (Pool.Data.Pos)'Address;
+                        begin
+                           exit when Next.Refcount = 0;
+                           Pool.Data.Pos := Pool.Data.Pos + Header_Size +
+                             Round_To_Header_Size (Next.Last);
+                        end;
+                     end loop;
                   end if;
                   H.Refcount := 1;
                   H.Pool := Pool.Data;
@@ -98,27 +136,7 @@ package body Yaml.Strings is
                Cur := 1;
             end if;
             if Cur = Pool.Data.Pos then
-               declare
-                  Next : Chunk_Index_Type;
-               begin
-                  for I in Chunk_Index_Type loop
-                     if Pool.Data.Chunks (I) = null then
-                        Next := I;
-                        goto Found;
-                     end if;
-                  end loop;
-
-                  raise Storage_Error with "String pool depleted.";
-
-                  <<Found>>
-
-                  Pool.Data.Chunks (Next) := new Pool_Array
-                    (Pool_Offset (1) .. Pool_Offset'Max (
-                     Pool.Data.Chunks (Pool.Data.Cur)'Length * 2,
-                     Necessary + Header_Size));
-                  Pool.Data.Cur := Next;
-                  Pool.Data.Pos := 1;
-               end;
+               Allocate_Next_Chunk;
             end if;
          end loop;
       end Fitting_Position;
@@ -175,15 +193,16 @@ package body Yaml.Strings is
             if H.Pool /= null then
                H.Refcount := H.Refcount - 1;
                if H.Refcount = 0 then
+                  H.Last := Round_To_Header_Size (H.Last);
                   declare
                      use System.Storage_Elements;
                      C : constant Chunk := H.Pool.Chunks (H.Chunk_Index);
-                     Pos : constant Pool_Offset := H.all'Address - C (1)'Address;
+                     Pos : constant Pool_Offset := H.all'Address - C (1)'Address + 1 + Header_Size;
                   begin
-                     while H.Last + Pos < H.Pool.Chunks (H.Chunk_Index)'Last loop
+                     while Pos + H.Last <= C.all'Last loop
                         declare
                            Next : Header with Import;
-                           for Next'Address use C (Pos + Round_To_Header_Size (H.Last))'Address;
+                           for Next'Address use C (Pos + H.Last)'Address;
                         begin
                            if Next.Refcount = 0 then
                               H.Last := H.Last + Header_Size + Next.Last;
