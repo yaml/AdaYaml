@@ -284,21 +284,11 @@ package body Yaml.Parsing is
    begin
       P.Levels.Top.Indentation := Lexing.Recent_Indentation (P.L);
       case P.Current.Kind is
-         when Lexing.Flow_Scalar_Token_Kind | Lexing.Alias =>
-            if P.Current.Kind = Lexing.Alias then
-               E := Events.Event'(Start_Position => P.Inline_Start,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Alias,
-                                  Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
-            else
-               E := Events.Event'(Start_Position => P.Inline_Start,
-                                  End_Position   => P.Current.End_Pos,
-                                  Kind => Events.Scalar,
-                                  Scalar_Properties => P.Inline_Props,
-                                  Scalar_Style => To_Style (P.Current.Kind),
-                                  Value => Lexing.Current_Content (P.L));
-            end if;
-            P.Inline_Props := (others => <>);
+         when Lexing.Alias =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Alias,
+                               Target => From_String (P.Pool, Lexing.Short_Lexeme (P.L)));
             Header_End := P.Current.Start_Pos;
             P.Current := Lexing.Next_Token (P.L);
             if P.Current.Kind = Lexing.Map_Value_Ind then
@@ -310,16 +300,40 @@ package body Yaml.Parsing is
                                   Collection_Style => Events.Block);
                P.Header_Props := (others => <>);
                P.Levels.Top.State := After_Implicit_Map_Start'Access;
-            elsif P.Current.Kind in Lexing.Flow_Scalar_Token_Kind then
-               raise Parser_Error with
-                 "Scalar at root level requires '---' and node properties " &
-                 "(if any) must occur after '---'";
             else
                if not Is_Empty (P.Header_Props) then
                   raise Parser_Error with "Alias may not have properties";
                end if;
                --  alias is allowed on document root without '---'
                P.Levels.Pop;
+            end if;
+            return True;
+         when Lexing.Flow_Scalar_Token_Kind =>
+            E := Events.Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Events.Scalar,
+                               Scalar_Properties => P.Inline_Props,
+                               Scalar_Style => To_Style (P.Current.Kind),
+                               Value => Lexing.Current_Content (P.L));
+            P.Inline_Props := (others => <>);
+            Header_End := P.Current.Start_Pos;
+            P.Current := Lexing.Next_Token (P.L);
+            if P.Current.Kind = Lexing.Map_Value_Ind then
+               if Lexing.Last_Scalar_Was_Multiline (P.L) then
+                  raise Parser_Error with
+                    "Implicit mapping key may not be multiline";
+               end if;
+               P.Cached := E;
+               E := Events.Event'(Start_Position => P.Header_Start,
+                                  End_Position   => Header_End,
+                                  Kind => Events.Mapping_Start,
+                                  Collection_Properties => P.Header_Props,
+                                  Collection_Style => Events.Block);
+               P.Header_Props := (others => <>);
+               P.Levels.Top.State := After_Implicit_Map_Start'Access;
+            elsif P.Current.Kind in Lexing.Indentation | Lexing.Document_End |
+              Lexing.Directives_End | Lexing.Stream_End then
+               raise Parser_Error with "Scalar at root level requires '---'.";
             end if;
             return True;
          when Lexing.Flow_Map_Start | Lexing.Flow_Seq_Start =>
@@ -409,6 +423,10 @@ package body Yaml.Parsing is
             Header_End := P.Current.Start_Pos;
             P.Current := Lexing.Next_Token (P.L);
             if P.Current.Kind = Lexing.Map_Value_Ind then
+               if Lexing.Last_Scalar_Was_Multiline (P.L) then
+                  raise Parser_Error with
+                    "Implicit mapping key may not be multiline";
+               end if;
                P.Cached := E;
                E := Events.Event'(Start_Position => P.Header_Start,
                                   End_Position   => Header_End,
@@ -460,6 +478,10 @@ package body Yaml.Parsing is
             Header_End := P.Current.Start_Pos;
             P.Current := Lexing.Next_Token (P.L);
             if P.Current.Kind = Lexing.Map_Value_Ind then
+               if Lexing.Last_Scalar_Was_Multiline (P.L) then
+                  raise Parser_Error with
+                    "Implicit mapping key may not be multiline";
+               end if;
                P.Cached := E;
                E := Events.Event'(Start_Position => P.Header_Start,
                                   End_Position   => Header_End,
@@ -873,6 +895,10 @@ package body Yaml.Parsing is
                                Scalar_Style => To_Style (P.Current.Kind),
                                Value => Lexing.Current_Content (P.L));
             P.Inline_Props := (others => <>);
+            if Lexing.Last_Scalar_Was_Multiline (P.L) then
+               raise Parser_Error with
+                 "Implicit mapping key may not be multiline";
+            end if;
          when Lexing.Map_Value_Ind =>
             E := Events.Event'(Start_Position => P.Inline_Start,
                                End_Position   => P.Current.Start_Pos,
@@ -900,8 +926,6 @@ package body Yaml.Parsing is
       if P.Current.Kind /= Lexing.Map_Value_Ind then
          raise Parser_Error with "Unexpected token (expected ':'): " &
            P.Current.Kind'Img;
-      elsif Lexing.Last_Scalar_Was_Multiline (P.L) then
-         raise Parser_Error with "Implicit mapping key may not be multiline";
       end if;
       P.Current := Lexing.Next_Token (P.L);
       P.Levels.Top.State := Before_Block_Map_Key'Access;
