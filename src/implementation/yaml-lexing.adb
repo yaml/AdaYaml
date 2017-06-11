@@ -204,7 +204,9 @@ package body Yaml.Lexing is
    end Start_Token;
 
    function Cur_Mark (L : Lexer; Offset : Integer := -1) return Mark is
-     ((Line => L.Cur_Line, Column => L.Pos - L.Line_Start - Offset, Index => 1));
+     ((Line => Mark_Position (L.Cur_Line),
+       Column => Mark_Position (L.Pos - L.Line_Start - Offset),
+       Index => 1));
 
    function Current_Content (L : Lexer) return Strings.Content is
      (L.Value);
@@ -830,7 +832,8 @@ package body Yaml.Lexing is
    function Line_Indentation (L : in out Lexer; T : out Token)
                               return Boolean is
    begin
-      T := (Start_Pos => (Line => L.Cur_Line, Column => 1, Index => 1),
+      T := (Start_Pos => (Line => Mark_Position (L.Cur_Line),
+                          Column => 1, Index => 1),
             End_Pos => Cur_Mark (L), Kind => Indentation);
       L.State := Indentation_Setting_Token'Access;
       return True;
@@ -839,7 +842,8 @@ package body Yaml.Lexing is
    function Line_Dir_End (L : in out Lexer; T : out Token)
                           return Boolean is
    begin
-      T := (Start_Pos => (Line => L.Cur_Line, Column => 1, Index => 1),
+      T := (Start_Pos => (Line => Mark_Position (L.Cur_Line),
+                          Column => 1, Index => 1),
             End_Pos => Cur_Mark (L), Kind => Directives_End);
       L.State := After_Token'Access;
       L.Indentation := -1;
@@ -852,7 +856,8 @@ package body Yaml.Lexing is
    function Line_Doc_End (L : in out Lexer; T : out Token)
                           return Boolean is
    begin
-      T := (Start_Pos => (Line => L.Cur_Line, Column => 1, Index => 1),
+      T := (Start_Pos => (Line => Mark_Position (L.Cur_Line),
+                          Column => 1, Index => 1),
             End_Pos => Cur_Mark (L), Kind => Document_End);
       L.State := Expect_Line_End'Access;
       L.Line_Start_State := Outside_Doc'Access;

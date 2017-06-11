@@ -5,9 +5,11 @@ package Yaml.Events is
    type Event_Kind is (Stream_Start, Stream_End, Document_Start, Document_End,
                        Alias, Scalar, Sequence_Start, Sequence_End,
                        Mapping_Start, Mapping_End);
-   type Collection_Style_Type is (Block, Flow, Any);
+   type Collection_Style_Type is (Any, Block, Flow) with
+     Convention => C;
    type Scalar_Style_Type is
-     (Plain, Single_Quoted, Double_Quoted, Literal, Folded);
+     (Any, Plain, Single_Quoted, Double_Quoted, Literal, Folded) with
+     Convention => C;
 
    package Content_Stacks is new Stacks (Strings.Content);
 

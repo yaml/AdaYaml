@@ -1,3 +1,4 @@
+with Interfaces.C;
 
 package Yaml is
    pragma Pure;
@@ -5,7 +6,10 @@ package Yaml is
    Lexer_Error : exception;
    Parser_Error : exception;
 
+   subtype Mark_Position is Interfaces.C.size_t
+     range 1 .. Interfaces.C.size_t'Last;
+
    type Mark is record
-      Index, Line, Column : Positive;
-   end record;
+      Index, Line, Column : Mark_Position;
+   end record with Convention => C;
 end Yaml;

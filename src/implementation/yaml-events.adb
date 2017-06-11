@@ -15,7 +15,7 @@ package body Yaml.Events is
 
       function Scalar_Indicator (S : Scalar_Style_Type) return String is
         ((case S is
-             when Plain => " :",
+             when Plain | Any => " :",
              when Single_Quoted => " '",
              when Double_Quoted => " """,
              when Literal => " |",
