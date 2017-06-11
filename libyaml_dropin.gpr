@@ -1,0 +1,16 @@
+with "yaml";
+
+library project Libyaml_Dropin is
+   for Languages use ("ada", "c");
+
+   for Library_Name use "yaml";
+
+   for Object_Dir use "dropin/obj";
+   for Library_Dir use "dropin/lib";
+
+   package Builder renames Yaml.Builder;
+   package Compiler renames Yaml.Compiler;
+   package Ide renames Yaml.Ide;
+
+   for Source_Dirs use ("dropin/src");
+end Libyaml_Dropin;
