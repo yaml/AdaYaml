@@ -1,0 +1,224 @@
+with Ada.Strings.Fixed;
+with Ada.Unchecked_Deallocation;
+
+package body Yaml.C is
+   Creation_Pool : Strings.String_Pool;
+
+   Version_String : constant Interfaces.C.Strings.chars_ptr :=
+     Interfaces.C.Strings.New_String
+       (Ada.Strings.Fixed.Trim (Version_Major'Img, Ada.Strings.Left) & '.' &
+            Ada.Strings.Fixed.Trim (Version_Minor'Img, Ada.Strings.Left) & '.' &
+            Ada.Strings.Fixed.Trim (Version_Patch'Img, Ada.Strings.Left));
+
+   function Get_Version_String return Interfaces.C.Strings.chars_ptr is
+      (Version_String);
+
+   procedure Get_Version (Major, Minor, Patch : out Interfaces.C.int) is
+   begin
+      Major := Interfaces.C.int (Version_Major);
+      Minor := Interfaces.C.int (Version_Minor);
+      Patch := Interfaces.C.int (Version_Patch);
+   end Get_Version;
+
+   function Stream_Start_Event_Initialize (E : out Event;
+                                           Encoding : Encoding_Type)
+                                           return Bool is
+   begin
+      E.Kind := Stream_Start;
+      E.Data.Encoding := Encoding;
+      return True;
+   end Stream_Start_Event_Initialize;
+
+   function Stream_End_Event_Initialize (E : out Event) return Bool is
+   begin
+      E.Kind := Stream_End;
+      return True;
+   end Stream_End_Event_Initialize;
+
+   function Document_Start_Event_Initialize
+     (E : out Event; Version_Directive, Tag_Directive_Start, Tag_Directive_End :
+      System.Address; Implicit : Bool) return Bool is
+   begin
+      E := (Kind => Document_Start, Data =>
+              (T => Document_Start, Version_Directive => Version_Directive,
+               Start_Dir => Tag_Directive_Start, DS_Implicit => Implicit,
+               End_Dir => Tag_Directive_End), others => <>);
+      return True;
+   end Document_Start_Event_Initialize;
+
+   function Document_End_Event_Initialize
+     (E : out Event; Implicit : Bool) return Bool is
+   begin
+      E := (Kind => Document_End, Data =>
+              (T => Document_End, DE_Implicit => Implicit), others => <>);
+      return True;
+   end Document_End_Event_Initialize;
+
+   function Alias_Event_Initialize
+     (E : out Event; Anchor : Interfaces.C.Strings.chars_ptr) return Bool is
+   begin
+      E := (Kind => Alias, Data => (T => Alias, Ali_Anchor => Strings.Export
+                                    (Strings.From_String (Creation_Pool,
+                                       Interfaces.C.Strings.Value (Anchor)))),
+           others => <>);
+      return True;
+   end Alias_Event_Initialize;
+
+   function Scalar_Event_Initialize
+     (E : out Event; Anchor, Tag, Value : Interfaces.C.Strings.chars_ptr;
+      Plain_Implicit, Quoted_Implicit : Bool; Style : Events.Scalar_Style_Type)
+      return Bool is
+      Converted_Value : constant String := Interfaces.C.Strings.Value (Value);
+   begin
+      E := (Kind => Scalar, Data => (T => Scalar,
+                                     Scalar_Tag => Strings.Export
+                                       (Strings.From_String (Creation_Pool,
+                                        Interfaces.C.Strings.Value (Tag))),
+                                     Scalar_Anchor => Strings.Export
+                                       (Strings.From_String (Creation_Pool,
+                                        Interfaces.C.Strings.Value (Anchor))),
+                                     Value => Strings.Export
+                                       (Strings.From_String (Creation_Pool,
+                                        Converted_Value)),
+                                     Length => Converted_Value'Length,
+                                     Plain_Implicit => Plain_Implicit,
+                                     Quoted_Implicit => Quoted_Implicit,
+                                     Scalar_Style => Style), others => <>);
+      return True;
+   end Scalar_Event_Initialize;
+
+   function Sequence_Start_Event_Initialize
+     (E : out Event; Anchor, Tag : Interfaces.C.Strings.chars_ptr;
+      Implicit : Bool; Style : Events.Collection_Style_Type) return Bool is
+   begin
+      E := (Kind => Sequence_Start, Data =>
+              (T => Sequence_Start, Seq_Anchor => Strings.Export
+               (Strings.From_String (Creation_Pool,
+                  Interfaces.C.Strings.Value (Anchor))),
+               Seq_Tag => Strings.Export (Strings.From_String (Creation_Pool,
+                 Interfaces.C.Strings.Value (Tag))),
+               Seq_Implicit => Implicit, Seq_Style => Style), others => <>);
+      return True;
+   end Sequence_Start_Event_Initialize;
+
+   function Sequence_End_Event_Initialize (E : out Event) return Bool is
+   begin
+      E := (Kind => Sequence_End, Data => (T => Sequence_End), others => <>);
+      return True;
+   end Sequence_End_Event_Initialize;
+
+   function Mapping_Start_Event_Initialize
+     (E : out Event; Anchor, Tag : Interfaces.C.Strings.chars_ptr;
+      Implicit : Bool; Style : Events.Collection_Style_Type) return Bool is
+   begin
+      E := (Kind => Mapping_Start, Data =>
+              (T => Mapping_Start, Map_Anchor => Strings.Export
+               (Strings.From_String (Creation_Pool,
+                  Interfaces.C.Strings.Value (Anchor))),
+               Map_Tag => Strings.Export (Strings.From_String (Creation_Pool,
+                 Interfaces.C.Strings.Value (Tag))),
+               Map_Implicit => Implicit, Map_Style => Style), others => <>);
+      return True;
+   end Mapping_Start_Event_Initialize;
+
+   function Mapping_End_Event_Initialize (E : out Event) return Bool is
+   begin
+      E := (Kind => Mapping_End, Data => (T => Mapping_End), others => <>);
+      return True;
+   end Mapping_End_Event_Initialize;
+
+   procedure Event_Delete (E : access Event) is
+   begin
+      case E.Kind is
+         when Scalar =>
+            Strings.Delete_Exported (E.Data.Scalar_Anchor);
+            Strings.Delete_Exported (E.Data.Scalar_Tag);
+            Strings.Delete_Exported (E.Data.Value);
+         when Mapping_Start =>
+            Strings.Delete_Exported (E.Data.Map_Anchor);
+            Strings.Delete_Exported (E.Data.Map_Tag);
+         when Sequence_Start =>
+            Strings.Delete_Exported (E.Data.Seq_Anchor);
+            Strings.Delete_Exported (E.Data.Seq_Tag);
+         when Alias =>
+            Strings.Delete_Exported (E.Data.Ali_Anchor);
+         when others => null;
+      end case;
+   end Event_Delete;
+
+   function Parser_Initialize (P : in out Parser) return Bool is
+   begin
+      P := new Parser_Holder;
+      return True;
+   end Parser_Initialize;
+
+   procedure Parser_Delete (P : in out Parser) is
+      procedure Free is new Ada.Unchecked_Deallocation (Parser_Holder, Parser);
+   begin
+      Free (P);
+   end Parser_Delete;
+
+   procedure Parser_Set_Input_String (P : in out Parser;
+                                      Input : Interfaces.C.Strings.chars_ptr;
+                                      Size : Interfaces.C.size_t) is
+   begin
+      Parsing.Parse (P.P, Interfaces.C.Strings.Value (Input, Size));
+   end Parser_Set_Input_String;
+
+   function Parser_Parse (P : in out Parser; E : out Event) return Bool is
+      Raw : constant Events.Event := P.P.Next;
+      function To_Type return Event_Type is
+        (case Raw.Kind is
+            when Events.Stream_Start => Stream_Start,
+            when Events.Stream_End => Stream_End,
+            when Events.Document_Start => Document_Start,
+            when Events.Document_End => Document_End,
+            when Events.Mapping_Start => Mapping_Start,
+            when Events.Mapping_End => Mapping_End,
+            when Events.Sequence_Start => Sequence_Start,
+            when Events.Sequence_End => Sequence_End,
+            when Events.Scalar => Scalar,
+            when Events.Alias => Alias);
+      function To_Data return Event_Data is
+        (case Raw.Kind is
+            when Events.Stream_Start => (T => Stream_Start, Encoding => UTF8),
+            when Events.Stream_End => (T => Stream_End),
+            when Events.Document_Start => (T => Document_Start,
+                                           Version_Directive => System.Null_Address,
+                                           Start_Dir => System.Null_Address,
+                                           End_Dir => System.Null_Address,
+                                           DS_Implicit => Bool (Raw.Implicit_Start)),
+            when Events.Document_End => (T => Document_End,
+                                         DE_Implicit => Bool (Raw.Implicit_End)),
+            when Events.Mapping_Start => (T => Mapping_Start,
+                                          Map_Anchor => Strings.Export (Raw.Collection_Properties.Anchor),
+                                          Map_Tag => Strings.Export (Raw.Collection_Properties.Tag),
+                                          Map_Implicit => False,
+                                          Map_Style => Raw.Collection_Style),
+            when Events.Mapping_End => (T => Mapping_End),
+            when Events.Sequence_Start => (T => Sequence_Start,
+                                          Seq_Anchor => Strings.Export (Raw.Collection_Properties.Anchor),
+                                          Seq_Tag => Strings.Export (Raw.Collection_Properties.Tag),
+                                          Seq_Implicit => False,
+                                          Seq_Style => Raw.Collection_Style),
+            when Events.Sequence_End => (T => Sequence_End),
+            when Events.Scalar => (T => Scalar,
+                                   Scalar_Anchor => Strings.Export (Raw.Scalar_Properties.Anchor),
+                                   Scalar_Tag => Strings.Export (Raw.Scalar_Properties.Tag),
+                                   Value => Strings.Export (Raw.Value),
+                                   Length => Strings.Value (Raw.Value).Data'Length,
+                                   Plain_Implicit => False,
+                                   Quoted_Implicit => False,
+                                   Scalar_Style => Raw.Scalar_Style),
+            when Events.Alias => (T => Alias,
+                                  Ali_Anchor => Strings.Export (Raw.Target)));
+   begin
+      E := (Kind => To_Type, Data => To_Data,
+            Start_Mark => Raw.Start_Position,
+            End_Mark => Raw.End_Position);
+      return True;
+   end Parser_Parse;
+
+begin
+   Strings.Create (Creation_Pool, 8192);
+end Yaml.C;

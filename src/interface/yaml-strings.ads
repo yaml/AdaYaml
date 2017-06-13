@@ -64,6 +64,11 @@ package Yaml.Strings is
 
    function Hold (Value : String) return Constant_Content_Holder;
    function Held (Holder : Constant_Content_Holder) return Content;
+
+   subtype Exported_String is System.Address;
+
+   function Export (Object : Content) return Exported_String;
+   procedure Delete_Exported (Exported : Exported_String);
 private
    --  this forces GNAT to store the First and Last dope values right before
    --  the first element of the String. we use that to our advantage.

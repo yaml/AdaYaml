@@ -1,6 +1,8 @@
 with System;
 with Interfaces.C.Strings;
 with Yaml.Events;
+with Yaml.Strings;
+private with Yaml.Parsing;
 
 package Yaml.C is
    --  this is an implementation of libyaml's C interface declared in yaml.h
@@ -37,18 +39,18 @@ package Yaml.C is
          when Document_End =>
             DE_Implicit : Bool;
          when Alias =>
-            Ali_Anchor : System.Address;
+            Ali_Anchor : Strings.Exported_String;
          when Scalar =>
-            Scalar_Anchor, Scalar_Tag, Value : System.Address;
-            Length : System.Address;
+            Scalar_Anchor, Scalar_Tag, Value : Strings.Exported_String;
+            Length : Interfaces.C.size_t;
             Plain_Implicit, Quoted_Implicit : Bool;
             Scalar_Style : Events.Scalar_Style_Type;
          when Sequence_Start =>
-            Seq_Anchor, Seq_Tag : System.Address;
+            Seq_Anchor, Seq_Tag : Strings.Exported_String;
             Seq_Implicit : Bool;
             Seq_Style : Events.Collection_Style_Type;
          when Mapping_Start =>
-            Map_Anchor, Map_Tag : System.Address;
+            Map_Anchor, Map_Tag : Strings.Exported_String;
             Map_Implicit : Bool;
             Map_Style : Events.Collection_Style_Type;
          when others => null;
@@ -77,11 +79,64 @@ package Yaml.C is
      External_Name => "yaml_document_start_event_initialize";
 
    function Document_End_Event_Initialize
-     (E : out Event; Implicit: Bool) return Bool with Export, Convention => C,
+     (E : out Event; Implicit : Bool) return Bool with Export, Convention => C,
      External_Name => "yaml_document_end_event_initialize";
 
    function Alias_Event_Initialize
      (E : out Event; Anchor : Interfaces.C.Strings.chars_ptr) return Bool with
      Export, Convention => C, External_Name => "yaml_alias_event_initialize";
 
+   function Scalar_Event_Initialize
+     (E : out Event; Anchor, Tag, Value : Interfaces.C.Strings.chars_ptr;
+      Plain_Implicit, Quoted_Implicit : Bool; Style : Events.Scalar_Style_Type)
+      return Bool with Export, Convention => C,
+     External_Name => "yaml_scalar_event_initialize";
+
+   function Sequence_Start_Event_Initialize
+     (E : out Event; Anchor, Tag : Interfaces.C.Strings.chars_ptr;
+      Implicit : Bool; Style : Events.Collection_Style_Type) return Bool with
+     Export, Convention => C,
+     External_Name => "yaml_sequence_start_event_initialize";
+
+   function Sequence_End_Event_Initialize
+     (E : out Event) return Bool with Export, Convention => C,
+     External_Name => "yaml_sequence_end_event_initialize";
+
+   function Mapping_Start_Event_Initialize
+     (E : out Event; Anchor, Tag : Interfaces.C.Strings.chars_ptr;
+      Implicit : Bool; Style : Events.Collection_Style_Type) return Bool with
+     Export, Convention => C,
+     External_Name => "yaml_mapping_start_event_initialize";
+
+   function Mapping_End_Event_Initialize
+     (E : out Event) return Bool with Export, Convention => C,
+     External_Name => "yaml_mapping_end_event_initialize";
+
+   procedure Event_Delete (E : access Event) with Export, Convention => C,
+     External_Name => "yaml_event_delete";
+
+   type Parser is limited private;
+
+   function Parser_Initialize (P : in out Parser) return Bool with Export,
+     Convention => C, External_Name => "yaml_parser_initialize";
+
+   procedure Parser_Delete (P : in out Parser) with Export, Convention => C,
+     External_Name => "yaml_parser_delete";
+
+   procedure Parser_Set_Input_String (P : in out Parser;
+                                      Input : Interfaces.C.Strings.chars_ptr;
+                                      Size : Interfaces.C.size_t) with Export,
+     Convention => C, External_Name => "yaml_parser_set_input_string";
+
+   --  yaml_parser_set_input_file must be implemented in C since there is no
+   --  Ada type to map C's FILE type to.
+
+   function Parser_Parse (P : in out Parser; E : out Event) return Bool with
+     Export, Convention => C, External_Name => "yaml_parser_parse";
+private
+   type Parser_Holder is record
+      P : Parsing.Parser;
+   end record;
+
+   type Parser is access Parser_Holder;
 end Yaml.C;

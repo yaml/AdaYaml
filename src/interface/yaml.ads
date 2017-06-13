@@ -12,4 +12,8 @@ package Yaml is
    type Mark is record
       Index, Line, Column : Mark_Position;
    end record with Convention => C;
+
+   function Version_Major return Natural with Inline;
+   function Version_Minor return Natural with Inline;
+   function Version_Patch return Natural with Inline;
 end Yaml;

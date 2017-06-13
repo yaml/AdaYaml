@@ -272,4 +272,24 @@ package body Yaml.Strings is
    function Held (Holder : Constant_Content_Holder) return Content is
      ((Content'(Ada.Finalization.Controlled with
                 Data => To_UTF_8_String_Access (Holder.S'Address))));
+
+   function Export (Object : Content) return Exported_String is
+      H : constant access Header := Header_Of (Object.Data);
+   begin
+      H.Refcount := H.Refcount + 1;
+      return Object.Data.all'Address;
+   end Export;
+
+   procedure Delete_Exported (Exported : Exported_String) is
+      use System.Storage_Elements;
+      H : Header with Import;
+      for H'Address use Exported - Storage_Offset (Header_Size);
+   begin
+      H.Refcount := H.Refcount - 1;
+      if H.Refcount = 0 then
+         H.Last := Round_To_Header_Size (H.Last);
+         Decrease_Usage (H.Pool, H.Chunk_Index);
+      end if;
+   end Delete_Exported;
+
 end Yaml.Strings;
