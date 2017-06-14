@@ -1,16 +1,45 @@
-with "yaml";
-
 library project Libyaml_Dropin is
    for Languages use ("ada", "c");
 
    for Library_Name use "yaml";
 
-   for Object_Dir use "dropin/obj";
-   for Library_Dir use "dropin/lib";
+   for Object_Dir use "obj";
+   for Library_Dir use "lib";
+   for Library_Kind use "relocatable";
+   for Library_Interface use ("Yaml", "Yaml.C", "Yaml.Events", "Yaml.Parsing",
+                              "Yaml.Sources", "Yaml.Sources.Files",
+                              "Yaml.Sources.Text_IO", "Yaml.Stacks",
+                              "Yaml.Streams", "Yaml.Strings", "Yaml.Lexing",
+                              "Yaml.Lexing.Evaluation", "Yaml.String_Sets");
+   for Library_Standalone use "encapsulated";
+   for Library_Auto_Init use "true";
 
-   package Builder renames Yaml.Builder;
-   package Compiler renames Yaml.Compiler;
-   package Ide renames Yaml.Ide;
+   type Mode_Type is ("debug", "release");
+   Mode : Mode_Type := external ("Mode", "debug");
 
-   for Source_Dirs use ("dropin/src");
+   package Ide is
+      for Vcs_Kind use "Git";
+   end Ide;
+
+   package Builder is
+      case Mode is
+      when "debug" =>
+         for Default_Switches ("ada") use ("-s", "-g");
+      when "release" =>
+         for Default_Switches ("ada") use ("-s");
+      end case;
+   end Builder;
+
+   package Compiler is
+      case Mode is
+      when "debug" =>
+         for Default_Switches ("ada") use
+            ("-gnat12", "-gnatwa", "-gnatwl", "-gnaty3abcefhiklmNprt", "-g", "-fstack-check");
+      when "release" =>
+         for Default_Switches ("ada") use
+            ("-gnat12", "-gnatwa", "-gnatwl", "-O3", "-gnaty3abcefhiklmNprt", "-fstack-check");
+      end case;
+   end Compiler;
+
+   for Source_Dirs use ("dropin/src", "dropin/include", "src/interface", "src/implementation");
 end Libyaml_Dropin;

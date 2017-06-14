@@ -62,7 +62,8 @@ package Yaml.Strings is
 
    type Constant_Content_Holder (<>) is private;
 
-   function Hold (Value : String) return Constant_Content_Holder;
+   function Hold (Value : String) return Constant_Content_Holder
+     with Pre => (Value'Length <= 128);
    function Held (Holder : Constant_Content_Holder) return Content;
 
    subtype Exported_String is System.Address;
@@ -148,16 +149,18 @@ private
 
    Header_Size : constant Pool_Offset := Header'Size / System.Storage_Unit;
 
-   type Constant_Content_Holder (Length : Natural) is record
+   type Constant_Content_Holder is record
       H : Header;
-      S : aliased String (1 .. Length);
+      S : aliased String (1 .. 128);
    end record;
-   pragma Pack (Constant_Content_Holder);
+   for Constant_Content_Holder use record
+      H at 0 range 0 .. Header_End;
+      S at 0 range Header_End + 1 .. Header_End + 128 * System.Storage_Unit;
+   end record;
 
    function Hold (Value : String) return Constant_Content_Holder is
-     ((Length => Value'Length,
-       H => (Pool => null, First => 1, Last => Value'Length, others => <>),
-       S => Value));
+     ((H => (Pool => null, First => 1, Last => Value'Length, others => <>),
+       S => Value & (Value'Length + 1 .. 128 => <>)));
 
    Null_Content_Holder : constant Constant_Content_Holder := Hold ("");
 

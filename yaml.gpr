@@ -1,7 +1,7 @@
 library project Yaml is
    for Languages use ("ada");
 
-   for Library_Name use "Yaml";
+   for Library_Name use "AdaYaml";
 
    Yada_Sources := ("src/interface",
                     "src/implementation");
