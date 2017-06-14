@@ -40,13 +40,19 @@ package body Yaml.Parsing.Event_Test is
       end Add_Test;
 
       procedure Add_To_Error_Set (Directory_Entry : Directory_Entry_Type) is
+         Name : constant String := Simple_Name (Directory_Entry);
       begin
-         Error_Set.Include (Simple_Name (Directory_Entry));
+         if Name /= "." and Name /= ".." then
+            Error_Set.Include (Name);
+         end if;
       end Add_To_Error_Set;
 
       procedure Add_To_Ignored_Set (Directory_Entry : Directory_Entry_Type) is
+         Name : constant String := Simple_Name (Directory_Entry);
       begin
-         Ignored_Set.Include (Simple_Name (Directory_Entry));
+         if Name /= "." and Name /= ".." then
+            Ignored_Set.Include (Name);
+         end if;
       end Add_To_Ignored_Set;
 
       Tag_Dir : constant String := Compose ("yaml-test-suite", "tags");
@@ -55,9 +61,9 @@ package body Yaml.Parsing.Event_Test is
       Ignored_Set.Include ("tags");
       Ignored_Set.Include ("name");
       Search (Compose (Tag_Dir, "1.3-err"), "",
-              (Directory => False, others => True), Add_To_Error_Set'Access);
+              (others => True), Add_To_Error_Set'Access);
       Search (Compose (Tag_Dir, "upto-1.2"), "",
-              (Directory => False, others => True), Add_To_Ignored_Set'Access);
+              (others => True), Add_To_Ignored_Set'Access);
       Search ("yaml-test-suite", "", (Directory => True, others => False),
               Add_Test'Access);
       T.Cur := 1;
