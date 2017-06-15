@@ -6,7 +6,8 @@ package Yaml.Sources.Text_IO is
    overriding procedure Read_Data (S : in out Text_Source; Buffer : out String;
                                    Length : out Natural);
 
-   function As_Source (File : Ada.Text_IO.File_Access) return Source_Access;
+   function As_Source (File : Ada.Text_IO.File_Access) return Source_Access
+     with Pre => Ada.Text_IO.Is_Open (File.all);
 
 private
    type Text_Source is new Source with record
