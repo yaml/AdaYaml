@@ -28,12 +28,12 @@ package body Yaml.Strings.Chunk_Test is
    begin
       Ada.Text_IO.Put_Line ("Test one string, chunk content:");
       Ada.Text_IO.Put_Line (Current_Chunk_As_String (TC (T).Pool));
-      Assert (Value (C) = Test_Data, "Data mismatch!");
+      Assert (C.Get = Test_Data, "Data mismatch!");
       declare
          C2 : constant Content := C;
       begin
-         Ada.Text_IO.Put_Line ("Range after copy: (" & Value (C2).Data.all'First'Img &
-           " .." & Value (C2).Data.all'Last'Img & ')');
+         Ada.Text_IO.Put_Line ("Range after copy: (" & C2.Get.Data.all'First'Img &
+           " .." & C2.Get.Data.all'Last'Img & ')');
       end;
    end Test_One_String;
 
@@ -45,8 +45,8 @@ package body Yaml.Strings.Chunk_Test is
    begin
       Ada.Text_IO.Put_Line ("Test two strings, chunk content:");
       Ada.Text_IO.Put_Line (Current_Chunk_As_String (TC (T).Pool));
-      Assert (Value (C1) = S1, "S1 mismatch, is " & Value (C1));
-      Assert (Value (C2) = S2, "S2 mismatch!");
+      Assert (C1.Get = S1, "S1 mismatch, is " & C1.Get);
+      Assert (C2.Get = S2, "S2 mismatch!");
    end Test_Two_Strings;
 
 end Yaml.Strings.Chunk_Test;

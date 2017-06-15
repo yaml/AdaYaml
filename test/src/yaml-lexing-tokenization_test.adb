@@ -58,7 +58,7 @@ package body Yaml.Lexing.Tokenization_Test is
    function To_String (T : Token_With_Value) return String is
     (T.Reference.Kind'Img &
       (case T.Reference.Kind is
-          when Value_Token => '(' & Escaped (Value (T.Reference.Value)) & ')',
+          when Value_Token => '(' & Escaped (T.Reference.Value) & ')',
           when Indentation => '(' & T.Reference.Depth'Img & ')',
           when others => ""));
 
@@ -188,12 +188,12 @@ package body Yaml.Lexing.Tokenization_Test is
                             Escaped (Expected_Token.Reference.Value) &
                             ", got " & Escaped (L.Value));
                when Full_Lexeme_Token =>
-                  Assert (Full_Lexeme (L) = Value (Expected_Token.Reference.Value),
+                  Assert (Full_Lexeme (L) = Expected_Token.Reference.Value.Get,
                           "Wrong " & T.Kind'Img & " at #" & I'Img & ": Expected " &
                             Escaped (Expected_Token.Reference.Value) &
                             ", got " & Escaped (Full_Lexeme (L)));
                when Short_Lexeme_Token =>
-                  Assert (Short_Lexeme (L) = Value (Expected_Token.Reference.Value),
+                  Assert (Short_Lexeme (L) = Expected_Token.Reference.Value.Get,
                           "Wrong " & T.Kind'Img & "at #" & I'Img & ": Expected " &
                             Escaped (Expected_Token.Reference.Value) &
                             ", got " & Escaped (Short_Lexeme (L)));

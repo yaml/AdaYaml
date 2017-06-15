@@ -74,6 +74,7 @@ private package Yaml.Lexing is
    function Full_Lexeme (L : Lexer) return String with Inline;
 
    function Current_Content (L : Lexer) return Strings.Content with Inline;
+   function Escaped_Current (L : Lexer) return String with Inline;
 
    subtype Indentation_Type is Integer range -1 .. Integer'Last;
    function Current_Indentation (L : Lexer) return Indentation_Type with Inline;

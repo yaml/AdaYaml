@@ -44,7 +44,7 @@ package body Yaml.Strings is
       return Convert (S.all'Address - Storage_Offset (Header_Size));
    end Header_Of;
 
-   function Value (Object : Content) return Accessor is
+   function Get (Object : Content) return Accessor is
      (Accessor'(Data => Object.Data, Hold => Object));
 
    function "=" (Left, Right : Content) return Boolean is

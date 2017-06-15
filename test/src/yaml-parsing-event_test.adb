@@ -83,7 +83,7 @@ package body Yaml.Parsing.Event_Test is
       Output : Unbounded_String;
    begin
       TC (T).Cur := TC (T).Cur + 1;
-      Parse (P, Sources.Files.As_Source (Compose (Test_Dir, "in.yaml")));
+      P.Set_Input (Sources.Files.As_Source (Compose (Test_Dir, "in.yaml")));
       Open (Expected, In_File, Compose (Test_Dir, "test.event"));
       loop
          declare
@@ -123,7 +123,7 @@ package body Yaml.Parsing.Event_Test is
       use type Events.Event_Kind;
    begin
       TC (T).Cur := TC (T).Cur + 1;
-      Parse (P, Sources.Files.As_Source (Compose (Test_Dir, "in.yaml")));
+      P.Set_Input (Sources.Files.As_Source (Compose (Test_Dir, "in.yaml")));
       loop
          Cur := Streams.Next (P);
          Append (Output, Events.To_String (Cur) & Character'Val (10));

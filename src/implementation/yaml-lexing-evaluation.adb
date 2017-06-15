@@ -279,6 +279,7 @@ package body Yaml.Lexing.Evaluation is
    procedure Read_Double_Quoted_Scalar (L : in out Lexer; T : out Token) is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
+      L.Seen_Multiline := False;
       Start_Token (L, T);
       if L.Proposed_Indentation /= -1 then
          L.Indentation := L.Proposed_Indentation;

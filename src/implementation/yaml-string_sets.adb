@@ -23,7 +23,7 @@ package body Yaml.String_Sets is
       Cur : not null access Holder := Object.Elements (Pos)'Access;
    begin
       while Cur.Hash /= 0 and then
-        (Cur.Hash /= Hash or else Strings.Value (Cur.Key) /= S) loop
+        (Cur.Hash /= Hash or else Cur.Key.Get /= S) loop
          Pos := Pos + 1;
          if Pos = Object.Elements'Length then
             Pos := 0;
@@ -44,7 +44,7 @@ package body Yaml.String_Sets is
          Object.Elements.all := (others => (Hash => 0, others => <>));
          for E of Old_Elements.all loop
             if E.Hash /= 0 then
-               Raw_Set (Object, E.Hash, Strings.Value (E.Key)).all := E;
+               Raw_Set (Object, E.Hash, E.Key.Get).all := E;
             end if;
          end loop;
          Free (Old_Elements);

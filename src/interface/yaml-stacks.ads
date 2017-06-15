@@ -9,10 +9,7 @@ package Yaml.Stacks is
    --  standard container types, it has pointer semantics and is also able to
    --  query access to an element, which is useful for in-place modification.
 
-   type Stack is new Ada.Finalization.Controlled with private;
-
-   overriding procedure Adjust (Object : in out Stack);
-   overriding procedure Finalize (Object : in out Stack);
+   type Stack is tagged private;
 
    function New_Stack (Initial_Capacity : Positive) return Stack;
    function Top (Object : in out Stack) return access Element_Type;
@@ -36,4 +33,7 @@ private
    type Stack is new Ada.Finalization.Controlled with record
       Data : Holder_Access := null;
    end record;
+
+   overriding procedure Adjust (Object : in out Stack);
+   overriding procedure Finalize (Object : in out Stack);
 end Yaml.Stacks;

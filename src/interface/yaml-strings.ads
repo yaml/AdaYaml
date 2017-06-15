@@ -7,9 +7,18 @@ package Yaml.Strings is
    --  this package defines a reference-counted string pointer type called
    --  Content. it is used for all YAML data entities and relieves the user from
    --  the need to manually dispose events created by the parser.
+   --
    --  typically, YAML content strings are deallocated in the same order as they
    --  are allocated. this knowledge is built into a storage pool for efficient
    --  memory usage and to avoid fragmentation.
+   --
+   --  to be able to efficiently interface with C, this package allocates its
+   --  strings so that they can directly be passed on to C without the need to
+   --  copy any data. Use the subroutines Export and Delete_Exported to get
+   --  C-compatible string values from a Content string. these subroutines also
+   --  take care of reference counting for values exposed to C. this means that
+   --  after exporting a value, you *must* eventually call Delete_Exported in
+   --  order for the value to be freed.
    --
    --  HINT: this package makes use of compiler implementation details and may
    --  not work with other compilers. however, since there currently are no
@@ -46,11 +55,14 @@ package Yaml.Strings is
    type Accessor (Data : not null access constant UTF_8_String) is
      limited private with Implicit_Dereference => Data;
 
-   --  this is a smart pointer with pointer semantics. use Value to access its
-   --  content.
-   type Content is private;
+   --  this is a smart pointer with pointer semantics (i.e. string content is
+   --  not copied on assignment, only a reference is copied). use Get to access
+   --  its value.
+   type Content is tagged private;
 
-   function Value (Object : Content) return Accessor with Inline;
+   function Get (Object : Content) return Accessor with Inline;
+
+   --  compares the string content of two Content values.
    function "=" (Left, Right : Content) return Boolean with Inline;
 
    --  create a new string from the given data. the string will be allocated
@@ -58,17 +70,31 @@ package Yaml.Strings is
    function From_String (Pool : in out String_Pool'Class; Data : String)
                          return Content;
 
+   --  equivalent to the empty string.
    Null_Content : constant Content;
 
+   --  this can be used for constant Content values that are declared at library
+   --  level where no Pool is available. Content values pointing to a
+   --  Constant_Content_Holder are never freed.
    type Constant_Content_Holder (<>) is private;
 
+   --  note that there is a limit of 128 characters for Content values created
+   --  like this.
    function Hold (Value : String) return Constant_Content_Holder
      with Pre => (Value'Length <= 128);
+
+   --  get a Content value which is a reference to the string contained in the
+   --  Holder.
    function Held (Holder : Constant_Content_Holder) return Content;
 
+   --  used for exporting to C interfaces
    subtype Exported_String is System.Address;
 
+   --  increases the reference count and returns a value that can be used in
+   --  places where C expects a `const char*` value.
    function Export (Object : Content) return Exported_String;
+
+   --  decreases the reference count (and so possibly deallocates the value).
    procedure Delete_Exported (Exported : Exported_String);
 private
    --  this forces GNAT to store the First and Last dope values right before

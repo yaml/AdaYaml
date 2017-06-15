@@ -2,6 +2,8 @@ private with Ada.Streams.Stream_IO;
 private with Ada.Directories;
 
 package Yaml.Sources.Files is
+   --  this provides streams which are backed by files on the file system.
+
    type File_Source is new Source with private;
 
    overriding procedure Read_Data (S : in out File_Source; Buffer : out String;

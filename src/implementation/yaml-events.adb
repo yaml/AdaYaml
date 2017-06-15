@@ -5,12 +5,12 @@ package body Yaml.Events is
       function Ann_String (Ann : Content_Stacks.Stack; Start : Positive := 1)
                            return String is
         (if Start > Content_Stacks.Length (Ann) then "" else
-              " @" & Value (Content_Stacks.Element (Ann, Start).all) &
+              " @" & Content_Stacks.Element (Ann, Start).Get &
            Ann_String (Ann, Start + 1));
 
       function Prop_String (A : Properties) return String is
-        ((if A.Anchor = Null_Content then "" else " &" & Value (A.Anchor)) &
-         (if A.Tag = Null_Content then "" else " <" & Value (A.Tag) & '>') &
+        ((if A.Anchor = Null_Content then "" else " &" & A.Anchor.Get) &
+         (if A.Tag = Null_Content then "" else " <" & A.Tag.Get & '>') &
          Ann_String (A.Annotations));
 
       function Scalar_Indicator (S : Scalar_Style_Type) return String is
@@ -22,11 +22,11 @@ package body Yaml.Events is
              when Folded => " >"));
 
       function Escaped (C : Content) return String is
-         Ret : String (1 .. UTF_8_String'(Value (C))'Length * 2);
+         Ret : String (1 .. UTF_8_String'(C.Get)'Length * 2);
          Pos : Positive := 1;
       begin
-         for I in UTF_8_String'(Value (C))'Range loop
-            case Value (C) (I) is
+         for I in UTF_8_String'(C.Get)'Range loop
+            case UTF_8_String'(C.Get) (I) is
                when Character'Val (7) =>
                   Ret (Pos .. Pos + 1) := "\a";
                   Pos := Pos + 2;
@@ -46,7 +46,7 @@ package body Yaml.Events is
                   Ret (Pos .. Pos + 1) := "\\";
                   Pos := Pos + 2;
                when others =>
-                  Ret (Pos) := Value (C) (I);
+                  Ret (Pos) := UTF_8_String'(C.Get) (I);
                   Pos := Pos + 1;
             end case;
          end loop;
@@ -72,7 +72,7 @@ package body Yaml.Events is
             return "=VAL" & Prop_String (E.Scalar_Properties) &
               Scalar_Indicator (E.Scalar_Style) & Escaped (E.Value);
          when Alias =>
-            return "=ALI *" & Value (E.Target);
+            return "=ALI *" & E.Target.Get;
       end case;
    end To_String;
 

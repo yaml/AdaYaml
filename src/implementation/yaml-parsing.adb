@@ -10,7 +10,7 @@ package body Yaml.Parsing is
       Tag_Handle_Sets.Init (P.Tag_Handles, P.Pool, 16);
    end Init;
 
-   procedure Parse (P : in out Parser; Input : Sources.Source_Access) is
+   procedure Set_Input (P : in out Parser; Input : Sources.Source_Access) is
       Pool : String_Pool;
    begin
       Create (Pool, 8092);
@@ -26,9 +26,9 @@ package body Yaml.Parsing is
          Init (PI);
          Streams.Create (P, Streams.Implementation_Access (PI));
       end;
-   end Parse;
+   end Set_Input;
 
-   procedure Parse (P : in out Parser; Input : String) is
+   procedure Set_Input (P : in out Parser; Input : String) is
       Pool : String_Pool;
    begin
       Create (Pool, 8092);
@@ -44,7 +44,7 @@ package body Yaml.Parsing is
          Init (PI);
          Streams.Create (P, Streams.Implementation_Access (PI));
       end;
-   end Parse;
+   end Set_Input;
 
    procedure Fetch (Stream : in out Parser_Implementation;
                     E : out Events.Event) is
@@ -84,7 +84,7 @@ package body Yaml.Parsing is
            P.Current.Kind'Img;
       end if;
       return Strings.From_String
-        (P.Pool, Value (Holder.Value) & Value (Lexing.Current_Content (P.L)));
+        (P.Pool, Holder.Value.Get & Lexing.Current_Content (P.L).Get);
    end Parse_Tag;
 
    function Is_Empty (Props : Events.Properties) return Boolean is

@@ -174,7 +174,7 @@ package body Yaml.Lexing is
    function Escaped (C : Character) return String is (Escaped ("" & C));
 
    function Escaped (C : Strings.Content) return String is
-     (Escaped (Value (C)));
+     (Escaped (C.Get));
 
    function Next_Is_Plain_Safe (L : Lexer) return Boolean is
       (case L.Buffer (L.Pos) is
@@ -210,6 +210,9 @@ package body Yaml.Lexing is
 
    function Current_Content (L : Lexer) return Strings.Content is
      (L.Value);
+
+   function Escaped_Current (L : Lexer) return String is
+      (Escaped (L.Value));
 
    function Current_Indentation (L : Lexer) return Indentation_Type is
      (L.Pos - L.Line_Start - 1);
