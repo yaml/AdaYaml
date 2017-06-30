@@ -87,10 +87,6 @@ package body Yaml.Parsing is
         (P.Pool, Holder.Value.Get & Lexing.Current_Content (P.L).Get);
    end Parse_Tag;
 
-   function Is_Empty (Props : Events.Properties) return Boolean is
-     ((Props.Anchor = Null_Content and then Props.Tag = Null_Content and then
-       Events.Content_Stacks.Length (Props.Annotations) = 0));
-
    function To_Style (T : Lexing.Scalar_Token_Kind)
                       return Events.Scalar_Style_Type is
      (case T is
@@ -301,7 +297,7 @@ package body Yaml.Parsing is
                P.Header_Props := (others => <>);
                P.Levels.Top.State := After_Implicit_Map_Start'Access;
             else
-               if not Is_Empty (P.Header_Props) then
+               if not Events.Is_Empty (P.Header_Props) then
                   raise Parser_Error with "Alias may not have properties";
                end if;
                --  alias is allowed on document root without '---'
@@ -377,7 +373,7 @@ package body Yaml.Parsing is
       end if;
       case P.Current.Kind is
          when Lexing.Node_Property_Kind =>
-            if Is_Empty (P.Header_Props) then
+            if Events.Is_Empty (P.Header_Props) then
                P.Levels.Top.State := Require_Inline_Block_Item'Access;
             else
                P.Levels.Top.State := Require_Implicit_Map_Start'Access;
@@ -511,7 +507,7 @@ package body Yaml.Parsing is
                                   Collection_Style => Events.Block);
                P.Header_Props := (others => <>);
                P.Levels.Top.State := After_Implicit_Map_Start'Access;
-            elsif not Is_Empty (P.Header_Props) then
+            elsif not Events.Is_Empty (P.Header_Props) then
                raise Parser_Error with "Alias may not have properties";
             else
                P.Levels.Pop;

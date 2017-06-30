@@ -1,6 +1,10 @@
 package body Yaml.Events is
    use Yaml.Strings;
 
+   function Is_Empty (Props : Events.Properties) return Boolean is
+     ((Props.Anchor = Null_Content and then Props.Tag = Null_Content and then
+       Events.Content_Stacks.Length (Props.Annotations) = 0));
+
    function To_String (E : Event) return String is
       function Ann_String (Ann : Content_Stacks.Stack; Start : Positive := 1)
                            return String is

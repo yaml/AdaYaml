@@ -69,4 +69,7 @@ package body Yaml.Stacks is
       Object.Data.Elements (Object.Data.Length) := Value;
    end Push;
 
+   function Initialized (Object : Stack) return Boolean is
+      (Object.Data /= null);
+
 end Yaml.Stacks;

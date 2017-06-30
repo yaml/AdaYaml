@@ -40,7 +40,7 @@ Status of YAML 1.3 features, taken from [this list][1]:
 
  - [x] Have a basic working lexer
  - [x] Have a basic working parser
- - [ ] Have a basic working representer
+ - [x] Have a basic working representer
  - [x] Test against the YAML test suite
  - [ ] Implement fancy error reporting (starting line of error with marker)
  - [ ] Do some benchmarks

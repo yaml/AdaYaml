@@ -10,6 +10,7 @@ package Yaml.Events is
    type Scalar_Style_Type is
      (Any, Plain, Single_Quoted, Double_Quoted, Literal, Folded) with
      Convention => C;
+   subtype Flow_Scalar_Style_Type is Scalar_Style_Type range Literal .. Folded;
 
    package Content_Stacks is new Stacks (Strings.Content);
 
@@ -17,6 +18,8 @@ package Yaml.Events is
       Anchor, Tag : Strings.Content := Strings.Null_Content;
       Annotations : Content_Stacks.Stack;
    end record;
+
+   function Is_Empty (Props : Events.Properties) return Boolean with Inline;
 
    type Event (Kind : Event_Kind := Stream_End) is record
       --  Start_Position is first character, End_Position is after last

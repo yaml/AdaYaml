@@ -11,6 +11,9 @@ package Yaml is
    --  ill-formed input.
    Parser_Error : exception;
 
+   --  occurs if an ill-formed event stream is tried to be presented.
+   Presenter_Error : exception;
+
    subtype Mark_Position is Interfaces.C.size_t
      range 1 .. Interfaces.C.size_t'Last;
 

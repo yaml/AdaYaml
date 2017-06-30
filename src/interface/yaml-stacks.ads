@@ -18,7 +18,7 @@ package Yaml.Stacks is
                      return access Element_Type;
    procedure Pop (Object : in out Stack);
    procedure Push (Object : in out Stack; Value : Element_Type);
-
+   function Initialized (Object : Stack) return Boolean;
 private
    type Element_Array is array (Positive range <>) of aliased Element_Type;
    type Element_Array_Access is access Element_Array;

@@ -4,14 +4,14 @@ with Ada.Command_Line;
 with Yaml.Sources.Text_IO; use Yaml.Sources.Text_IO;
 with Yaml.Sources.Files;   use Yaml.Sources.Files;
 with Yaml.Parsing; use Yaml.Parsing;
-with Yaml.Streams; use Yaml.Streams;
-with Yaml.Events;  use Yaml.Events;
+with Yaml.Presenting; use Yaml.Presenting;
+with Yaml.Destinations.Text_IO; use Yaml.Destinations.Text_IO;
 with Yaml.Sources;  use Yaml.Sources;
 
-procedure Yaml.To_Events is
+procedure Yaml.Transform is
    Input : Source_Access;
    Yaml  : Parser;
-   Cur   : Events.Event;
+   Pres  : Presenting.Presenter;
 begin
    if Ada.Command_Line.Argument_Count = 0 then
       Input := As_Source (Ada.Text_IO.Standard_Input);
@@ -20,9 +20,7 @@ begin
    end if;
 
    Yaml.Set_Input (Input);
-   loop
-      Cur := Next (Yaml);
-      Ada.Text_IO.Put_Line (To_String (Cur));
-      exit when Cur.Kind = Stream_End;
-   end loop;
-end Yaml.To_Events;
+   Pres.Set_Output (As_Destination (Ada.Text_IO.Standard_Output));
+
+   Pres.Put (Yaml);
+end Yaml.Transform;
