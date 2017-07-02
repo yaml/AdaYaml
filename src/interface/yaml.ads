@@ -3,16 +3,19 @@ with Interfaces.C;
 package Yaml is
    pragma Pure;
 
-   --  occurs if the lexical analysis of a YAML character streams discovers
+   --  occurs when the lexical analysis of a YAML character streams discovers
    --  ill-formed input.
    Lexer_Error : exception;
 
-   --  occurs if the syntactic analysis of a YAML token stream discovers an
+   --  occurs when the syntactic analysis of a YAML token stream discovers an
    --  ill-formed input.
    Parser_Error : exception;
 
-   --  occurs if an ill-formed event stream is tried to be presented.
+   --  occurs when an ill-formed event stream is tried to be presented.
    Presenter_Error : exception;
+
+   --  occurs when data cannot be written to a destination.
+   Destination_Error : exception;
 
    subtype Mark_Position is Interfaces.C.size_t
      range 1 .. Interfaces.C.size_t'Last;

@@ -1,9 +1,5 @@
 #include "yaml.h"
-
-#include<stdio.h>
-
-extern void adainit (void);
-extern void adafinal (void);
+#include <stdio.h>
 
 void put_properties(yaml_char_t* anchor, yaml_char_t* tag) {
   if (*anchor != 0) {

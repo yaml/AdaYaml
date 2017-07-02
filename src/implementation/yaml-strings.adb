@@ -280,6 +280,20 @@ package body Yaml.Strings is
       return Object.Data.all'Address;
    end Export;
 
+   function Import (Exported : Exported_String) return Content is
+      function Convert is new Ada.Unchecked_Conversion
+        (Exported_String, UTF_8_String_Access);
+   begin
+      return Value : constant Content := (Ada.Finalization.Controlled with
+                                            Data => Convert (Exported)) do
+         declare
+            H : constant access Header := Header_Of (Value.Data);
+         begin
+            H.Refcount := H.Refcount + 1;
+         end;
+      end return;
+   end Import;
+
    procedure Delete_Exported (Exported : Exported_String) is
       use System.Storage_Elements;
       H : Header with Import;

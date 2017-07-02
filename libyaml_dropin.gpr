@@ -10,7 +10,10 @@ library project Libyaml_Dropin is
                               "Yaml.Sources", "Yaml.Sources.Files",
                               "Yaml.Sources.Text_IO", "Yaml.Stacks",
                               "Yaml.Streams", "Yaml.Strings", "Yaml.Lexing",
-                              "Yaml.Lexing.Evaluation", "Yaml.String_Sets");
+                              "Yaml.Lexing.Evaluation", "Yaml.String_Sets",
+                              "Yaml.Destinations", "Yaml.Destinations.Text_IO",
+                              "Yaml.Destinations.C_Strings", "Yaml.Presenting",
+                              "Yaml.Presenting.Analysis");
    for Library_Standalone use "encapsulated";
    for Library_Auto_Init use "true";
 

@@ -1,5 +1,6 @@
 with Ada.Strings.Fixed;
 with Ada.Unchecked_Deallocation;
+with Yaml.Destinations.C_Strings;
 
 package body Yaml.C is
    Creation_Pool : Strings.String_Pool;
@@ -127,7 +128,8 @@ package body Yaml.C is
       return True;
    end Mapping_End_Event_Initialize;
 
-   procedure Event_Delete (E : access Event) is
+   procedure Event_Delete (E : in out Event) is
+      pragma Unmodified (E);
    begin
       case E.Kind is
          when Scalar =>
@@ -162,7 +164,7 @@ package body Yaml.C is
                                       Input : Interfaces.C.Strings.chars_ptr;
                                       Size : Interfaces.C.size_t) is
    begin
-      Parsing.Parse (P.P, Interfaces.C.Strings.Value (Input, Size));
+      P.P.Set_Input (Interfaces.C.Strings.Value (Input, Size));
    end Parser_Set_Input_String;
 
    function Parser_Parse (P : in out Parser; E : out Event) return Bool is
@@ -206,7 +208,7 @@ package body Yaml.C is
                                    Scalar_Anchor => Strings.Export (Raw.Scalar_Properties.Anchor),
                                    Scalar_Tag => Strings.Export (Raw.Scalar_Properties.Tag),
                                    Value => Strings.Export (Raw.Value),
-                                   Length => Strings.Value (Raw.Value).Data'Length,
+                                   Length => Raw.Value.Get.Data'Length,
                                    Plain_Implicit => False,
                                    Quoted_Implicit => False,
                                    Scalar_Style => Raw.Scalar_Style),
@@ -219,6 +221,83 @@ package body Yaml.C is
       return True;
    end Parser_Parse;
 
+   function Emitter_Initialize (Em : in out Emitter) return Bool is
+   begin
+      Em := new Emitter_Holder;
+      return True;
+   end Emitter_Initialize;
+
+   procedure Emitter_Delete (Em : in out Emitter) is
+      procedure Free is new Ada.Unchecked_Deallocation (Emitter_Holder, Emitter);
+   begin
+      Free (Em);
+   end Emitter_Delete;
+
+   procedure Emitter_Set_Output (Em : in out Emitter; Output : System.Address;
+                                 Size : Interfaces.C.size_t;
+                                 Size_Written : access Interfaces.C.size_t) is
+   begin
+      Em.E.Set_Output (Destinations.C_Strings.As_Destination
+                       (Output, Size, Size_Written));
+   end Emitter_Set_Output;
+
+   function Emitter_Emit (Em : in out Emitter; E : in out Event) return Bool is
+      function To_Properties (Tag, Anchor : Strings.Exported_String)
+                              return Events.Properties is
+        ((Anchor => Strings.Import (Anchor), Tag => Strings.Import (Tag),
+          Annotations => <>));
+
+      function To_Event (E : Event) return Events.Event is
+        (case E.Kind is
+            when Stream_Start => (Kind => Events.Stream_Start,
+                                  Start_Position => E.Start_Mark,
+                                  End_Position => E.End_Mark),
+            when Stream_End => (Kind => Events.Stream_End,
+                                Start_Position => E.Start_Mark,
+                                End_Position => E.End_Mark),
+            when Document_Start => (Kind => Events.Document_Start,
+                                    Start_Position => E.Start_Mark,
+                                    End_Position => E.End_Mark,
+                                    Version => Strings.Null_Content,
+                                    Implicit_Start => Boolean (E.Data.DS_Implicit)),
+            when Document_End => (Kind => Events.Document_End,
+                                  Start_Position => E.Start_Mark,
+                                  End_Position => E.End_Mark,
+                                  Implicit_End => Boolean (E.Data.DE_Implicit)),
+            when Mapping_Start =>
+           (Kind => Events.Mapping_Start,
+            Start_Position => E.Start_Mark, End_Position => E.End_Mark,
+            Collection_Style => E.Data.Map_Style,
+            Collection_Properties => To_Properties (E.Data.Map_Tag, E.Data.Map_Anchor)),
+            when Mapping_End => (Kind => Events.Mapping_End,
+                                 Start_Position => E.Start_Mark,
+                                 End_Position => E.End_Mark),
+            when Sequence_Start =>
+           (Kind => Events.Sequence_Start,
+            Start_Position => E.Start_Mark, End_Position => E.End_Mark,
+            Collection_Style => E.Data.Seq_Style,
+            Collection_Properties => To_Properties (E.Data.Seq_Tag, E.Data.Seq_Anchor)),
+            when Sequence_End => (Kind => Events.Sequence_End,
+                                  Start_Position => E.Start_Mark,
+                                  End_Position => E.End_Mark),
+            when Scalar => (Kind => Events.Scalar,
+                            Start_Position => E.Start_Mark,
+                            End_Position => E.End_Mark,
+                            Scalar_Properties => To_Properties (E.Data.Scalar_Tag, E.Data.Scalar_Anchor),
+                            Value => Strings.Import (E.Data.Value),
+                            Scalar_Style => E.Data.Scalar_Style),
+            when Alias => (Kind => Events.Alias,
+                           Start_Position => E.Start_Mark,
+                           End_Position => E.End_Mark,
+                           Target => Strings.Import (E.Data.Ali_Anchor)),
+            when No_Event => (others => <>));
+   begin
+      if E.Kind /= No_Event then
+         Em.E.Put (To_Event (E));
+      end if;
+      Event_Delete (E);
+      return True;
+   end Emitter_Emit;
 begin
    Strings.Create (Creation_Pool, 8192);
 end Yaml.C;

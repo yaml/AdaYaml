@@ -7,7 +7,7 @@ project Libyaml_Dropin_Utils is
    for Library_Dir use "dropin/util/lib";
    for Exec_Dir use "dropin/util/bin";
 
-   for Main use ("libyaml_dropin_events.c");
+   for Main use ("libyaml_dropin_events.c", "libyaml_dropin_emitter_test.c");
 
    --  package Builder renames Yaml.Builder;
    --  package Compiler renames Yaml.Compiler;

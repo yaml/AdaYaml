@@ -94,6 +94,9 @@ package Yaml.Strings is
    --  places where C expects a `const char*` value.
    function Export (Object : Content) return Exported_String;
 
+   --  creates a content value from an exported pointer
+   function Import (Exported : Exported_String) return Content;
+
    --  decreases the reference count (and so possibly deallocates the value).
    procedure Delete_Exported (Exported : Exported_String);
 private

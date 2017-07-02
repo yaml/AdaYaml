@@ -3,6 +3,7 @@ with Interfaces.C.Strings;
 with Yaml.Events;
 with Yaml.Strings;
 private with Yaml.Parsing;
+private with Yaml.Presenting;
 
 package Yaml.C is
    --  this is an implementation of libyaml's C interface declared in yaml.h
@@ -112,7 +113,7 @@ package Yaml.C is
      (E : out Event) return Bool with Export, Convention => C,
      External_Name => "yaml_mapping_end_event_initialize";
 
-   procedure Event_Delete (E : access Event) with Export, Convention => C,
+   procedure Event_Delete (E : in out Event) with Export, Convention => C,
      External_Name => "yaml_event_delete";
 
    type Parser is limited private;
@@ -133,10 +134,32 @@ package Yaml.C is
 
    function Parser_Parse (P : in out Parser; E : out Event) return Bool with
      Export, Convention => C, External_Name => "yaml_parser_parse";
+
+   type Emitter is limited private;
+
+   function Emitter_Initialize (Em : in out Emitter) return Bool with Export,
+     Convention => C, External_Name => "yaml_emitter_initialize";
+
+   procedure Emitter_Delete (Em : in out Emitter) with Export, Convention => C,
+     External_Name => "yaml_emitter_delete";
+
+   procedure Emitter_Set_Output (Em : in out Emitter; Output : System.Address;
+                                 Size : Interfaces.C.size_t;
+                                 Size_Written : access Interfaces.C.size_t) with
+     Export, Convention => C, External_Name => "yaml_emitter_set_output_string";
+
+   function Emitter_Emit (Em : in out Emitter; E : in out Event) return Bool
+     with Export, Convention => C, External_Name => "yaml_emitter_emit";
 private
    type Parser_Holder is record
       P : Parsing.Parser;
    end record;
 
    type Parser is access Parser_Holder;
+
+   type Emitter_Holder is record
+      E : Presenting.Presenter;
+   end record;
+
+   type Emitter is access Emitter_Holder;
 end Yaml.C;
