@@ -1,3 +1,6 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 package body Yaml.Destinations.C_Strings is
    function As_Destination (Pointer : System.Address;
                             Size : Interfaces.C.size_t;

@@ -1,3 +1,6 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 package body Yaml.Sources.Files is
 
    overriding procedure Read_Data (S : in out File_Source; Buffer : out String;

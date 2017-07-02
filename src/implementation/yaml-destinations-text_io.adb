@@ -1,3 +1,6 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 package body Yaml.Destinations.Text_IO is
    function As_Destination (File : Ada.Text_IO.File_Access)
                             return Destination_Access is

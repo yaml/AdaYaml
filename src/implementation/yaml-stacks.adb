@@ -1,3 +1,6 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 with Ada.Unchecked_Deallocation;
 
 package body Yaml.Stacks is

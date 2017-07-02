@@ -84,7 +84,7 @@ To edit the code, you can use GNAT Programming Studio to open the `*.gpr` files.
 
 ## License
 
-MIT. I was too lazy to add proper licensing comments and stuff yet.
+[MIT](copying.txt)
 
  [1]: https://github.com/yaml/summit.yaml.io/wiki/YAML-RFC-Index
  [2]: https://github.com/yaml/summit.yaml.io/wiki/The-Transformations-Extension

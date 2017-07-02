@@ -1,3 +1,6 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 private package Yaml.Presenting.Analysis is
    --  this package analyzes scalars to check how they can be represented
 

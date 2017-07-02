@@ -1,3 +1,6 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 private package Yaml.Lexing.Evaluation is
    procedure Read_Plain_Scalar (L : in out Lexer; T : out Token);
 

@@ -1,3 +1,6 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 package body Yaml.Sources.Text_IO is
    procedure Read_Data (S : in out Text_Source; Buffer : out String;
                         Length : out Natural) is

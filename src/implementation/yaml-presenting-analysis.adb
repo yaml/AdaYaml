@@ -1,3 +1,5 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
 
 package body Yaml.Presenting.Analysis is
    function Features (S : String) return Scalar_Features is
