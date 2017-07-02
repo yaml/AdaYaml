@@ -6,6 +6,7 @@ with Yaml.Lexing.Evaluation;
 
 package body Yaml.Lexing is
    use Yaml.Strings;
+   use type Interfaces.C.size_t;
 
    -----------------------------------------------------------------------------
    --             Initialization and buffer handling                          --
@@ -67,7 +68,11 @@ package body Yaml.Lexing is
    begin
       if L.Buffer (L.Pos) = Line_Feed then
          L.Pos := L.Pos + 1;
+      else
+         raise Lexer_Error with "pure CR line breaks not allowed.";
       end if;
+      L.Prev_Lines_Chars :=
+        L.Prev_Lines_Chars + Mark_Position (L.Pos - L.Line_Start);
       if L.Pos = L.Sentinel then
          Refill_Buffer (L);
          L.Pos := 1;
@@ -79,6 +84,8 @@ package body Yaml.Lexing is
 
    procedure Handle_LF (L : in out Lexer) is
    begin
+      L.Prev_Lines_Chars :=
+        L.Prev_Lines_Chars + Mark_Position (L.Pos - L.Line_Start);
       if L.Pos = L.Sentinel then
          Refill_Buffer (L);
          L.Pos := 1;
@@ -103,6 +110,7 @@ package body Yaml.Lexing is
       L.Pool := Pool;
       L.Line_Start := Buffer.all'First;
       L.Proposed_Indentation := -1;
+      L.Prev_Lines_Chars := 0;
    end Basic_Init;
 
    procedure Init
@@ -209,7 +217,7 @@ package body Yaml.Lexing is
    function Cur_Mark (L : Lexer; Offset : Integer := -1) return Mark is
      ((Line => Mark_Position (L.Cur_Line),
        Column => Mark_Position (L.Pos - L.Line_Start - Offset),
-       Index => 1));
+       Index => L.Prev_Lines_Chars + Mark_Position (L.Pos - L.Line_Start - Offset)));
 
    function Current_Content (L : Lexer) return Strings.Content is
      (L.Value);

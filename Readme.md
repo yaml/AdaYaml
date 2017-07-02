@@ -26,7 +26,7 @@ Status of YAML 1.3 features, taken from [this list][1]:
 | RFC-003 | Characters that can appear in anchor             | Implemented
 | RFC-004 | Block sequence entries must use space after dash | Implemented
 | RFC-005 | Restrict default implicit types to JSON semantics| Not applicable
-| RFC-006 | Disallow carriage return as a break              | Not implemented
+| RFC-006 | Disallow carriage return as a break              | Implemented
 | RFC-007 | Disallow flow collections as implicit keys       | Implemented
 | RFC-008 | Annotations                                      | Can be parsed
 | RFC-009 | Allow unresolvable aliases                       | Implemented

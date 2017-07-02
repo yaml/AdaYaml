@@ -23,7 +23,7 @@ package Yaml is
    subtype Mark_Position is Interfaces.C.size_t
      range 1 .. Interfaces.C.size_t'Last;
 
-   --  a position in the input stream. TODO: Index is always 1 currently.
+   --  a position in the input stream.
    type Mark is record
       Index, Line, Column : Mark_Position;
    end record with Convention => C;
