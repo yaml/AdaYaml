@@ -20,6 +20,7 @@ package Yaml is
    --  occurs when data cannot be written to a destination.
    Destination_Error : exception;
 
+   --  specified this way to be directly transferable to the C interface
    subtype Mark_Position is Interfaces.C.size_t
      range 1 .. Interfaces.C.size_t'Last;
 

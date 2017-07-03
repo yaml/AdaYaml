@@ -216,8 +216,8 @@ package body Yaml.Lexing is
 
    function Cur_Mark (L : Lexer; Offset : Integer := -1) return Mark is
      ((Line => Mark_Position (L.Cur_Line),
-       Column => Mark_Position (L.Pos - L.Line_Start - Offset),
-       Index => L.Prev_Lines_Chars + Mark_Position (L.Pos - L.Line_Start - Offset)));
+       Column => Mark_Position (L.Pos + 1 - L.Line_Start + Offset),
+       Index => L.Prev_Lines_Chars + Mark_Position (L.Pos + 1 - L.Line_Start + Offset)));
 
    function Current_Content (L : Lexer) return Strings.Content is
      (L.Value);

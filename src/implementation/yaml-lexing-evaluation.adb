@@ -6,6 +6,8 @@ with Ada.Strings.UTF_Encoding.Wide_Strings;
 with Ada.Strings.UTF_Encoding.Wide_Wide_Strings;
 
 package body Yaml.Lexing.Evaluation is
+   use type Interfaces.C.size_t;
+
    -----------------------------------------------------------------------------
    --  constant UTF-8 strings that may be generated from escape sequences
    -----------------------------------------------------------------------------
@@ -121,7 +123,11 @@ package body Yaml.Lexing.Evaluation is
                   T.End_Pos := Cur_Mark (L);
                   exit Inline_Loop;
                when End_Of_Input =>
-                  T.End_Pos := Cur_Mark (L);
+                  if L.Pos /= L.Line_Start then
+                     T.End_Pos := Cur_Mark (L);
+                     T.End_Pos.Index := T.End_Pos.Index - 1;
+                     T.End_Pos.Column := T.End_Pos.Column - 1;
+                  end if;
                   L.State := Stream_End'Access;
                   exit Multiline_Loop;
                when others => null;
@@ -406,25 +412,26 @@ package body Yaml.Lexing.Evaluation is
             end if;
             case L.Cur is
                when Line_Feed | Carriage_Return =>
+                  T.End_Pos := Cur_Mark (L);
                   Max_Leading_Spaces :=
                     Natural'Max (Max_Leading_Spaces, L.Pos - 1 - L.Line_Start);
                   End_Line (L);
                   Separation_Lines := Separation_Lines + 1;
                when End_Of_Input =>
                   L.State := Stream_End'Access;
-                  goto Finish;
+                  goto End_Of_Input_Target;
                when others =>
                   if Indent = 0 then
                      Indent := L.Pos - L.Line_Start - 1;
                      if Indent <= Indentation_Type'Max (0, L.Indentation) then
                         L.State := Line_Indentation'Access;
-                        goto Finish;
+                        goto Finalize;
                      elsif Indent < Max_Leading_Spaces then
                         raise Lexer_Error with
                           "Leading all-spaces line contains too many spaces.";
                      end if;
                   elsif L.Pos - L.Line_Start - 1 < Indent then
-                     goto Finish;
+                     goto Finalize;
                   end if;
                   exit;
             end case;
@@ -444,8 +451,9 @@ package body Yaml.Lexing.Evaluation is
          Separation_Lines := 0;
          if L.Cur = End_Of_Input then
             L.State := Stream_End'Access;
-            goto Finish;
+            goto End_Of_Input_Target;
          end if;
+         T.End_Pos := Cur_Mark (L);
          End_Line (L);
 
          --  empty lines and indentation of next line
@@ -458,11 +466,12 @@ package body Yaml.Lexing.Evaluation is
                end loop;
                case L.Cur is
                   when Carriage_Return | Line_Feed =>
+                     T.End_Pos := Cur_Mark (L);
                      Separation_Lines := Separation_Lines + 1;
                      End_Line (L);
                   when End_Of_Input =>
                      L.State := Stream_End'Access;
-                     goto Finish;
+                     goto End_Of_Input_Target;
                   when others =>
                      if L.Pos - 1 < Indent_Pos then
                         exit Block_Content;
@@ -496,7 +505,26 @@ package body Yaml.Lexing.Evaluation is
          L.State := Line_Indentation'Access;
       end if;
 
+      <<Finalize>>
+      T.End_Pos := Cur_Mark (L);
+      goto Finish;
+
+      <<End_Of_Input_Target>>
+
+      --  if we encounter the stream end directly after a newline character,
+      --  we must have stored the T.End_Pos beforehand because we cannot
+      --  calculate it back (we do not know how long the recent line was).
+      if L.Pos /= L.Line_Start then
+         T.End_Pos := Cur_Mark (L);
+         --  the generated End_Pos is *after* the stream end char, which is one
+         --  too far; compensate here.
+         T.End_Pos.Index := T.End_Pos.Index - 1;
+         T.End_Pos.Column := T.End_Pos.Column - 1;
+      end if;
+
       <<Finish>>
+
+      T.End_Pos := Cur_Mark (L);
 
       --  handling trailing empty lines
       case Chomp is

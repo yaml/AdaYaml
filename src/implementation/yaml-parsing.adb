@@ -132,12 +132,12 @@ package body Yaml.Parsing is
             P.Current := Lexing.Next_Token (P.L);
             return False;
          when Lexing.Directives_End =>
-            P.Current := Lexing.Next_Token (P.L);
             E := Events.Event'(Start_Position => P.Current.Start_Pos,
                                End_Position => P.Current.End_Pos,
                                Kind => Events.Document_Start,
                                Implicit_Start => False,
                                Version => Version);
+            P.Current := Lexing.Next_Token (P.L);
             P.Levels.Top.State := Before_Doc_End'Access;
             P.Levels.Push ((State => After_Directives_End'Access,
                               Indentation => -1));
@@ -215,6 +215,7 @@ package body Yaml.Parsing is
                               Indentation => <>));
             return False;
          when Lexing.Indentation =>
+            P.Header_Start := P.Inline_Start;
             P.Levels.Top.State := At_Block_Indentation'Access;
             return False;
          when Lexing.Document_End =>
@@ -374,6 +375,7 @@ package body Yaml.Parsing is
          P.Levels.Pop;
          return True;
       end if;
+      P.Inline_Start := P.Current.Start_Pos;
       case P.Current.Kind is
          when Lexing.Node_Property_Kind =>
             if Events.Is_Empty (P.Header_Props) then
@@ -797,7 +799,7 @@ package body Yaml.Parsing is
       end case;
       if P.Block_Indentation < P.Levels.Top.Indentation then
           E := Events.Event'(Start_Position => P.Current.Start_Pos,
-                             End_Position   => P.Current.End_Pos,
+                             End_Position   => P.Current.Start_Pos,
                              Kind => Events.Sequence_End);
           P.Levels.Pop;
           return True;
@@ -1174,6 +1176,7 @@ package body Yaml.Parsing is
    function After_Flow_Seq_Sep (P : in out Parser_Implementation'Class;
                                 E : out Events.Event) return Boolean is
    begin
+      P.Inline_Start := P.Current.Start_Pos;
       case P.Current.Kind is
          when Lexing.Flow_Seq_End =>
             E := Events.Event'(Start_Position => P.Current.Start_Pos,

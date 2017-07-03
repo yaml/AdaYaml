@@ -7,7 +7,8 @@ project Yaml_Utils is
    for Library_Dir use "util/lib";
    for Exec_Dir use "util/bin";
 
-   for Main use ("yaml-to_events.adb", "yaml-transform.adb");
+   for Main use ("yaml-to_events.adb", "yaml-transform.adb",
+                 "yaml-inspector.adb");
 
    package Builder renames Yaml.Builder;
    package Compiler renames Yaml.Compiler;
