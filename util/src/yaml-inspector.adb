@@ -96,13 +96,13 @@ begin
    P.Set_Input (Input);
    loop
       Cur_Event := P.Next;
-      if Positive (Cur_Event.Start_Position.Index) > Cur_Pos then
+      if Cur_Event.Start_Position.Index > Cur_Pos then
          Write_Escaped
-           (Input (Cur_Pos .. Positive'Min (Input'Length, Positive (Cur_Event.Start_Position.Index) - 1)),
+           (Input (Cur_Pos .. Positive'Min (Input'Length, Cur_Event.Start_Position.Index - 1)),
             Yaml_Output);
-         Cur_Pos := Positive (Cur_Event.Start_Position.Index);
+         Cur_Pos := Cur_Event.Start_Position.Index;
       end if;
-      Next_Pos := Positive (Cur_Event.End_Position.Index);
+      Next_Pos := Cur_Event.End_Position.Index;
       Write_Wrapped (Input (Cur_Pos .. Next_Pos - 1), Event_Count, Yaml_Output);
       Write_Wrapped (Events.To_String (Cur_Event), Event_Count, Event_Output);
       Append (Event_Output, "<br />");

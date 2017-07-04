@@ -61,10 +61,14 @@ package Yaml.C is
       end case;
    end record with Unchecked_Union, Convention => C;
 
+   type C_Mark is record
+      Index, Line, Column : Interfaces.C.size_t;
+   end record;
+
    type Event is record
       Kind : Event_Type;
       Data : Event_Data;
-      Start_Mark, End_Mark : Mark;
+      Start_Mark, End_Mark : C_Mark;
    end record with Convention => C;
 
    type Event_Access is access Event with Convention => C;

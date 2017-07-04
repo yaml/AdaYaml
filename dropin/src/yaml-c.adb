@@ -170,6 +170,16 @@ package body Yaml.C is
       P.P.Set_Input (Interfaces.C.Strings.Value (Input, Size));
    end Parser_Set_Input_String;
 
+   function To_C (M : Mark) return C_Mark is
+     ((Index  => Interfaces.C.size_t (M.Index),
+       Line   => Interfaces.C.size_t (M.Line),
+       Column => Interfaces.C.size_t (M.Column)));
+
+   function To_Ada (C : C_Mark) return Mark is
+     ((Index  => Mark_Position (C.Index),
+       Line   => Mark_Position (C.Line),
+       Column => Mark_Position (C.Column)));
+
    function Parser_Parse (P : in out Parser; E : out Event) return Bool is
       Raw : constant Events.Event := P.P.Next;
       function To_Type return Event_Type is
@@ -219,8 +229,8 @@ package body Yaml.C is
                                   Ali_Anchor => Strings.Export (Raw.Target)));
    begin
       E := (Kind => To_Type, Data => To_Data,
-            Start_Mark => Raw.Start_Position,
-            End_Mark => Raw.End_Position);
+            Start_Mark => To_C (Raw.Start_Position),
+            End_Mark => To_C (Raw.End_Position));
       return True;
    end Parser_Parse;
 
@@ -253,45 +263,47 @@ package body Yaml.C is
       function To_Event (E : Event) return Events.Event is
         (case E.Kind is
             when Stream_Start => (Kind => Events.Stream_Start,
-                                  Start_Position => E.Start_Mark,
-                                  End_Position => E.End_Mark),
+                                  Start_Position => To_Ada (E.Start_Mark),
+                                  End_Position => To_Ada (E.End_Mark)),
             when Stream_End => (Kind => Events.Stream_End,
-                                Start_Position => E.Start_Mark,
-                                End_Position => E.End_Mark),
+                                Start_Position => To_Ada (E.Start_Mark),
+                                End_Position => To_Ada (E.End_Mark)),
             when Document_Start => (Kind => Events.Document_Start,
-                                    Start_Position => E.Start_Mark,
-                                    End_Position => E.End_Mark,
+                                    Start_Position => To_Ada (E.Start_Mark),
+                                    End_Position => To_Ada (E.End_Mark),
                                     Version => Strings.Null_Content,
                                     Implicit_Start => Boolean (E.Data.DS_Implicit)),
             when Document_End => (Kind => Events.Document_End,
-                                  Start_Position => E.Start_Mark,
-                                  End_Position => E.End_Mark,
+                                  Start_Position => To_Ada (E.Start_Mark),
+                                  End_Position => To_Ada (E.End_Mark),
                                   Implicit_End => Boolean (E.Data.DE_Implicit)),
             when Mapping_Start =>
            (Kind => Events.Mapping_Start,
-            Start_Position => E.Start_Mark, End_Position => E.End_Mark,
+            Start_Position => To_Ada (E.Start_Mark),
+            End_Position => To_Ada (E.End_Mark),
             Collection_Style => E.Data.Map_Style,
             Collection_Properties => To_Properties (E.Data.Map_Tag, E.Data.Map_Anchor)),
             when Mapping_End => (Kind => Events.Mapping_End,
-                                 Start_Position => E.Start_Mark,
-                                 End_Position => E.End_Mark),
+                                 Start_Position => To_Ada (E.Start_Mark),
+                                 End_Position => To_Ada (E.End_Mark)),
             when Sequence_Start =>
            (Kind => Events.Sequence_Start,
-            Start_Position => E.Start_Mark, End_Position => E.End_Mark,
+            Start_Position => To_Ada (E.Start_Mark),
+            End_Position => To_Ada (E.End_Mark),
             Collection_Style => E.Data.Seq_Style,
             Collection_Properties => To_Properties (E.Data.Seq_Tag, E.Data.Seq_Anchor)),
             when Sequence_End => (Kind => Events.Sequence_End,
-                                  Start_Position => E.Start_Mark,
-                                  End_Position => E.End_Mark),
+                                  Start_Position => To_Ada (E.Start_Mark),
+                                  End_Position => To_Ada (E.End_Mark)),
             when Scalar => (Kind => Events.Scalar,
-                            Start_Position => E.Start_Mark,
-                            End_Position => E.End_Mark,
+                            Start_Position => To_Ada (E.Start_Mark),
+                            End_Position => To_Ada (E.End_Mark),
                             Scalar_Properties => To_Properties (E.Data.Scalar_Tag, E.Data.Scalar_Anchor),
                             Value => Strings.Import (E.Data.Value),
                             Scalar_Style => E.Data.Scalar_Style),
             when Alias => (Kind => Events.Alias,
-                           Start_Position => E.Start_Mark,
-                           End_Position => E.End_Mark,
+                           Start_Position => To_Ada (E.Start_Mark),
+                           End_Position => To_Ada (E.End_Mark),
                            Target => Strings.Import (E.Data.Ali_Anchor)),
             when No_Event => (others => <>));
    begin

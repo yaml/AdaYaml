@@ -1,8 +1,6 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Interfaces.C;
-
 package Yaml is
    pragma Pure;
 
@@ -20,9 +18,8 @@ package Yaml is
    --  occurs when data cannot be written to a destination.
    Destination_Error : exception;
 
-   --  specified this way to be directly transferable to the C interface
-   subtype Mark_Position is Interfaces.C.size_t
-     range 1 .. Interfaces.C.size_t'Last;
+   --  all positions in a mark start at 1
+   subtype Mark_Position is Positive;
 
    --  a position in the input stream.
    type Mark is record

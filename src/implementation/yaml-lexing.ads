@@ -97,7 +97,7 @@ private
         --  reasons; use Short_Lexeme and Full_Lexeme to compensate.
       Line_Start  : Positive;
         --  the buffer index where the current line started
-      Prev_Lines_Chars : Interfaces.C.size_t;
+      Prev_Lines_Chars : Natural;
         --  number of characters in all previous lines,
         --  used for calculating index.
       Input       : Sources.Source_Access;  --  input provider

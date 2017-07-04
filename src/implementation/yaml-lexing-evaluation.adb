@@ -6,8 +6,6 @@ with Ada.Strings.UTF_Encoding.Wide_Strings;
 with Ada.Strings.UTF_Encoding.Wide_Wide_Strings;
 
 package body Yaml.Lexing.Evaluation is
-   use type Interfaces.C.size_t;
-
    -----------------------------------------------------------------------------
    --  constant UTF-8 strings that may be generated from escape sequences
    -----------------------------------------------------------------------------
