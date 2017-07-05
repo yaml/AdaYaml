@@ -854,7 +854,7 @@ package body Yaml.Lexing is
                               return Boolean is
    begin
       T := (Start_Pos => (Line => L.Cur_Line,
-                          Column => 1, Index => 1),
+                          Column => 1, Index => L.Prev_Lines_Chars),
             End_Pos => Cur_Mark (L), Kind => Indentation);
       L.State := Indentation_Setting_Token'Access;
       return True;
@@ -864,7 +864,7 @@ package body Yaml.Lexing is
                           return Boolean is
    begin
       T := (Start_Pos => (Line => L.Cur_Line,
-                          Column => 1, Index => 1),
+                          Column => 1, Index => L.Prev_Lines_Chars),
             End_Pos => Cur_Mark (L), Kind => Directives_End);
       L.State := After_Token'Access;
       L.Indentation := -1;
@@ -878,7 +878,7 @@ package body Yaml.Lexing is
                           return Boolean is
    begin
       T := (Start_Pos => (Line => L.Cur_Line,
-                          Column => 1, Index => 1),
+                          Column => 1, Index => L.Prev_Lines_Chars),
             End_Pos => Cur_Mark (L), Kind => Document_End);
       L.State := Expect_Line_End'Access;
       L.Line_Start_State := Outside_Doc'Access;

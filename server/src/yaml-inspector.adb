@@ -56,13 +56,62 @@ procedure Yaml.Inspector is
       end loop;
    end Write_Escaped;
 
+   procedure Write_With_Properties (Content : String;
+                                    Target : in out Unbounded_String;
+                                    Kind : Events.Event_Kind) is
+      Cur : Positive := Content'First;
+      Start : Positive;
+   begin
+      Outer : while Cur <= Content'Last loop
+         loop
+            case Content (Cur) is
+               when ' ' => Append (Target, ' ');
+               when Character'Val (10) => Append (Target, "<br />");
+               when others => exit;
+            end case;
+            Cur := Cur + 1;
+            if Cur > Content'Last then
+               exit Outer;
+            end if;
+         end loop;
+         case Content (Cur) is
+            when '!' =>
+               Start := Cur;
+               loop
+                  Cur := Cur + 1;
+                  exit when Cur > Content'Last or else
+                    Content (Cur) in ' ' | Character'Val (10);
+               end loop;
+               Append (Target, "<span class=""tag"">");
+               Write_Escaped (Content (Start .. Cur - 1), Target);
+               Append (Target, "</span>");
+            when '&' =>
+               Start := Cur;
+               loop
+                  Cur := Cur + 1;
+                  exit when Cur > Content'Last or else
+                    Content (Cur) in ' ' | Character'Val (10);
+               end loop;
+               Append (Target, "<span class=""anchor"">");
+               Write_Escaped (Content (Start .. Cur - 1), Target);
+               Append (Target, "</span>");
+            when others =>
+               Append (Target, "<span class=""" & Kind'Img & """>");
+               Write_Escaped (Content (Cur .. Content'Last), Target);
+               Append (Target, "</span>");
+               exit Outer;
+         end case;
+      end loop Outer;
+   end Write_With_Properties;
+
    procedure Write_Wrapped (Content : String; Class_Index : Positive;
+                            Kind : Events.Event_Kind;
                             Target : in out Unbounded_String) is
       use Ada.Strings.Fixed;
    begin
       Append (Target, "<span class=""event event" &
                 Ada.Strings.Fixed.Trim (Class_Index'Img, Ada.Strings.Left) & """>");
-      Write_Escaped (Content, Target);
+      Write_With_Properties (Content, Target, Kind);
       Append (Target, "</span>");
    end Write_Wrapped;
 
@@ -70,12 +119,12 @@ procedure Yaml.Inspector is
       use Ada.Text_IO;
    begin
       Put_Line ("<table class=""yaml-inspect""><tr>");
-      Put_Line ("  <td>");
-      Put ("    <pre><code class=""yaml-input"">");
+      Put_Line ("  <td class=""yaml-input"">");
+      Put ("    <pre><code>");
       Unbounded_IO.Put (Yaml_Output);
       Put_Line ("</code></pre>");
-      Put_Line ("  </td><td>");
-      Put ("    <pre><code class=""yaml-events"">");
+      Put_Line ("  </td><td class=""yaml-events"">");
+      Put ("    <pre><code>");
       Unbounded_IO.Put (Event_Output);
       Put_Line ("</code></pre>");
       Put_Line ("  </td>");
@@ -122,13 +171,13 @@ procedure Yaml.Inspector is
                                  Output : in out Unbounded_String) is
    begin
       Append (Output, "<table class=""yaml-inspect""><tr>");
-      Append (Output, Character'Val (10) & "  <td>");
+      Append (Output, Character'Val (10) & "  <td class=""yaml-input"">");
       Append (Output,
-              Character'Val (10) & "    <pre><code class=""yaml-input"">");
+              Character'Val (10) & "    <pre><code>");
       Write_Escaped (Input, Output);
-      Append (Output, "</code></pre>" & Character'Val (10) & "  </td><td>");
+      Append (Output, "</code></pre>" & Character'Val (10) & "  </td><td class=""yaml-error"">");
       Append (Output, Character'Val (10) &
-                      "    <pre><code class=""yaml-error"">");
+                      "    <pre><code>");
       Write_Error_Name_And_Message (Error_Name, Message, Output);
       Append (Output, "<br /><br />");
    end Write_Error_Header;
@@ -202,8 +251,10 @@ begin
          Cur_Pos := Cur_Event.Start_Position.Index;
       end if;
       Next_Pos := Cur_Event.End_Position.Index;
-      Write_Wrapped (Input (Cur_Pos .. Next_Pos - 1), Event_Count, Yaml_Output);
-      Write_Wrapped (Events.To_String (Cur_Event), Event_Count, Event_Output);
+      Write_Wrapped (Input (Cur_Pos .. Next_Pos - 1), Event_Count,
+                     Cur_Event.Kind, Yaml_Output);
+      Write_Wrapped (Events.To_String (Cur_Event), Event_Count,
+                     Cur_Event.Kind, Event_Output);
       Append (Event_Output, "<br />");
       Event_Count := Event_Count + 1;
       Cur_Pos := Next_Pos;

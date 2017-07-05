@@ -728,7 +728,7 @@ package body Yaml.Parsing is
             end if;
             return True;
          when Lexing.Flow_Map_Start =>
-            E := Events.Event'(Start_Position => P.Header_Start,
+            E := Events.Event'(Start_Position => P.Inline_Start,
                                End_Position   => P.Current.End_Pos,
                                Kind => Events.Mapping_Start,
                                Collection_Properties => P.Inline_Props,
@@ -738,7 +738,7 @@ package body Yaml.Parsing is
             P.Current := Lexing.Next_Token (P.L);
             return True;
          when Lexing.Flow_Seq_Start =>
-            E := Events.Event'(Start_Position => P.Header_Start,
+            E := Events.Event'(Start_Position => P.Inline_Start,
                                End_Position   => P.Current.End_Pos,
                                Kind => Events.Sequence_Start,
                                Collection_Properties => P.Inline_Props,

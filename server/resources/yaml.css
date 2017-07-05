@@ -1,0 +1,46 @@
+.yaml-input {
+  background: #f8f8f8;
+}
+
+.yaml-output, .yaml-events {
+  background: #f8f8ef;
+}
+
+.yaml-error {
+  background: #f8efef;
+}
+
+.yaml-input .anchor,
+.yaml-input .ALIAS {
+  color: #939;
+}
+
+.yaml-input .tag {
+  color: #399;
+}
+
+.yaml-input .DOCUMENT_START,
+.yaml-input .DOCUMENT_END {
+  color: #272;
+  font-weight: bold;
+}
+
+.yaml-input .SCALAR {
+  color: #338;
+}
+
+.yaml-input .mouseover,
+.yaml-output .mouseover,
+.yaml-events .mouseover {
+  background: #aa9;
+}
+
+table.yaml-inspect {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #666;
+}
+table.yaml-inspect td {
+  width: 50%;
+  vertical-align: top;
+}
