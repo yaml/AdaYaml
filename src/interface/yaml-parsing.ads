@@ -22,6 +22,23 @@ package Yaml.Parsing is
 
    --  instructs the parser to parse the input provided as String.
    procedure Set_Input (P : in out Parser; Input : String);
+
+   --  retrieve the position where the lexer last tried to start reading a
+   --  token. this function can be used when a Lexer_Error occurred.
+   function Current_Lexer_Token_Start (P : Parser) return Mark;
+
+   --  retrieve the position of the recently read character. this is useful
+   --  when a Lexer_Error occurred.
+   function Current_Input_Character (P : Parser) return Mark;
+
+   --  retrieve the start position of the recently processed lexer token.
+   --  useful when a Parser_Error occurred.
+   function Recent_Lexer_Token_Start (P : Parser) return Mark;
+
+   --  retrieve the end position of the recently processed lexer token.
+   --  useful when a Parser_Error occurred.
+   function Recend_Lexer_Token_End (P : Parser) return Mark;
+
 private
    type Parser is new Streams.Event_Stream with null record;
 
@@ -52,6 +69,7 @@ private
       Header_Start, Inline_Start : Mark;
       Block_Indentation : Indentation_Type;
    end record;
+   type Parser_Implementation_Access is access all Parser_Implementation'Class;
 
    overriding procedure Close_Stream (Stream : in out Parser_Implementation);
 

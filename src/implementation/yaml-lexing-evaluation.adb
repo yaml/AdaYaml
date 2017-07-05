@@ -60,12 +60,13 @@ package body Yaml.Lexing.Evaluation is
            else Flow_Line_Indentation'Access);
    begin
       L.Seen_Multiline := False;
-      Start_Token (L, T);
+      Start_Token (L);
       if L.Proposed_Indentation /= -1 then
          L.Indentation := L.Proposed_Indentation;
          L.Proposed_Indentation := -1;
       end if;
-      T.Kind := Plain_Scalar;
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => <>,
+            Kind => Plain_Scalar);
       Multiline_Loop : loop
          Inline_Loop : loop
             Add (Result, L.Cur);
@@ -226,12 +227,11 @@ package body Yaml.Lexing.Evaluation is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
       L.Seen_Multiline := False;
-      Start_Token (L, T);
+      Start_Token (L);
       if L.Proposed_Indentation /= -1 then
          L.Indentation := L.Proposed_Indentation;
          L.Proposed_Indentation := -1;
       end if;
-      T.Kind := Single_Quoted_Scalar;
       L.Cur := Next (L);
       loop
          case L.Cur is
@@ -253,7 +253,8 @@ package body Yaml.Lexing.Evaluation is
                L.Cur := Next (L);
          end case;
       end loop;
-      T.End_Pos := Cur_Mark (L);
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Single_Quoted_Scalar);
       L.Value := New_Content_From (L.Pool, Result);
    end Read_Single_Quoted_Scalar;
 
@@ -287,12 +288,11 @@ package body Yaml.Lexing.Evaluation is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
       L.Seen_Multiline := False;
-      Start_Token (L, T);
+      Start_Token (L);
       if L.Proposed_Indentation /= -1 then
          L.Indentation := L.Proposed_Indentation;
          L.Proposed_Indentation := -1;
       end if;
-      T.Kind := Double_Quoted_Scalar;
       L.Cur := Next (L);
       loop
          <<Handle_Char>>
@@ -339,7 +339,8 @@ package body Yaml.Lexing.Evaluation is
          L.Cur := Next (L);
       end loop;
       L.Cur := Next (L);
-      T.End_Pos := Cur_Mark (L);
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Double_Quoted_Scalar);
       L.Value := New_Content_From (L.Pool, Result);
    end Read_Double_Quoted_Scalar;
 
@@ -352,8 +353,9 @@ package body Yaml.Lexing.Evaluation is
 
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
-      Start_Token (L, T);
-      T.Kind := (if L.Cur = '>' then Folded_Scalar else Literal_Scalar);
+      Start_Token (L);
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => <>,
+            Kind => (if L.Cur = '>' then Folded_Scalar else Literal_Scalar));
 
       --  header
       loop
@@ -512,7 +514,7 @@ package body Yaml.Lexing.Evaluation is
       --  if we encounter the stream end directly after a newline character,
       --  we must have stored the T.End_Pos beforehand because we cannot
       --  calculate it back (we do not know how long the recent line was).
-      if L.Pos /= L.Line_Start then
+      if L.Pos /= L.Line_Start + 1 then
          T.End_Pos := Cur_Mark (L);
          --  the generated End_Pos is *after* the stream end char, which is one
          --  too far; compensate here.

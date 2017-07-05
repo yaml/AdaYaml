@@ -83,6 +83,10 @@ private package Yaml.Lexing is
    function Current_Indentation (L : Lexer) return Indentation_Type with Inline;
    function Recent_Indentation (L : Lexer) return Indentation_Type with Inline;
    function Last_Scalar_Was_Multiline (L : Lexer) return Boolean with Inline;
+
+   function Recent_Start_Mark (L : Lexer) return Mark with Inline;
+   function Cur_Mark (L : Lexer; Offset : Integer := -1) return Mark
+     with Inline;
 private
    type Buffer_Type is access all UTF_8_String;
 
@@ -95,6 +99,9 @@ private
         --  index of the character that started the current token PLUS ONE.
         --  this index is one behind the actual first token for implementation
         --  reasons; use Short_Lexeme and Full_Lexeme to compensate.
+      Token_Start_Mark : Mark;
+        --  mark at the current token's start. necessary for inspection in the
+        --  case of a Lexer_Error.
       Line_Start  : Positive;
         --  the buffer index where the current line started
       Prev_Lines_Chars : Natural;
@@ -188,9 +195,7 @@ private
 
    function Next_Is_Plain_Safe (L : Lexer) return Boolean with Inline;
 
-   procedure Start_Token (L : in out Lexer; T : out Token) with Inline;
-   function Cur_Mark (L : Lexer; Offset : Integer := -1) return Mark
-     with Inline;
+   procedure Start_Token (L : in out Lexer) with Inline;
 
    type Line_Start_Kind is (Directives_End_Marker, Document_End_Marker,
                             Comment, Newline, Stream_End, Content);

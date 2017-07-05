@@ -1,0 +1,17 @@
+with "yaml";
+
+project Yaml_Server is
+   for Languages use ("ada");
+
+   for Object_Dir use "server/obj";
+   for Library_Dir use "server/lib";
+   for Exec_Dir use "server/bin";
+
+   for Main use ("yaml-inspector.adb");
+
+   package Builder renames Yaml.Builder;
+   package Compiler renames Yaml.Compiler;
+   package Ide renames Yaml.Ide;
+
+   for Source_Dirs use ("server/src");
+end Yaml_Server;

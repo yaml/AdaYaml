@@ -39,6 +39,11 @@ package Yaml.Streams is
    --  object to be the backend of its Event_Stream-derived interface type.
    procedure Create (Stream : in out Event_Stream'Class;
                      Implementation : Implementation_Access);
+
+   --  accessor for the stream's implementation. mainly useful for adding
+   --  subroutines to the type deriving from Event_Stream.
+   function Implementation (Stream : Event_Stream'Class)
+                            return Implementation_Access;
 private
    type Event_Stream is new Ada.Finalization.Controlled with record
       Implementation : Implementation_Access;

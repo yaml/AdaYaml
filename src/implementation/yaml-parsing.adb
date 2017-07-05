@@ -57,6 +57,21 @@ package body Yaml.Parsing is
       end loop;
    end Fetch;
 
+   function Current_Lexer_Token_Start (P : Parser) return Mark is
+     (Lexing.Recent_Start_Mark (Parser_Implementation_Access (P.Implementation).L));
+
+   function Current_Input_Character (P : Parser) return Mark is
+     (Lexing.Cur_Mark (Parser_Implementation_Access (P.Implementation).L));
+
+   function Recent_Lexer_Token_Start (P : Parser) return Mark is
+     (Parser_Implementation_Access (P.Implementation).Current.Start_Pos);
+
+   function Recend_Lexer_Token_End (P : Parser) return Mark is
+     (Parser_Implementation_Access (P.Implementation).Current.End_Pos);
+
+   -----------------------------------------------------------------------------
+   --                   internal utility subroutines
+   -----------------------------------------------------------------------------
 
    procedure Reset_Tag_Handles (P : in out Parser_Implementation'Class) is
    begin
@@ -98,6 +113,10 @@ package body Yaml.Parsing is
          when Lexing.Double_Quoted_Scalar => Events.Double_Quoted,
          when Lexing.Literal_Scalar => Events.Literal,
          when Lexing.Folded_Scalar => Events.Folded) with Inline;
+
+   -----------------------------------------------------------------------------
+   --                        state implementations
+   -----------------------------------------------------------------------------
 
    function At_Stream_Start (P : in out Parser_Implementation'Class;
                              E : out Events.Event) return Boolean is

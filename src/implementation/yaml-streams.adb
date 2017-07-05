@@ -50,4 +50,8 @@ package body Yaml.Streams is
       Stream.Implementation := Implementation;
       Implementation.Refcount := 1;
    end Create;
+
+   function Implementation (Stream : Event_Stream'Class)
+                            return Implementation_Access is
+      (Stream.Implementation);
 end Yaml.Streams;

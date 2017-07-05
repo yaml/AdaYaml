@@ -207,10 +207,10 @@ package body Yaml.Lexing is
    function Full_Lexeme (L : Lexer) return String is
      (L.Buffer (L.Token_Start - 1 .. L.Pos - 2));
 
-   procedure Start_Token (L : in out Lexer; T : out Token) is
+   procedure Start_Token (L : in out Lexer) is
    begin
       L.Token_Start := L.Pos;
-      T := (Start_Pos => Cur_Mark (L), others => <>);
+      L.Token_Start_Mark := Cur_Mark (L);
    end Start_Token;
 
    function Cur_Mark (L : Lexer; Offset : Integer := -1) return Mark is
@@ -232,6 +232,9 @@ package body Yaml.Lexing is
 
    function Last_Scalar_Was_Multiline (L : Lexer) return Boolean is
      (L.Seen_Multiline);
+
+   function Recent_Start_Mark (L : Lexer) return Mark is
+     (L.Token_Start_Mark);
 
    --  to be called whenever a '-' is read as first character in a line. this
    --  function checks for whether this is a directives end marker ('---'). if
@@ -302,12 +305,13 @@ package body Yaml.Lexing is
    begin
       case L.Cur is
          when '%' =>
-            Start_Token (L, T);
+            Start_Token (L);
             loop
                L.Cur := Next (L);
                exit when L.Cur in Space_Or_Line_End;
             end loop;
-            T.End_Pos := Cur_Mark (L);
+            T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+                  Kind => <>);
             declare
                Name : constant String := Short_Lexeme (L);
             begin
@@ -326,7 +330,7 @@ package body Yaml.Lexing is
                end if;
             end;
          when '-' =>
-            Start_Token (L, T);
+            Start_Token (L);
             if Is_Directives_End (L) then
                L.State := After_Token'Access;
                T.Kind := Directives_End;
@@ -334,12 +338,13 @@ package body Yaml.Lexing is
                L.State := Indentation_Setting_Token'Access;
                T.Kind := Indentation;
             end if;
+            T.Start_Pos := L.Token_Start_Mark;
             T.End_Pos := Cur_Mark (L);
             L.Indentation := -1;
             L.Line_Start_State := Line_Start'Access;
             return True;
          when '.' =>
-            Start_Token (L, T);
+            Start_Token (L);
             if Is_Document_End (L) then
                L.State := Expect_Line_End'Access;
                T.Kind := Document_End;
@@ -349,10 +354,11 @@ package body Yaml.Lexing is
                L.Indentation := -1;
                T.Kind := Indentation;
             end if;
+            T.Start_Pos := L.Token_Start_Mark;
             T.End_Pos := Cur_Mark (L);
             return True;
          when others =>
-            Start_Token (L, T);
+            Start_Token (L);
             while L.Cur = ' ' loop
                L.Cur := Next (L);
             end loop;
@@ -360,8 +366,8 @@ package body Yaml.Lexing is
                L.State := Expect_Line_End'Access;
                return False;
             end if;
-            T.Kind := Indentation;
-            T.End_Pos := Cur_Mark (L);
+            T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+                  Kind => Indentation);
             L.Indentation := -1;
             L.State := Indentation_Setting_Token'Access;
             L.Line_Start_State := Line_Start'Access;
@@ -385,7 +391,7 @@ package body Yaml.Lexing is
       while L.Cur = ' ' loop
          L.Cur := Next (L);
       end loop;
-      Start_Token (L, T);
+      Start_Token (L);
       Read_Numeric_Subtoken;
       if L.Cur /= '.' then
          raise Lexer_Error with "Illegal character in YAML version string: " &
@@ -397,8 +403,8 @@ package body Yaml.Lexing is
          raise Lexer_Error with "Illegal character in YAML version string: " &
            Escaped (L.Cur);
       end if;
-      T.End_Pos := Cur_Mark (L);
-      T.Kind := Directive_Param;
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Directive_Param);
       L.State := Expect_Line_End'Access;
       return True;
    end Yaml_Version;
@@ -413,7 +419,7 @@ package body Yaml.Lexing is
            "Illegal character, tag shorthand must start with ""!"":" &
            Escaped (L.Cur);
       end if;
-      Start_Token (L, T);
+      Start_Token (L);
       L.Cur := Next (L);
       if L.Cur /= ' ' then
          while L.Cur in Tag_Shorthand_Char loop
@@ -432,8 +438,8 @@ package body Yaml.Lexing is
             raise Lexer_Error with "Missing space after tag shorthand";
          end if;
       end if;
-      T.End_Pos := Cur_Mark (L);
-      T.Kind := Tag_Handle;
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Tag_Handle);
       L.State := At_Tag_Uri'Access;
       return True;
    end Tag_Shorthand;
@@ -443,14 +449,14 @@ package body Yaml.Lexing is
       while L.Cur = ' ' loop
          L.Cur := Next (L);
       end loop;
-      Start_Token (L, T);
+      Start_Token (L);
       if L.Cur = '<' then
          raise Lexer_Error with "Illegal character in tag prefix: " &
            Escaped (L.Cur);
       end if;
       Evaluation.Read_URI (L, False);
-      T.End_Pos := Cur_Mark (L);
-      T.Kind := Tag_Uri;
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Tag_Uri);
       L.State := Expect_Line_End'Access;
       return True;
    end At_Tag_Uri;
@@ -464,13 +470,13 @@ package body Yaml.Lexing is
          L.State := Expect_Line_End'Access;
          return False;
       end if;
-      Start_Token (L, T);
+      Start_Token (L);
       loop
          L.Cur := Next (L);
          exit when L.Cur in Space_Or_Line_End;
       end loop;
-      T.End_Pos := Cur_Mark (L);
-      T.Kind := Directive_Param;
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Directive_Param);
       return True;
    end Unknown_Directive;
 
@@ -515,9 +521,9 @@ package body Yaml.Lexing is
 
    function Stream_End (L : in out Lexer; T : out Token) return Boolean is
    begin
-      Start_Token (L, T);
-      T.End_Pos := Cur_Mark (L);
-      T.Kind := Stream_End;
+      Start_Token (L);
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Stream_End);
       return True;
    end Stream_End;
 
@@ -590,17 +596,18 @@ package body Yaml.Lexing is
       if Next_Is_Plain_Safe (L) then
          Evaluation.Read_Plain_Scalar (L, T);
       else
-         Start_Token (L, T);
+         Start_Token (L);
          L.Cur := Next (L);
-         T.Kind := Kind;
-         T.End_Pos := Cur_Mark (L);
+         T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+               Kind => Kind);
          L.State := Before_Indentation_Setting_Token'Access;
       end if;
    end Check_Indicator_Char;
 
-   procedure Enter_Flow_Collection (L : in out Lexer; T : out Token) is
+   procedure Enter_Flow_Collection (L : in out Lexer; T : out Token;
+                                    Kind : Token_Kind) is
    begin
-      Start_Token (L, T);
+      Start_Token (L);
       if L.Flow_Depth = 0 then
          L.Json_Enabling_State := After_Json_Enabling_Token'Access;
          L.Line_Start_State := Flow_Line_Start'Access;
@@ -609,12 +616,14 @@ package body Yaml.Lexing is
       L.Flow_Depth := L.Flow_Depth + 1;
       L.State := After_Token'Access;
       L.Cur := Next (L);
-      T.End_Pos := Cur_Mark (L);
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Kind);
    end Enter_Flow_Collection;
 
-   procedure Leave_Flow_Collection (L : in out Lexer; T : out Token) is
+   procedure Leave_Flow_Collection (L : in out Lexer; T : out Token;
+                                    Kind : Token_Kind) is
    begin
-      Start_Token (L, T);
+      Start_Token (L);
       if L.Flow_Depth = 0 then
          raise Lexer_Error with "No flow collection to leave!";
       end if;
@@ -625,18 +634,19 @@ package body Yaml.Lexing is
       end if;
       L.State := L.Json_Enabling_State;
       L.Cur := Next (L);
-      T.End_Pos := Cur_Mark (L);
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Kind);
    end Leave_Flow_Collection;
 
    procedure Read_Tag_Handle (L : in out Lexer; T : out Token) with
      Pre => L.Cur = '!' is
    begin
-      Start_Token (L, T);
+      Start_Token (L);
       L.Cur := Next (L);
       if L.Cur = '<' then
          Evaluation.Read_URI (L, False);
-         T.End_Pos := Cur_Mark (L);
-         T.Kind := Verbatim_Tag;
+         T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+               Kind => Verbatim_Tag);
          L.State := After_Token'Access;
       else
          --  we need to scan for a possible second '!' in case this is not a
@@ -666,21 +676,20 @@ package body Yaml.Lexing is
                end if;
             end loop;
             L.Cur := Next (L);
-            T.End_Pos := Cur_Mark (L);
-            T.Kind := Tag_Handle;
+            T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+                  Kind => Tag_Handle);
             L.State := At_Tag_Suffix'Access;
          end;
       end if;
    end Read_Tag_Handle;
 
-   procedure Read_Anchor_Name (L : in out Lexer; T : out Token) is
+   procedure Read_Anchor_Name (L : in out Lexer) is
    begin
-      Start_Token (L, T);
+      Start_Token (L);
       loop
          L.Cur := Next (L);
          exit when not (L.Cur in Ascii_Char | Digit | '-' | '_');
       end loop;
-      T.End_Pos := Cur_Mark (L);
       if not (L.Cur in Space_Or_Line_End | Flow_Indicator) then
          raise Lexer_Error with "Illegal character in anchor: " &
            Escaped (L.Cur);
@@ -727,42 +736,41 @@ package body Yaml.Lexing is
             end if;
             return True;
          when '{' =>
-            Enter_Flow_Collection (L, T);
-            T.Kind := Flow_Map_Start;
+            Enter_Flow_Collection (L, T, Flow_Map_Start);
             return True;
          when '}' =>
-            Leave_Flow_Collection (L, T);
-            T.Kind := Flow_Map_End;
+            Leave_Flow_Collection (L, T, Flow_Map_End);
             return True;
          when '[' =>
-            Enter_Flow_Collection (L, T);
-            T.Kind := Flow_Seq_Start;
+            Enter_Flow_Collection (L, T, Flow_Seq_Start);
             return True;
          when ']' =>
-            Leave_Flow_Collection (L, T);
-            T.Kind := Flow_Seq_End;
+            Leave_Flow_Collection (L, T, Flow_Seq_End);
             return True;
          when ',' =>
-            Start_Token (L, T);
+            Start_Token (L);
             L.Cur := Next (L);
-            T.End_Pos := Cur_Mark (L);
-            T.Kind := Flow_Separator;
+            T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+                  Kind => Flow_Separator);
             L.State := After_Token'Access;
             return True;
          when '!' =>
             Read_Tag_Handle (L, T);
             return True;
          when '&' =>
-            Read_Anchor_Name (L, T);
-            T.Kind := Anchor;
+            Read_Anchor_Name (L);
+            T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+                  Kind => Anchor);
             return True;
          when '*' =>
-            Read_Anchor_Name (L, T);
-            T.Kind := Alias;
+            Read_Anchor_Name (L);
+            T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+                  Kind => Alias);
             return True;
          when '@' =>
-            Read_Anchor_Name (L, T);
-            T.Kind := Annotation;
+            Read_Anchor_Name (L);
+            T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+                  Kind => Annotation);
             return True;
          when '`' =>
             raise Lexer_Error with
@@ -823,10 +831,10 @@ package body Yaml.Lexing is
       loop
          case L.Cur is
             when ':' =>
-               Start_Token (L, T);
+               Start_Token (L);
                L.Cur := Next (L);
-               T.Kind := Map_Value_Ind;
-               T.End_Pos := Cur_Mark (L);
+               T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+                     Kind => Map_Value_Ind);
                L.State := After_Token'Access;
                return True;
             when '#' | Carriage_Return | Line_Feed =>
@@ -879,10 +887,10 @@ package body Yaml.Lexing is
 
    function At_Tag_Suffix (L : in out Lexer; T : out Token) return Boolean is
    begin
-      Start_Token (L, T);
+      Start_Token (L);
       Evaluation.Read_URI (L, True);
-      T.End_Pos := Cur_Mark (L);
-      T.Kind := Tag_Uri;
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Tag_Uri);
       L.State := After_Token'Access;
       return True;
    end At_Tag_Suffix;
