@@ -12,8 +12,12 @@ package Yaml.Streams is
 
    Stream_Error : exception;
 
-   --  smart pointer with pointer semantics.
-   type Event_Stream is tagged private;
+   --  smart pointer with pointer semantics. you may override Initialize if
+   --  you want to declare a type that is automatically initialized.
+   type Event_Stream is new Ada.Finalization.Controlled with private;
+
+   overriding procedure Adjust (Stream : in out Event_Stream);
+   overriding procedure Finalize (Stream : in out Event_Stream);
 
    --  queries the next event from the stream.
    function Next (Stream : in out Event_Stream'Class) return Events.Event;
@@ -48,9 +52,6 @@ private
    type Event_Stream is new Ada.Finalization.Controlled with record
       Implementation : Implementation_Access;
    end record;
-
-   overriding procedure Adjust (Stream : in out Event_Stream);
-   overriding procedure Finalize (Stream : in out Event_Stream);
 
    type Stream_Implementation is abstract tagged limited record
       Refcount : Natural := 1;

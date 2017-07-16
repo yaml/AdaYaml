@@ -66,7 +66,7 @@ package body Yaml.Parsing is
    function Recent_Lexer_Token_Start (P : Parser) return Mark is
      (Parser_Implementation_Access (P.Implementation).Current.Start_Pos);
 
-   function Recend_Lexer_Token_End (P : Parser) return Mark is
+   function Recent_Lexer_Token_End (P : Parser) return Mark is
      (Parser_Implementation_Access (P.Implementation).Current.End_Pos);
 
    -----------------------------------------------------------------------------

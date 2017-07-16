@@ -1,4 +1,5 @@
 with "yaml";
+with "components-connections_server-http_server";
 
 project Yaml_Server is
    for Languages use ("ada");
@@ -7,7 +8,7 @@ project Yaml_Server is
    for Library_Dir use "server/lib";
    for Exec_Dir use "server/bin";
 
-   for Main use ("yaml-inspector.adb");
+   for Main use ("yaml-server.adb");
 
    package Builder renames Yaml.Builder;
    package Compiler renames Yaml.Compiler;

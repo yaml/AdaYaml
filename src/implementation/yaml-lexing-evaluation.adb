@@ -124,8 +124,6 @@ package body Yaml.Lexing.Evaluation is
                when End_Of_Input =>
                   if L.Pos /= L.Line_Start then
                      T.End_Pos := Cur_Mark (L);
-                     T.End_Pos.Index := T.End_Pos.Index - 1;
-                     T.End_Pos.Column := T.End_Pos.Column - 1;
                   end if;
                   L.State := Stream_End'Access;
                   exit Multiline_Loop;

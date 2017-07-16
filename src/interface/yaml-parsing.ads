@@ -37,7 +37,7 @@ package Yaml.Parsing is
 
    --  retrieve the end position of the recently processed lexer token.
    --  useful when a Parser_Error occurred.
-   function Recend_Lexer_Token_End (P : Parser) return Mark;
+   function Recent_Lexer_Token_End (P : Parser) return Mark;
 
 private
    type Parser is new Streams.Event_Stream with null record;

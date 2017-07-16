@@ -1,4 +1,19 @@
-.yaml-input {
+#yaml-inspect-form {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.yaml-inspect .edit,
+.yaml-inspect .output-style {
+  display: inline-block;
+}
+
+#yaml-input {
   background: #f8f8f8;
 }
 
@@ -10,37 +25,66 @@
   background: #f8efef;
 }
 
-.yaml-input .anchor,
-.yaml-input .ALIAS {
+#yaml-input .anchor,
+#yaml-input .ALIAS {
   color: #939;
 }
 
-.yaml-input .tag {
+#yaml-input .tag {
   color: #399;
 }
 
-.yaml-input .DOCUMENT_START,
-.yaml-input .DOCUMENT_END {
+#yaml-input .DOCUMENT_START,
+#yaml-input .DOCUMENT_END {
   color: #272;
   font-weight: bold;
 }
 
-.yaml-input .SCALAR {
+#yaml-input .SCALAR {
   color: #338;
 }
 
-.yaml-input .mouseover,
+#yaml-input .mouseover,
 .yaml-output .mouseover,
 .yaml-events .mouseover {
   background: #aa9;
 }
 
-table.yaml-inspect {
+#yaml-inspect {
   width: 100%;
+  height: 100%;
   border-collapse: collapse;
-  border: 1px solid #666;
 }
-table.yaml-inspect td {
+#yaml-inspect td {
   width: 50%;
   vertical-align: top;
+  padding: 5px;
+}
+
+#yaml-inspect tr.header td {
+  height: 1.5em;
+}
+
+#yaml-inspect #editable-input {
+  display: none;
+}
+
+#yaml-inspect #cancel {
+  display: none;
+}
+
+#yaml-inspect.edit #editable-input {
+  display: block;
+  width: calc(100% - 10px);
+  height: calc(100% - 10px);
+  resize: none;
+  margin: 5px;
+}
+
+#yaml-inspect.edit #rendered-input {
+  display: none;
+}
+
+#yaml-inspect.edit #cancel {
+  display: inline;
 }
