@@ -27,9 +27,10 @@ package body Yaml.Servers is
             if Name_End <= Path'Last and then Path (Name_End) = '=' then
                if Path (Src_Pos .. Name_End - 1) = "input" then
                   Src_Pos := Name_End + 1;
-                  while Src_Pos <= Path'Last and then
-                    not (Path (Src_Pos) in '&' | '#') loop
-                     Src_Pos := Src_Pos + 1;
+                  --while Src_Pos <= Path'Last and then
+                  --  not (Path (Src_Pos) in '&' | '#') loop
+                  while Src_Pos <= Path'Last loop
+                    Src_Pos := Src_Pos + 1;
                   end loop;
                   return (Input_Length => Src_Pos - Name_End - 1,
                           Input => Path (Name_End + 1 .. Src_Pos - 1));
@@ -69,7 +70,7 @@ package body Yaml.Servers is
               "<script src=""resources/yaml-inspector.js""></script>" &
               "<link rel=""stylesheet"" href=""resources/yaml.css"" />" &
               "</head><body><form id=""yaml-inspect-form""><table id=""yaml-inspect"">" &
-              "<tr class=""header""><td colspan=""2""><button id=""edit"" type=""button"">Edit</button><button id=""cancel"">Cancel</button>");
+              "<tr class=""header""><td colspan=""2""><button id=""edit"" type=""button"">Edit</button><button id=""cancel"" type=""button"">Cancel</button>");
          Write_Output_Radio ("Events");
          Write_Output_Radio ("Canonical");
          Write_Output_Radio ("Like Input");
@@ -257,6 +258,7 @@ package body Yaml.Servers is
          when HTTP.None =>
             Client.Reply_Text (404, "Not found", "Resource not found");
          when HTTP.File =>
+            Ada.Text_IO.Put_Line ("File: " & Status.File);
             Client.Send_Status_Line (200, "OK");
             Client.Send_Date;
             Client.Send_Server;
@@ -264,6 +266,8 @@ package body Yaml.Servers is
             Generate (Client, Params (Status.File));
             Client.Send_Body;
          when HTTP.URI =>
+            Ada.Text_IO.Put_Line ("URI: " & Status.Path);
+            Ada.Text_IO.Put_Line ("Query: " & Status.Query);
             Client.Send_Status_Line (200, "OK");
             Client.Send_Date;
             Client.Send_Server;

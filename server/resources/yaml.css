@@ -17,7 +17,7 @@
   background: #f8f8f8;
 }
 
-.yaml-output, .yaml-events {
+#yaml-output {
   background: #f8f8ef;
 }
 
@@ -45,8 +45,7 @@
 }
 
 #yaml-input .mouseover,
-.yaml-output .mouseover,
-.yaml-events .mouseover {
+#yaml-output .mouseover {
   background: #aa9;
 }
 

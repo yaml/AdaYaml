@@ -61,6 +61,7 @@ begin
                        Content (Cur) in ' ' | Character'Val (10);
                   end loop;
                   Emit_Whitespace (Content (Start .. Cur - 1));
+                  exit when Cur > Content'Last;
                end if;
                Start := Cur;
                case Content (Cur) is
