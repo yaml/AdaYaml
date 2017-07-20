@@ -7,7 +7,7 @@ with Yaml.Sources.Files;
 
 with Utils;
 
-package body Yaml.Lexing.Buffering_Test is
+package body Yaml.Lexer.Buffering_Test is
    procedure Register_Tests (T : in out TC) is
       use AUnit.Test_Cases.Registration;
    begin
@@ -25,17 +25,18 @@ package body Yaml.Lexing.Buffering_Test is
 
    procedure Set_Up (T : in out TC) is
    begin
-      Strings.Create (T.Pool, 8092);
+      Text.Create (T.Pool, 8092);
    end Set_Up;
 
    procedure Test_File_Without_Refill (T : in out Test_Cases.Test_Case'Class) is
       Data_Path : constant String := "test/data/64char.yaml";
-      Expected : constant String := Utils.File_Content (Data_Path) & End_Of_Input;
+      Expected : constant String :=
+        Utils.File_Content (Data_Path) & End_Of_Input;
 
       S : constant Sources.Source_Access := Sources.Files .As_Source (Data_Path);
-      L : Lexer;
+      L : Instance;
    begin
-      Lexing.Init (L, S, TC (T).Pool, 64);
+      Init (L, S, TC (T).Pool, 64);
       Assert (L.Buffer.all'Length = 64, "Buffer length does not match! Val:" & L.Buffer.all'Length'Img);
       for I in Expected'Range loop
          Assert (Expected (I) = L.Cur, "Buffer contents at" & I'Img &
@@ -55,9 +56,9 @@ package body Yaml.Lexing.Buffering_Test is
       Expected : constant String := Utils.File_Content (Data_Path);
 
       S : constant Sources.Source_Access := Sources.Files.As_Source (Data_Path);
-      L : Lexer;
+      L : Instance;
    begin
-      Lexing.Init (L, S, TC (T).Pool, 64);
+      Init (L, S, TC (T).Pool, 64);
       Assert (L.Buffer.all'Length = 64, "Buffer length does not match! Val: " & L.Buffer.all'Length'Img);
       for I in Expected'Range loop
          Assert (Expected (I) = L.Cur, "Buffer contents at" & I'Img &
@@ -71,4 +72,4 @@ package body Yaml.Lexing.Buffering_Test is
          end case;
       end loop;
    end Test_File_With_Single_Refill;
-end Yaml.Lexing.Buffering_Test;
+end Yaml.Lexer.Buffering_Test;

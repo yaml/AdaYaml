@@ -254,6 +254,7 @@ package body Yaml.Servers is
    procedure Do_Get (Client : in out Yaml_Client) is
       Status : HTTP.Status_Line renames Get_Status_Line (Client);
    begin
+      Ada.Text_IO.Put_Line ("GET: " & Status.Kind'Img);
       case Status.Kind is
          when HTTP.None =>
             Client.Reply_Text (404, "Not found", "Resource not found");

@@ -5,7 +5,7 @@ with Ada.Strings.UTF_Encoding.Strings;
 with Ada.Strings.UTF_Encoding.Wide_Strings;
 with Ada.Strings.UTF_Encoding.Wide_Wide_Strings;
 
-package body Yaml.Lexing.Evaluation is
+package body Yaml.Lexer.Evaluation is
    -----------------------------------------------------------------------------
    --  constant UTF-8 strings that may be generated from escape sequences
    -----------------------------------------------------------------------------
@@ -36,26 +36,26 @@ package body Yaml.Lexing.Evaluation is
       O.Pos := O.Pos + 1;
    end Add;
 
-   procedure Add (O : in out Out_Buffer_Type; S : String) with Inline is
+   procedure Add (O : in out Out_Buffer_Type; S : Standard.String) with Inline is
    begin
       O.Content (O.Pos .. O.Pos + S'Length - 1) := S;
       O.Pos := O.Pos + S'Length;
    end Add;
 
-   function New_Content_From (Pool : in out Strings.String_Pool;
-                              O : Out_Buffer_Type) return Strings.Content is
-      (Strings.From_String (Pool, O.Content (1 .. O.Pos - 1))) with Inline;
+   function New_Content_From (Pool : in out Text.Pool;
+                              O : Out_Buffer_Type) return Text.Reference is
+      (Text.From_String (Pool, O.Content (1 .. O.Pos - 1))) with Inline;
 
    -----------------------------------------------------------------------------
    --  implementation
    -----------------------------------------------------------------------------
 
-   procedure Read_Plain_Scalar (L : in out Lexer; T : out Token) is
+   procedure Read_Plain_Scalar (L : in out Instance; T : out Token) is
       --  our scalar cannot possibly have more content than the size of our
       --  buffer. Therefore, we read its value into a string of the same size
       --  so we never have to do any bounds checking and growing of the string.
       Result : Out_Buffer_Type (L.Buffer.all'Length);
-      After_Newline_State : constant Lexer_State :=
+      After_Newline_State : constant State_Type :=
         (if L.Flow_Depth = 0 then Line_Indentation'Access
            else Flow_Line_Indentation'Access);
    begin
@@ -177,7 +177,7 @@ package body Yaml.Lexing.Evaluation is
       L.Value := New_Content_From (L.Pool, Result);
    end Read_Plain_Scalar;
 
-   procedure Process_Quoted_Whitespace (L : in out Lexer; Init : Natural;
+   procedure Process_Quoted_Whitespace (L : in out Instance; Init : Natural;
                                         Result : in out Out_Buffer_Type) is
       Newlines : Natural := Init;
       Before_Space : constant Positive := Result.Pos;
@@ -221,7 +221,7 @@ package body Yaml.Lexing.Evaluation is
       end if;
    end Process_Quoted_Whitespace;
 
-   procedure Read_Single_Quoted_Scalar (L : in out Lexer; T : out Token) is
+   procedure Read_Single_Quoted_Scalar (L : in out Instance; T : out Token) is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
       L.Seen_Multiline := False;
@@ -256,7 +256,7 @@ package body Yaml.Lexing.Evaluation is
       L.Value := New_Content_From (L.Pool, Result);
    end Read_Single_Quoted_Scalar;
 
-   procedure Read_Hex_Sequence (L : in out Lexer; Length : Positive;
+   procedure Read_Hex_Sequence (L : in out Instance; Length : Positive;
                                 Result : in out Out_Buffer_Type) is
       Char_Pos : Natural := 0;
    begin
@@ -282,7 +282,7 @@ package body Yaml.Lexing.Evaluation is
            "" & Wide_Wide_Character'Val (Char_Pos)));
    end Read_Hex_Sequence;
 
-   procedure Read_Double_Quoted_Scalar (L : in out Lexer; T : out Token) is
+   procedure Read_Double_Quoted_Scalar (L : in out Instance; T : out Token) is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
    begin
       L.Seen_Multiline := False;
@@ -342,7 +342,7 @@ package body Yaml.Lexing.Evaluation is
       L.Value := New_Content_From (L.Pool, Result);
    end Read_Double_Quoted_Scalar;
 
-   procedure Read_Block_Scalar (L : in out Lexer; T : out Token) is
+   procedure Read_Block_Scalar (L : in out Instance; T : out Token) is
       type Chomp_Style is (Clip, Strip, Keep);
 
       Chomp : Chomp_Style := Clip;
@@ -534,7 +534,7 @@ package body Yaml.Lexing.Evaluation is
       L.Value := New_Content_From (L.Pool, Result);
    end Read_Block_Scalar;
 
-   procedure Read_URI (L : in out Lexer; Restricted : Boolean) is
+   procedure Read_URI (L : in out Instance; Restricted : Boolean) is
       Result : Out_Buffer_Type (L.Buffer.all'Length);
       End_With_Space : constant Boolean := L.Cur /= '<';
    begin
@@ -586,4 +586,4 @@ package body Yaml.Lexing.Evaluation is
    end Read_URI;
 
 
-end Yaml.Lexing.Evaluation;
+end Yaml.Lexer.Evaluation;

@@ -1,9 +1,9 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Yaml.Strings.Chunk_Test;
+with Yaml.Text.Chunk_Test;
 
-package body Yaml.Strings.Suite is
+package body Yaml.Text.Suite is
    Result : aliased AUnit.Test_Suites.Test_Suite;
    Chunk_TC : aliased Chunk_Test.TC;
 
@@ -12,4 +12,4 @@ package body Yaml.Strings.Suite is
       AUnit.Test_Suites.Add_Test (Result'Access, Chunk_TC'Access);
       return Result'Access;
    end Suite;
-end Yaml.Strings.Suite;
+end Yaml.Text.Suite;

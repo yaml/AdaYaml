@@ -2,25 +2,26 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Ada.Unchecked_Deallocation;
-with Yaml.Lexing.Evaluation;
+with Yaml.Lexer.Evaluation;
 
-package body Yaml.Lexing is
-   use Yaml.Strings;
+package body Yaml.Lexer is
+   use type Text.Reference;
 
    -----------------------------------------------------------------------------
    --             Initialization and buffer handling                          --
    -----------------------------------------------------------------------------
 
-   procedure Free is new Ada.Unchecked_Deallocation (String, Buffer_Type);
+   procedure Free is new Ada.Unchecked_Deallocation
+     (String, Buffer_Type);
 
-   function Next (Object : in out Lexer) return Character is
+   function Next (Object : in out Instance) return Character is
    begin
       return C : constant Character := Object.Buffer (Object.Pos) do
          Object.Pos := Object.Pos + 1;
       end return;
    end Next;
 
-   procedure Refill_Buffer (L : in out Lexer) is
+   procedure Refill_Buffer (L : in out Instance) is
       Bytes_To_Copy : constant Natural := L.Buffer'Last + 1 - L.Sentinel;
       Fill_At : Positive := Bytes_To_Copy + 1;
       Bytes_Read : Positive;
@@ -40,7 +41,8 @@ package body Yaml.Lexing is
       end Search_Sentinel;
    begin
       if Bytes_To_Copy > 0 then
-         L.Buffer (1 .. Bytes_To_Copy) := L.Buffer (L.Sentinel .. L.Buffer'Last);
+         L.Buffer (1 .. Bytes_To_Copy) :=
+           L.Buffer (L.Sentinel .. L.Buffer'Last);
       end if;
       loop
          L.Input.Read_Data (L.Buffer (Fill_At .. L.Buffer'Last), Bytes_Read);
@@ -63,7 +65,7 @@ package body Yaml.Lexing is
       end loop;
    end Refill_Buffer;
 
-   procedure Handle_CR (L : in out Lexer) is
+   procedure Handle_CR (L : in out Instance) is
    begin
       if L.Buffer (L.Pos) = Line_Feed then
          L.Pos := L.Pos + 1;
@@ -81,7 +83,7 @@ package body Yaml.Lexing is
       L.Cur := Next (L);
    end Handle_CR;
 
-   procedure Handle_LF (L : in out Lexer) is
+   procedure Handle_LF (L : in out Instance) is
    begin
       L.Prev_Lines_Chars :=
         L.Prev_Lines_Chars + L.Pos - L.Line_Start;
@@ -94,8 +96,8 @@ package body Yaml.Lexing is
       L.Cur := Next (L);
    end Handle_LF;
 
-   procedure Basic_Init (L : in out Lexer; Input : Sources.Source_Access;
-                        Buffer : Buffer_Type; Pool  : Strings.String_Pool) is
+   procedure Basic_Init (L : in out Instance; Input : Sources.Source_Access;
+                        Buffer : Buffer_Type; Pool  : Text.Pool) is
    begin
       L.Input := Input;
       L.Sentinel := Buffer.all'Last + 1;
@@ -113,7 +115,7 @@ package body Yaml.Lexing is
    end Basic_Init;
 
    procedure Init
-     (L : in out Lexer; Input : Sources.Source_Access; Pool : Strings.String_Pool;
+     (L : in out Instance; Input : Sources.Source_Access; Pool : Text.Pool;
       Initial_Buffer_Size : Positive := Default_Initial_Buffer_Size) is
    begin
       Basic_Init (L, Input, new String (1 .. Initial_Buffer_Size), Pool);
@@ -121,15 +123,14 @@ package body Yaml.Lexing is
       L.Cur := Next (L);
    end Init;
 
-   procedure Init (L : in out Lexer; Input : String;
-                   Pool : Strings.String_Pool) is
+   procedure Init (L : in out Instance; Input : String; Pool : Text.Pool) is
    begin
       Basic_Init (L, null, new String (1 .. Input'Length + 1), Pool);
       L.Buffer.all := Input & End_Of_Input;
       L.Cur := Next (L);
    end Init;
 
-   procedure Finish (L : in out Lexer) is
+   procedure Finish (L : in out Instance) is
       procedure Free is new Ada.Unchecked_Deallocation
         (Sources.Source'Class, Sources.Source_Access);
       use type Sources.Source_Access;
@@ -181,18 +182,19 @@ package body Yaml.Lexing is
       return Ret (1 .. Retpos);
    end Escaped;
 
-   function Escaped (C : Character) return String is (Escaped ("" & C));
+   function Escaped (C : Character) return String is
+     (Escaped ("" & C));
 
-   function Escaped (C : Strings.Content) return String is
-     (Escaped (C.Get));
+   function Escaped (C : Text.Reference) return String is
+     (Escaped (C.Value));
 
-   function Next_Is_Plain_Safe (L : Lexer) return Boolean is
+   function Next_Is_Plain_Safe (L : Instance) return Boolean is
       (case L.Buffer (L.Pos) is
          when Space_Or_Line_End => False,
          when Flow_Indicator => L.Flow_Depth = 0,
           when others => True);
 
-   function Next_Token (L : in out Lexer) return Token is
+   function Next_Token (L : in out Instance) return Token is
       Ret : Token;
    begin
       loop
@@ -201,45 +203,45 @@ package body Yaml.Lexing is
       return Ret;
    end Next_Token;
 
-   function Short_Lexeme (L : Lexer) return String is
+   function Short_Lexeme (L : Instance) return String is
       (L.Buffer (L.Token_Start .. L.Pos - 2));
 
-   function Full_Lexeme (L : Lexer) return String is
+   function Full_Lexeme (L : Instance) return String is
      (L.Buffer (L.Token_Start - 1 .. L.Pos - 2));
 
-   procedure Start_Token (L : in out Lexer) is
+   procedure Start_Token (L : in out Instance) is
    begin
       L.Token_Start := L.Pos;
       L.Token_Start_Mark := Cur_Mark (L);
    end Start_Token;
 
-   function Cur_Mark (L : Lexer; Offset : Integer := -1) return Mark is
+   function Cur_Mark (L : Instance; Offset : Integer := -1) return Mark is
      ((Line =>  L.Cur_Line,
        Column => L.Pos + 1 - L.Line_Start + Offset,
        Index => L.Prev_Lines_Chars + L.Pos + 1 - L.Line_Start + Offset));
 
-   function Current_Content (L : Lexer) return Strings.Content is
+   function Current_Content (L : Instance) return Text.Reference is
      (L.Value);
 
-   function Escaped_Current (L : Lexer) return String is
+   function Escaped_Current (L : Instance) return String is
       (Escaped (L.Value));
 
-   function Current_Indentation (L : Lexer) return Indentation_Type is
+   function Current_Indentation (L : Instance) return Indentation_Type is
      (L.Pos - L.Line_Start - 1);
 
-   function Recent_Indentation (L : Lexer) return Indentation_Type is
+   function Recent_Indentation (L : Instance) return Indentation_Type is
      (L.Indentation);
 
-   function Last_Scalar_Was_Multiline (L : Lexer) return Boolean is
+   function Last_Scalar_Was_Multiline (L : Instance) return Boolean is
      (L.Seen_Multiline);
 
-   function Recent_Start_Mark (L : Lexer) return Mark is
+   function Recent_Start_Mark (L : Instance) return Mark is
      (L.Token_Start_Mark);
 
    --  to be called whenever a '-' is read as first character in a line. this
    --  function checks for whether this is a directives end marker ('---'). if
    --  yes, the lexer position is updated to be after the marker.
-   function Is_Directives_End (L : in out Lexer) return Boolean is
+   function Is_Directives_End (L : in out Instance) return Boolean is
       Peek : Positive := L.Pos;
    begin
       if L.Buffer (Peek) = '-' then
@@ -259,7 +261,7 @@ package body Yaml.Lexing is
    --  similar to Hyphen_Line_Type, this function checks whether, when a line
    --  begin with a '.', that line contains a document end marker ('...'). if
    --  yes, the lexer position is updated to be after the marker.
-   function Is_Document_End (L : in out Lexer) return Boolean is
+   function Is_Document_End (L : in out Instance) return Boolean is
       Peek : Positive := L.Pos;
    begin
       if L.Buffer (Peek) = '.' then
@@ -276,7 +278,7 @@ package body Yaml.Lexing is
       return False;
    end Is_Document_End;
 
-   function Start_Line (L : in out Lexer) return Line_Start_Kind is
+   function Start_Line (L : in out Instance) return Line_Start_Kind is
    begin
       case L.Cur is
          when '-' =>
@@ -301,7 +303,7 @@ package body Yaml.Lexing is
    --                            Tokenization                                 --
    -----------------------------------------------------------------------------
 
-   function Outside_Doc (L : in out Lexer; T : out Token) return Boolean is
+   function Outside_Doc (L : in out Instance; T : out Token) return Boolean is
    begin
       case L.Cur is
          when '%' =>
@@ -375,7 +377,7 @@ package body Yaml.Lexing is
       end case;
    end Outside_Doc;
 
-   function Yaml_Version (L : in out Lexer; T : out Token) return Boolean is
+   function Yaml_Version (L : in out Instance; T : out Token) return Boolean is
       procedure Read_Numeric_Subtoken is
       begin
          if not (L.Cur in Digit) then
@@ -409,7 +411,7 @@ package body Yaml.Lexing is
       return True;
    end Yaml_Version;
 
-   function Tag_Shorthand (L : in out Lexer; T : out Token) return Boolean is
+   function Tag_Shorthand (L : in out Instance; T : out Token) return Boolean is
    begin
       while L.Cur = ' ' loop
          L.Cur := Next (L);
@@ -444,7 +446,7 @@ package body Yaml.Lexing is
       return True;
    end Tag_Shorthand;
 
-   function At_Tag_Uri (L : in out Lexer; T : out Token) return Boolean is
+   function At_Tag_Uri (L : in out Instance; T : out Token) return Boolean is
    begin
       while L.Cur = ' ' loop
          L.Cur := Next (L);
@@ -461,7 +463,7 @@ package body Yaml.Lexing is
       return True;
    end At_Tag_Uri;
 
-   function Unknown_Directive (L : in out Lexer; T : out Token) return Boolean
+   function Unknown_Directive (L : in out Instance; T : out Token) return Boolean
    is begin
       while L.Cur = ' ' loop
          L.Cur := Next (L);
@@ -480,7 +482,7 @@ package body Yaml.Lexing is
       return True;
    end Unknown_Directive;
 
-   procedure End_Line (L : in out Lexer) is
+   procedure End_Line (L : in out Instance) is
    begin
       loop
          case L.Cur is
@@ -505,7 +507,7 @@ package body Yaml.Lexing is
       end loop;
    end End_Line;
 
-   function Expect_Line_End (L : in out Lexer; T : out Token) return Boolean is
+   function Expect_Line_End (L : in out Instance; T : out Token) return Boolean is
       pragma Unreferenced (T);
    begin
       while L.Cur = ' ' loop
@@ -519,7 +521,7 @@ package body Yaml.Lexing is
       return False;
    end Expect_Line_End;
 
-   function Stream_End (L : in out Lexer; T : out Token) return Boolean is
+   function Stream_End (L : in out Instance; T : out Token) return Boolean is
    begin
       Start_Token (L);
       T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
@@ -527,7 +529,7 @@ package body Yaml.Lexing is
       return True;
    end Stream_End;
 
-   function Line_Start (L : in out Lexer; T : out Token) return Boolean is
+   function Line_Start (L : in out Instance; T : out Token) return Boolean is
    begin
       case Start_Line (L) is
          when Directives_End_Marker =>
@@ -545,7 +547,7 @@ package body Yaml.Lexing is
       end case;
    end Line_Start;
 
-   function Flow_Line_Start (L : in out Lexer; T : out Token) return Boolean is
+   function Flow_Line_Start (L : in out Instance; T : out Token) return Boolean is
       pragma Unreferenced (T);
       Indent : Natural;
    begin
@@ -578,7 +580,7 @@ package body Yaml.Lexing is
       return False;
    end Flow_Line_Start;
 
-   function Flow_Line_Indentation (L : in out Lexer; T : out Token)
+   function Flow_Line_Indentation (L : in out Instance; T : out Token)
                                    return Boolean is
       pragma Unreferenced (T);
    begin
@@ -590,7 +592,7 @@ package body Yaml.Lexing is
       return False;
    end Flow_Line_Indentation;
 
-   procedure Check_Indicator_Char (L : in out Lexer; Kind : Token_Kind;
+   procedure Check_Indicator_Char (L : in out Instance; Kind : Token_Kind;
                                    T : out Token) is
    begin
       if Next_Is_Plain_Safe (L) then
@@ -604,7 +606,7 @@ package body Yaml.Lexing is
       end if;
    end Check_Indicator_Char;
 
-   procedure Enter_Flow_Collection (L : in out Lexer; T : out Token;
+   procedure Enter_Flow_Collection (L : in out Instance; T : out Token;
                                     Kind : Token_Kind) is
    begin
       Start_Token (L);
@@ -620,7 +622,7 @@ package body Yaml.Lexing is
             Kind => Kind);
    end Enter_Flow_Collection;
 
-   procedure Leave_Flow_Collection (L : in out Lexer; T : out Token;
+   procedure Leave_Flow_Collection (L : in out Instance; T : out Token;
                                     Kind : Token_Kind) is
    begin
       Start_Token (L);
@@ -638,7 +640,7 @@ package body Yaml.Lexing is
             Kind => Kind);
    end Leave_Flow_Collection;
 
-   procedure Read_Tag_Handle (L : in out Lexer; T : out Token) with
+   procedure Read_Tag_Handle (L : in out Instance; T : out Token) with
      Pre => L.Cur = '!' is
    begin
       Start_Token (L);
@@ -683,7 +685,7 @@ package body Yaml.Lexing is
       end if;
    end Read_Tag_Handle;
 
-   procedure Read_Anchor_Name (L : in out Lexer) is
+   procedure Read_Anchor_Name (L : in out Instance) is
    begin
       Start_Token (L);
       loop
@@ -699,7 +701,7 @@ package body Yaml.Lexing is
       L.State := After_Token'Access;
    end Read_Anchor_Name;
 
-   function Inside_Line (L : in out Lexer; T : out Token) return Boolean is
+   function Inside_Line (L : in out Instance; T : out Token) return Boolean is
    begin
       case L.Cur is
          when ':' =>
@@ -781,7 +783,7 @@ package body Yaml.Lexing is
       end case;
    end Inside_Line;
 
-   function Indentation_Setting_Token (L : in out Lexer; T : out Token)
+   function Indentation_Setting_Token (L : in out Instance; T : out Token)
                                        return Boolean is
       Cached_Indentation : constant Natural := L.Pos - L.Line_Start - 1;
    begin
@@ -796,7 +798,7 @@ package body Yaml.Lexing is
       end return;
    end Indentation_Setting_Token;
 
-   function After_Token (L : in out Lexer; T : out Token) return Boolean is
+   function After_Token (L : in out Instance; T : out Token) return Boolean is
       pragma Unreferenced (T);
    begin
       while L.Cur = ' ' loop
@@ -810,7 +812,7 @@ package body Yaml.Lexing is
       return False;
    end After_Token;
 
-   function Before_Indentation_Setting_Token (L : in out Lexer; T : out Token)
+   function Before_Indentation_Setting_Token (L : in out Instance; T : out Token)
                                               return Boolean is
    begin
       if After_Token (L, T) then
@@ -822,7 +824,7 @@ package body Yaml.Lexing is
       return False;
    end Before_Indentation_Setting_Token;
 
-   function After_Json_Enabling_Token (L : in out Lexer; T : out Token)
+   function After_Json_Enabling_Token (L : in out Instance; T : out Token)
                                        return Boolean is
    begin
       while L.Cur = ' ' loop
@@ -850,7 +852,7 @@ package body Yaml.Lexing is
       end loop;
    end After_Json_Enabling_Token;
 
-   function Line_Indentation (L : in out Lexer; T : out Token)
+   function Line_Indentation (L : in out Instance; T : out Token)
                               return Boolean is
    begin
       T := (Start_Pos => (Line => L.Cur_Line,
@@ -860,7 +862,7 @@ package body Yaml.Lexing is
       return True;
    end Line_Indentation;
 
-   function Line_Dir_End (L : in out Lexer; T : out Token)
+   function Line_Dir_End (L : in out Instance; T : out Token)
                           return Boolean is
    begin
       T := (Start_Pos => (Line => L.Cur_Line,
@@ -874,7 +876,7 @@ package body Yaml.Lexing is
 
    --  similar to Indentation_After_Plain_Scalar, but used for a document end
    --  marker ending a plain scalar.
-   function Line_Doc_End (L : in out Lexer; T : out Token)
+   function Line_Doc_End (L : in out Instance; T : out Token)
                           return Boolean is
    begin
       T := (Start_Pos => (Line => L.Cur_Line,
@@ -885,7 +887,7 @@ package body Yaml.Lexing is
       return True;
    end Line_Doc_End;
 
-   function At_Tag_Suffix (L : in out Lexer; T : out Token) return Boolean is
+   function At_Tag_Suffix (L : in out Instance; T : out Token) return Boolean is
    begin
       Start_Token (L);
       Evaluation.Read_URI (L, True);
@@ -895,4 +897,4 @@ package body Yaml.Lexing is
       return True;
    end At_Tag_Suffix;
 
-end Yaml.Lexing;
+end Yaml.Lexer;

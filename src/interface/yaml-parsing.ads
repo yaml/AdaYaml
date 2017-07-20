@@ -3,11 +3,11 @@
 
 with Yaml.Streams;
 with Yaml.Sources;
-private with Yaml.Lexing;
+private with Yaml.Lexer;
 private with Yaml.Events;
-private with Yaml.Strings;
+private with Yaml.Text;
 private with Yaml.Stacks;
-private with Yaml.String_Sets;
+private with Yaml.Text_Set;
 
 package Yaml.Parsing is
    --  this package implements a parser that generates an event stream from a
@@ -56,15 +56,15 @@ private
    end record;
 
    package Level_Stacks is new Yaml.Stacks (Parsing_Level);
-   package Tag_Handle_Sets is new Yaml.String_Sets (Strings.Content);
+   package Tag_Handle_Sets is new Yaml.Text_Set (Text.Reference);
 
    type Parser_Implementation is new Streams.Stream_Implementation with record
-      Pool : Strings.String_Pool;
-      L : Lexing.Lexer;
+      Pool : Text.Pool;
+      L : Lexer.Instance;
       Levels : Level_Stacks.Stack;
-      Current : Lexing.Token;
+      Current : Lexer.Token;
       Cached : Events.Event;
-      Tag_Handles : Tag_Handle_Sets.String_Set;
+      Tag_Handles : Tag_Handle_Sets.Reference;
       Header_Props, Inline_Props : Events.Properties;
       Header_Start, Inline_Start : Mark;
       Block_Indentation : Indentation_Type;

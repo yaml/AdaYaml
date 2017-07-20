@@ -3,11 +3,11 @@
 
 with Ada.Strings.Fixed;
 with Ada.Unchecked_Deallocation;
-with Yaml.Strings;
+with Yaml.Text;
 with Yaml.Presenting.Analysis;
 
 package body Yaml.Presenting is
-   use Yaml.Strings;
+   use type Text.Reference;
    use type Events.Event_Kind;
    use type Events.Collection_Style_Type;
 
@@ -56,7 +56,8 @@ package body Yaml.Presenting is
       end if;
    end Flush;
 
-   procedure Free_S is new Ada.Unchecked_Deallocation (String, Buffer_Type);
+   procedure Free_S is new Ada.Unchecked_Deallocation
+     (String, Buffer_Type);
 
    procedure Finalize (Object : in out Presenter) is
       procedure Free_D is new Ada.Unchecked_Deallocation
@@ -186,16 +187,16 @@ package body Yaml.Presenting is
                                          return Boolean is
       begin
          return Wrote_Anything : Boolean := False do
-            if Props.Anchor /= Null_Content then
-               Write (" &" & Props.Anchor.Get);
+            if Props.Anchor /= Text.Empty then
+               Write (" &" & Props.Anchor);
                Wrote_Anything := True;
             end if;
-            if Props.Tag /= Null_Content then
-               Write (" !<" & Props.Tag.Get & '>');
+            if Props.Tag /= Text.Empty then
+               Write (" !<" & Props.Tag & '>');
                Wrote_Anything := True;
             end if;
             for Index in 1 .. Props.Annotations.Length loop
-               Write (" @" & Props.Annotations.Element (Index).Get);
+               Write (" @" & Props.Annotations.Element (Index).all);
                Wrote_Anything := True;
             end loop;
          end return;
@@ -205,16 +206,16 @@ package body Yaml.Presenting is
                                           return Boolean is
       begin
          return Wrote_Anything : Boolean := False do
-            if Props.Anchor /= Null_Content then
-               Write ('&' & Props.Anchor.Get & ' ');
+            if Props.Anchor /= Text.Empty then
+               Write ('&' & Props.Anchor & ' ');
                Wrote_Anything := True;
             end if;
-            if Props.Tag /= Null_Content then
-               Write ("!<" & Props.Tag.Get & "> ");
+            if Props.Tag /= Text.Empty then
+               Write ("!<" & Props.Tag & "> ");
                Wrote_Anything := True;
             end if;
             for Index in 1 .. Props.Annotations.Length loop
-               Write ('@' & Props.Annotations.Element (Index).Get & ' ');
+               Write ('@' & Props.Annotations.Element (Index).all & ' ');
                Wrote_Anything := True;
             end loop;
          end return;
@@ -224,7 +225,7 @@ package body Yaml.Presenting is
         with Pre => E.Kind = Events.Scalar is
       begin
          Write (" """);
-         for C of E.Value.Get loop
+         for C of E.Content.Value loop
             case C is
                when '"' | '\'          => Write ('\' & C);
                when Character'Val (7)  => Write ("\a");
@@ -242,12 +243,13 @@ package body Yaml.Presenting is
         with Pre => E.Kind = Events.Scalar is
          This_Max_Line_Length : constant Positive := Positive'Max
            (Max_Line_Length / 2, Max_Line_Length - P.Levels.Top.Indentation);
-         Buffer : String (1 .. This_Max_Line_Length + P.Levels.Top.Indentation)
+         Buffer : String
+           (1 .. This_Max_Line_Length + P.Levels.Top.Indentation)
            := (1 => '"', others => <>);
          Pos : Positive := 2;
          Recent_Was_Space : Boolean := False;
       begin
-         for C of E.Value.Get loop
+         for C of E.Content.Value loop
             case C is
                when '"' | '\' =>
                   Buffer (Pos) := '\';
@@ -316,7 +318,7 @@ package body Yaml.Presenting is
       procedure Render_Single_Line_Plain
         with Pre => E.Kind = Events.Scalar is
       begin
-         Write (E.Value.Get);
+         Write (E.Content.Value);
       end Render_Single_Line_Plain;
 
       procedure Render_Multi_Line_Plain
@@ -327,9 +329,9 @@ package body Yaml.Presenting is
          Pos : Positive := 1;
          First : Boolean := True;
       begin
-         while Pos < E.Value.Get.Data'Last loop
-            if E.Value.Get.Data (Pos) = ' ' and then
-              not (E.Value.Get.Data (Pos + 1) in ' ' | Character'Val (10)) then
+         while Pos < E.Content.Value.Data'Last loop
+            if E.Content.Value.Data (Pos) = ' ' and then
+              not (E.Content.Value.Data (Pos + 1) in ' ' | Character'Val (10)) then
                if P.Cur_Column + Pos - Word_Start <= This_Max_Line_Length then
                   if First then
                      First := False;
@@ -339,7 +341,7 @@ package body Yaml.Presenting is
                else
                   Next_Line;
                end if;
-               Write (E.Value.Get (Word_Start .. Pos - 1));
+               Write (E.Content.Value (Word_Start .. Pos - 1));
                Word_Start := Pos + 1;
                Pos := Pos + 2;
             else
@@ -355,17 +357,17 @@ package body Yaml.Presenting is
          else
             Next_Line;
          end if;
-         Write (E.Value.Get (Word_Start .. E.Value.Get.Data'Last));
+         Write (E.Content.Value.Data (Word_Start .. E.Content.Value.Data'Last));
       end Render_Multi_Line_Plain;
 
       procedure Render_Literal_Scalar with Pre => E.Kind = Events.Scalar is
       begin
-         Write (" |" & E.Value.Get);
+         Write (" |" & E.Content);
       end Render_Literal_Scalar;
 
       procedure Render_Folded_Scalar with Pre => E.Kind = Events.Scalar is
       begin
-         Write (" >" & E.Value.Get);
+         Write (" >" & E.Content);
       end Render_Folded_Scalar;
 
       procedure Render_Long_Scalar (In_Flow : Boolean;
@@ -511,14 +513,14 @@ package body Yaml.Presenting is
       procedure Render_Alias (Inline : Boolean) with Inline is
       begin
          if Inline then
-            if P.Cur_Column + E.Target.Get.Data'Length + 2 <= Max_Line_Length then
-               Write (" *" & E.Target.Get);
+            if P.Cur_Column + E.Target.Length + 2 <= Max_Line_Length then
+               Write (" *" & E.Target);
             else
                Next_Line;
-               Write ("  *" & E.Target.Get);
+               Write ("  *" & E.Target);
             end if;
          else
-            Write ("*" & E.Target.Get);
+            Write ("*" & E.Target);
          end if;
       end Render_Alias;
 
@@ -529,8 +531,8 @@ package body Yaml.Presenting is
                Finalize (P);
             when Events.Document_Start =>
                P.Levels.Top.Position := Before_Doc_End;
-               if E.Version /= Strings.Null_Content then
-                  Write ("%YAML " & E.Version.Get & Line_End & "---");
+               if E.Version /= Text.Empty then
+                  Write ("%YAML " & E.Version & Line_End & "---");
                   P.Levels.Push
                     ((Position => After_Directives_End, Indentation => 0));
                elsif E.Implicit_Start then
@@ -553,7 +555,7 @@ package body Yaml.Presenting is
       begin
          declare
             Features : constant Analysis.Scalar_Features :=
-              Analysis.Features (E.Value.Get);
+              Analysis.Features (E.Content.Value);
          begin
             if Features.Unquoted_Single_Line then
                if P.Cur_Column + Features.Single_Line_Length + 1 <=
@@ -608,7 +610,7 @@ package body Yaml.Presenting is
                Write ('?');
                Start_Node (True, No_Compact, Sequence_Start_Descriptor);
             when Events.Alias =>
-               if P.Cur_Column + E.Target.Get.Data'Length + 3 <=
+               if P.Cur_Column + E.Target.Length + 3 <=
                  Max_Line_Length then
                   Render_Alias (False);
                   Write (" :");
@@ -643,8 +645,7 @@ package body Yaml.Presenting is
                P.Levels.Top.Position := After_Explicit_Flow_Map_Key;
                Start_Flow_Node (True, Sequence_Start_Descriptor);
             when Events.Alias =>
-               if P.Cur_Column + E.Target.Get.Data'Length + 3 <=
-                 Max_Line_Length then
+               if P.Cur_Column + E.Target.Length + 3 <= Max_Line_Length then
                   Render_Alias (False);
                   Write (" :");
                   P.Levels.Top.Position := After_Implicit_Flow_Map_Key;
@@ -669,7 +670,7 @@ package body Yaml.Presenting is
                Next_Line;
                Write ('-');
                if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
-               Render_Scalar (False, Analysis.Features (E.Value.Get));
+               Render_Scalar (False, Analysis.Features (E.Content.Value));
                P.Levels.Top.Position := After_Block_Seq_Item;
             when Events.Mapping_Start =>
                Next_Line;
@@ -706,7 +707,7 @@ package body Yaml.Presenting is
                end if;
                declare
                   Features : constant Analysis.Scalar_Features :=
-                    Analysis.Features (E.Value.Get);
+                    Analysis.Features (E.Content.Value);
                begin
                   if Features.Unquoted_Single_Line then
                      if P.Cur_Column + Features.Single_Line_Length + 2 <=
@@ -767,7 +768,7 @@ package body Yaml.Presenting is
                   --  scalars at root level *must* have `---`
                   Write ("---");
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
-                  Render_Long_Scalar (False, Analysis.Features (E.Value.Get));
+                  Render_Long_Scalar (False, Analysis.Features (E.Content.Value));
                when Events.Mapping_Start =>
                   if E.Collection_Style /= Events.Flow and then
                     (not Events.Is_Empty (E.Collection_Properties)) then
@@ -796,7 +797,7 @@ package body Yaml.Presenting is
             case E.Kind is
                when Events.Scalar =>
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
-                  Render_Long_Scalar (False, Analysis.Features (E.Value.Get));
+                  Render_Long_Scalar (False, Analysis.Features (E.Content.Value));
                when Events.Mapping_Start =>
                   Start_Node (True, No_Compact, Mapping_Start_Descriptor);
                when Events.Sequence_Start =>
@@ -823,7 +824,7 @@ package body Yaml.Presenting is
          when After_Implicit_Doc_End =>
             case E.Kind is
                when Events.Document_Start =>
-                  if E.Version /= Strings.Null_Content then
+                  if E.Version /= Text.Empty then
                      Write ("..." & Character'Val (10));
                   end if;
                   Start_Document;
@@ -847,8 +848,7 @@ package body Yaml.Presenting is
                   Write ('?');
                   Start_Node (True, All_Of_Them, Sequence_Start_Descriptor);
                when Events.Alias =>
-                  if P.Cur_Column + E.Target.Get.Data'Length + 3 <=
-                    Max_Line_Length then
+                  if P.Cur_Column + E.Target.Length + 3 <= Max_Line_Length then
                      Render_Alias (False);
                      Write (" :");
                      P.Levels.Top.Position := After_Implicit_Block_Map_Key;
@@ -873,7 +873,7 @@ package body Yaml.Presenting is
             case E.Kind is
                when Events.Scalar =>
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
-                  Render_Scalar (False, Analysis.Features (E.Value.Get));
+                  Render_Scalar (False, Analysis.Features (E.Content.Value));
                when Events.Mapping_Start =>
                   Start_Node (True, All_Of_Them, Mapping_Start_Descriptor);
                when Events.Sequence_Start =>
@@ -888,7 +888,7 @@ package body Yaml.Presenting is
             case E.Kind is
                when Events.Scalar =>
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
-                  Render_Scalar (False, Analysis.Features (E.Value.Get));
+                  Render_Scalar (False, Analysis.Features (E.Content.Value));
                when Events.Mapping_Start =>
                   Start_Node (True, No_Compact, Mapping_Start_Descriptor);
                when Events.Sequence_Start =>
@@ -910,7 +910,7 @@ package body Yaml.Presenting is
                when Events.Scalar =>
                   Write ('-');
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
-                  Render_Scalar (False, Analysis.Features (E.Value.Get));
+                  Render_Scalar (False, Analysis.Features (E.Content.Value));
                   P.Levels.Top.Position := After_Block_Seq_Item;
                when Events.Mapping_Start =>
                   Write ('-');
@@ -943,7 +943,7 @@ package body Yaml.Presenting is
             case E.Kind is
                when Events.Scalar =>
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
-                  Render_Scalar (True, Analysis.Features (E.Value.Get));
+                  Render_Scalar (True, Analysis.Features (E.Content.Value));
                when Events.Mapping_Start =>
                   Start_Flow_Node (True, Mapping_Start_Descriptor);
                when Events.Sequence_Start =>
@@ -960,7 +960,7 @@ package body Yaml.Presenting is
             case E.Kind is
                when Events.Scalar =>
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
-                  Render_Scalar (True, Analysis.Features (E.Value.Get));
+                  Render_Scalar (True, Analysis.Features (E.Content.Value));
                when Events.Mapping_Start =>
                   Start_Flow_Node (True, Mapping_Start_Descriptor);
                when Events.Sequence_Start =>

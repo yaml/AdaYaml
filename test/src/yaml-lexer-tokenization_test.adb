@@ -5,8 +5,8 @@ with Ada.Finalization;
 with Ada.Unchecked_Deallocation;
 with AUnit.Assertions; use AUnit.Assertions;
 
-package body Yaml.Lexing.Tokenization_Test is
-   use Yaml.Strings;
+package body Yaml.Lexer.Tokenization_Test is
+   use type Text.Reference;
 
    subtype Evaluated_Token is Token_Kind with Static_Predicate =>
      Evaluated_Token in Scalar_Token_Kind | Tag_Uri | Verbatim_Tag;
@@ -22,7 +22,7 @@ package body Yaml.Lexing.Tokenization_Test is
    type Token_With_Value_Holder (Kind : Token_Kind) is record
       Refcount : Natural := 1;
       case Kind is
-         when Value_Token => Value : Strings.Content;
+         when Value_Token => Value : Text.Reference;
          when Indentation => Depth : Natural;
          when others      => null;
       end case;
@@ -79,7 +79,7 @@ package body Yaml.Lexing.Tokenization_Test is
       return V : constant Token_With_Value :=
         (Ada.Finalization.Controlled with Reference => new Token_With_Value_Holder (Kind => Tok)) do
          V.Reference.Refcount := 1;
-         V.Reference.Value := From_String (TC (T).Pool, S);
+         V.Reference.Value := Text.From_String (TC (T).Pool, S);
       end return;
    end With_String;
 
@@ -160,7 +160,7 @@ package body Yaml.Lexing.Tokenization_Test is
                   return Token_With_Value is
      (With_String (Alias, Content, T));
 
-   function To_String (L : Lexer; T : Token_Kind) return String is
+   function To_String (L : Instance; T : Token_Kind) return String is
      (T'Img & (case T is
          when Evaluated_Token => '(' & Escaped (L.Value) & ')',
          when Short_Lexeme_Token => '(' & Escaped (Short_Lexeme (L)) & ')',
@@ -168,12 +168,12 @@ package body Yaml.Lexing.Tokenization_Test is
          when Empty_Token => "",
          when Indentation => '(' & Natural'(L.Pos - L.Line_Start - 1)'Img & ')'));
 
-   procedure Assert_Equals (Pool : String_Pool;
+   procedure Assert_Equals (P : Text.Pool;
                             Input : String; Expected : Token_List) is
-      L : Lexer;
+      L : Instance;
       I : Natural := 0;
    begin
-      Lexing.Init (L, Input, Pool);
+      Init (L, Input, P);
       for Expected_Token of Expected loop
          I := I + 1;
          declare
@@ -191,12 +191,12 @@ package body Yaml.Lexing.Tokenization_Test is
                             Escaped (Expected_Token.Reference.Value) &
                             ", got " & Escaped (L.Value));
                when Full_Lexeme_Token =>
-                  Assert (Full_Lexeme (L) = Expected_Token.Reference.Value.Get,
+                  Assert (Full_Lexeme (L) = Expected_Token.Reference.Value,
                           "Wrong " & T.Kind'Img & " at #" & I'Img & ": Expected " &
                             Escaped (Expected_Token.Reference.Value) &
                             ", got " & Escaped (Full_Lexeme (L)));
                when Short_Lexeme_Token =>
-                  Assert (Short_Lexeme (L) = Expected_Token.Reference.Value.Get,
+                  Assert (Short_Lexeme (L) = Expected_Token.Reference.Value,
                           "Wrong " & T.Kind'Img & "at #" & I'Img & ": Expected " &
                             Escaped (Expected_Token.Reference.Value) &
                             ", got " & Escaped (Short_Lexeme (L)));
@@ -248,7 +248,7 @@ package body Yaml.Lexing.Tokenization_Test is
 
    procedure Set_Up (T : in out TC) is
    begin
-      Create (T.Pool, 8092);
+      Text.Create (T.Pool, 8092);
    end Set_Up;
 
    procedure Empty_Document (T : in out Test_Cases.Test_Case'Class) is
@@ -433,4 +433,4 @@ package body Yaml.Lexing.Tokenization_Test is
                       TPS (T, "baz" & Line_Feed & Line_Feed & "mi"),
                      TME, TStrE));
    end Empty_Lines;
-end Yaml.Lexing.Tokenization_Test;
+end Yaml.Lexer.Tokenization_Test;

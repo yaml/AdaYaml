@@ -4,7 +4,7 @@
 with Ada.Text_IO;
 with AUnit.Assertions; use AUnit.Assertions;
 
-package body Yaml.Strings.Chunk_Test is
+package body Yaml.Text.Chunk_Test is
    procedure Register_Tests (T : in out TC) is
       use AUnit.Test_Cases.Registration;
    begin
@@ -16,7 +16,7 @@ package body Yaml.Strings.Chunk_Test is
 
    procedure Set_Up (T : in out TC) is
    begin
-      Create (T.Pool, 128);
+      Create (T.P, 128);
    end Set_Up;
 
    function Name (T : TC) return Message_String is
@@ -27,29 +27,29 @@ package body Yaml.Strings.Chunk_Test is
 
    procedure Test_One_String (T : in out Test_Cases.Test_Case'Class) is
       Test_Data : constant String := "123456";
-      C : constant Content := From_String (TC (T).Pool, Test_Data);
+      C : constant Reference := From_String (TC (T).P, Test_Data);
    begin
       Ada.Text_IO.Put_Line ("Test one string, chunk content:");
-      Ada.Text_IO.Put_Line (Current_Chunk_As_String (TC (T).Pool));
-      Assert (C.Get = Test_Data, "Data mismatch!");
+      Ada.Text_IO.Put_Line (Current_Chunk_As_String (TC (T).P));
+      Assert (C = Test_Data, "Data mismatch!");
       declare
-         C2 : constant Content := C;
+         C2 : constant Reference := C;
       begin
-         Ada.Text_IO.Put_Line ("Range after copy: (" & C2.Get.Data.all'First'Img &
-           " .." & C2.Get.Data.all'Last'Img & ')');
+         Ada.Text_IO.Put_Line ("Range after copy: (" & C2.Data.all'First'Img &
+           " .." & C2.Data.all'Last'Img & ')');
       end;
    end Test_One_String;
 
    procedure Test_Two_Strings (T : in out Test_Cases.Test_Case'Class) is
       S1 : constant String := "aaaa";
       S2 : constant String := "bbbb";
-      C1 : constant Content := From_String (TC (T).Pool, S1);
-      C2 : constant Content := From_String (TC (T).Pool, S2);
+      C1 : constant Reference := From_String (TC (T).P, S1);
+      C2 : constant Reference := From_String (TC (T).P, S2);
    begin
       Ada.Text_IO.Put_Line ("Test two strings, chunk content:");
-      Ada.Text_IO.Put_Line (Current_Chunk_As_String (TC (T).Pool));
-      Assert (C1.Get = S1, "S1 mismatch, is " & C1.Get);
-      Assert (C2.Get = S2, "S2 mismatch!");
+      Ada.Text_IO.Put_Line (Current_Chunk_As_String (TC (T).P));
+      Assert (C1 = S1, "S1 mismatch, is " & C1);
+      Assert (C2 = S2, "S2 mismatch!");
    end Test_Two_Strings;
 
-end Yaml.Strings.Chunk_Test;
+end Yaml.Text.Chunk_Test;

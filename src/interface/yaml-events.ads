@@ -1,7 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Yaml.Strings;
+with Yaml.Text;
 with Yaml.Stacks;
 
 package Yaml.Events is
@@ -15,11 +15,11 @@ package Yaml.Events is
      Convention => C;
    subtype Flow_Scalar_Style_Type is Scalar_Style_Type range Literal .. Folded;
 
-   package Content_Stacks is new Stacks (Strings.Content);
+   package Text_Stack is new Stacks (Text.Reference);
 
    type Properties is record
-      Anchor, Tag : Strings.Content := Strings.Null_Content;
-      Annotations : Content_Stacks.Stack;
+      Anchor, Tag : Text.Reference := Text.Empty;
+      Annotations : Text_Stack.Stack;
    end record;
 
    function Is_Empty (Props : Events.Properties) return Boolean with Inline;
@@ -30,7 +30,7 @@ package Yaml.Events is
       Start_Position, End_Position : Mark;
       case Kind is
          when Document_Start =>
-            Version : Strings.Content;
+            Version : Text.Reference;
             Implicit_Start : Boolean;
          when Document_End =>
             Implicit_End : Boolean;
@@ -39,10 +39,10 @@ package Yaml.Events is
             Collection_Properties : Properties;
          when Scalar =>
             Scalar_Properties : Properties;
-            Value : Strings.Content;
+            Content : Text.Reference;
             Scalar_Style : Scalar_Style_Type;
          when Alias =>
-            Target : Strings.Content;
+            Target : Text.Reference;
          when Mapping_End | Sequence_End | Stream_Start | Stream_End =>
             null;
       end case;

@@ -2,22 +2,22 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 package body Yaml.Events is
-   use Yaml.Strings;
+   use type Text.Reference;
 
    function Is_Empty (Props : Events.Properties) return Boolean is
-     ((Props.Anchor = Null_Content and then Props.Tag = Null_Content and then
-       Events.Content_Stacks.Length (Props.Annotations) = 0));
+     ((Props.Anchor = Text.Empty and then Props.Tag = Text.Empty and then
+       Text_Stack.Length (Props.Annotations) = 0));
 
    function To_String (E : Event) return String is
-      function Ann_String (Ann : Content_Stacks.Stack; Start : Positive := 1)
+      function Ann_String (Ann : Text_Stack.Stack; Start : Positive := 1)
                            return String is
-        (if Start > Content_Stacks.Length (Ann) then "" else
-              " @" & Content_Stacks.Element (Ann, Start).Get &
+        (if Start > Text_Stack.Length (Ann) then "" else
+              " @" & Text_Stack.Element (Ann, Start).Value &
            Ann_String (Ann, Start + 1));
 
       function Prop_String (A : Properties) return String is
-        ((if A.Anchor = Null_Content then "" else " &" & A.Anchor.Get) &
-         (if A.Tag = Null_Content then "" else " <" & A.Tag.Get & '>') &
+        ((if A.Anchor = Text.Empty then "" else " &" & A.Anchor.Value) &
+         (if A.Tag = Text.Empty then "" else " <" & A.Tag.Value & '>') &
          Ann_String (A.Annotations));
 
       function Scalar_Indicator (S : Scalar_Style_Type) return String is
@@ -28,12 +28,12 @@ package body Yaml.Events is
              when Literal => " |",
              when Folded => " >"));
 
-      function Escaped (C : Content) return String is
-         Ret : String (1 .. UTF_8_String'(C.Get)'Length * 2);
+      function Escaped (C : Text.Reference) return String is
+         Ret : String (1 .. C.Length * 2);
          Pos : Positive := 1;
       begin
-         for I in UTF_8_String'(C.Get)'Range loop
-            case UTF_8_String'(C.Get) (I) is
+         for I in C.Value.Data'Range loop
+            case C.Value.Data (I) is
                when Character'Val (7) =>
                   Ret (Pos .. Pos + 1) := "\a";
                   Pos := Pos + 2;
@@ -53,7 +53,7 @@ package body Yaml.Events is
                   Ret (Pos .. Pos + 1) := "\\";
                   Pos := Pos + 2;
                when others =>
-                  Ret (Pos) := UTF_8_String'(C.Get) (I);
+                  Ret (Pos) := C.Value.Data (I);
                   Pos := Pos + 1;
             end case;
          end loop;
@@ -77,9 +77,9 @@ package body Yaml.Events is
             return "-SEQ";
          when Scalar =>
             return "=VAL" & Prop_String (E.Scalar_Properties) &
-              Scalar_Indicator (E.Scalar_Style) & Escaped (E.Value);
+              Scalar_Indicator (E.Scalar_Style) & Escaped (E.Content);
          when Alias =>
-            return "=ALI *" & E.Target.Get;
+            return "=ALI *" & E.Target.Value;
       end case;
    end To_String;
 

@@ -2,6 +2,6 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with AUnit.Test_Suites;
-package Yaml.Strings.Suite is
+package Yaml.Lexer.Suite is
    function Suite return AUnit.Test_Suites.Access_Test_Suite;
-end Yaml.Strings.Suite;
+end Yaml.Lexer.Suite;

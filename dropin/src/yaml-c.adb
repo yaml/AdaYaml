@@ -6,7 +6,7 @@ with Ada.Unchecked_Deallocation;
 with Yaml.Destinations.C_Strings;
 
 package body Yaml.C is
-   Creation_Pool : Strings.String_Pool;
+   Creation_Pool : Text.Pool;
 
    Version_String : constant Interfaces.C.Strings.chars_ptr :=
      Interfaces.C.Strings.New_String
@@ -61,8 +61,8 @@ package body Yaml.C is
    function Alias_Event_Initialize
      (E : out Event; Anchor : Interfaces.C.Strings.chars_ptr) return Bool is
    begin
-      E := (Kind => Alias, Data => (T => Alias, Ali_Anchor => Strings.Export
-                                    (Strings.From_String (Creation_Pool,
+      E := (Kind => Alias, Data => (T => Alias, Ali_Anchor => Text.Export
+                                    (Text.From_String (Creation_Pool,
                                        Interfaces.C.Strings.Value (Anchor)))),
            others => <>);
       return True;
@@ -72,17 +72,18 @@ package body Yaml.C is
      (E : out Event; Anchor, Tag, Value : Interfaces.C.Strings.chars_ptr;
       Plain_Implicit, Quoted_Implicit : Bool; Style : Events.Scalar_Style_Type)
       return Bool is
-      Converted_Value : constant String := Interfaces.C.Strings.Value (Value);
+      Converted_Value : constant Standard.String :=
+        Interfaces.C.Strings.Value (Value);
    begin
       E := (Kind => Scalar, Data => (T => Scalar,
-                                     Scalar_Tag => Strings.Export
-                                       (Strings.From_String (Creation_Pool,
+                                     Scalar_Tag => Text.Export
+                                       (Text.From_String (Creation_Pool,
                                         Interfaces.C.Strings.Value (Tag))),
-                                     Scalar_Anchor => Strings.Export
-                                       (Strings.From_String (Creation_Pool,
+                                     Scalar_Anchor => Text.Export
+                                       (Text.From_String (Creation_Pool,
                                         Interfaces.C.Strings.Value (Anchor))),
-                                     Value => Strings.Export
-                                       (Strings.From_String (Creation_Pool,
+                                     Value => Text.Export
+                                       (Text.From_String (Creation_Pool,
                                         Converted_Value)),
                                      Length => Converted_Value'Length,
                                      Plain_Implicit => Plain_Implicit,
@@ -96,10 +97,10 @@ package body Yaml.C is
       Implicit : Bool; Style : Events.Collection_Style_Type) return Bool is
    begin
       E := (Kind => Sequence_Start, Data =>
-              (T => Sequence_Start, Seq_Anchor => Strings.Export
-               (Strings.From_String (Creation_Pool,
+              (T => Sequence_Start, Seq_Anchor => Text.Export
+               (Text.From_String (Creation_Pool,
                   Interfaces.C.Strings.Value (Anchor))),
-               Seq_Tag => Strings.Export (Strings.From_String (Creation_Pool,
+               Seq_Tag => Text.Export (Text.From_String (Creation_Pool,
                  Interfaces.C.Strings.Value (Tag))),
                Seq_Implicit => Implicit, Seq_Style => Style), others => <>);
       return True;
@@ -116,10 +117,10 @@ package body Yaml.C is
       Implicit : Bool; Style : Events.Collection_Style_Type) return Bool is
    begin
       E := (Kind => Mapping_Start, Data =>
-              (T => Mapping_Start, Map_Anchor => Strings.Export
-               (Strings.From_String (Creation_Pool,
+              (T => Mapping_Start, Map_Anchor => Text.Export
+               (Text.From_String (Creation_Pool,
                   Interfaces.C.Strings.Value (Anchor))),
-               Map_Tag => Strings.Export (Strings.From_String (Creation_Pool,
+               Map_Tag => Text.Export (Text.From_String (Creation_Pool,
                  Interfaces.C.Strings.Value (Tag))),
                Map_Implicit => Implicit, Map_Style => Style), others => <>);
       return True;
@@ -136,17 +137,17 @@ package body Yaml.C is
    begin
       case E.Kind is
          when Scalar =>
-            Strings.Delete_Exported (E.Data.Scalar_Anchor);
-            Strings.Delete_Exported (E.Data.Scalar_Tag);
-            Strings.Delete_Exported (E.Data.Value);
+            Text.Delete_Exported (E.Data.Scalar_Anchor);
+            Text.Delete_Exported (E.Data.Scalar_Tag);
+            Text.Delete_Exported (E.Data.Value);
          when Mapping_Start =>
-            Strings.Delete_Exported (E.Data.Map_Anchor);
-            Strings.Delete_Exported (E.Data.Map_Tag);
+            Text.Delete_Exported (E.Data.Map_Anchor);
+            Text.Delete_Exported (E.Data.Map_Tag);
          when Sequence_Start =>
-            Strings.Delete_Exported (E.Data.Seq_Anchor);
-            Strings.Delete_Exported (E.Data.Seq_Tag);
+            Text.Delete_Exported (E.Data.Seq_Anchor);
+            Text.Delete_Exported (E.Data.Seq_Tag);
          when Alias =>
-            Strings.Delete_Exported (E.Data.Ali_Anchor);
+            Text.Delete_Exported (E.Data.Ali_Anchor);
          when others => null;
       end case;
    end Event_Delete;
@@ -206,27 +207,27 @@ package body Yaml.C is
             when Events.Document_End => (T => Document_End,
                                          DE_Implicit => Bool (Raw.Implicit_End)),
             when Events.Mapping_Start => (T => Mapping_Start,
-                                          Map_Anchor => Strings.Export (Raw.Collection_Properties.Anchor),
-                                          Map_Tag => Strings.Export (Raw.Collection_Properties.Tag),
+                                          Map_Anchor => Text.Export (Raw.Collection_Properties.Anchor),
+                                          Map_Tag => Text.Export (Raw.Collection_Properties.Tag),
                                           Map_Implicit => False,
                                           Map_Style => Raw.Collection_Style),
             when Events.Mapping_End => (T => Mapping_End),
             when Events.Sequence_Start => (T => Sequence_Start,
-                                          Seq_Anchor => Strings.Export (Raw.Collection_Properties.Anchor),
-                                          Seq_Tag => Strings.Export (Raw.Collection_Properties.Tag),
+                                          Seq_Anchor => Text.Export (Raw.Collection_Properties.Anchor),
+                                          Seq_Tag => Text.Export (Raw.Collection_Properties.Tag),
                                           Seq_Implicit => False,
                                           Seq_Style => Raw.Collection_Style),
             when Events.Sequence_End => (T => Sequence_End),
             when Events.Scalar => (T => Scalar,
-                                   Scalar_Anchor => Strings.Export (Raw.Scalar_Properties.Anchor),
-                                   Scalar_Tag => Strings.Export (Raw.Scalar_Properties.Tag),
-                                   Value => Strings.Export (Raw.Value),
-                                   Length => Raw.Value.Get.Data'Length,
+                                   Scalar_Anchor => Text.Export (Raw.Scalar_Properties.Anchor),
+                                   Scalar_Tag => Text.Export (Raw.Scalar_Properties.Tag),
+                                   Value => Text.Export (Raw.Content),
+                                   Length => Interfaces.C.size_t (Raw.Content.Length),
                                    Plain_Implicit => False,
                                    Quoted_Implicit => False,
                                    Scalar_Style => Raw.Scalar_Style),
             when Events.Alias => (T => Alias,
-                                  Ali_Anchor => Strings.Export (Raw.Target)));
+                                  Ali_Anchor => Text.Export (Raw.Target)));
    begin
       E := (Kind => To_Type, Data => To_Data,
             Start_Mark => To_C (Raw.Start_Position),
@@ -255,9 +256,9 @@ package body Yaml.C is
    end Emitter_Set_Output;
 
    function Emitter_Emit (Em : in out Emitter; E : in out Event) return Bool is
-      function To_Properties (Tag, Anchor : Strings.Exported_String)
+      function To_Properties (Tag, Anchor : Text.Exported)
                               return Events.Properties is
-        ((Anchor => Strings.Import (Anchor), Tag => Strings.Import (Tag),
+        ((Anchor => Text.Import (Anchor), Tag => Text.Import (Tag),
           Annotations => <>));
 
       function To_Event (E : Event) return Events.Event is
@@ -271,7 +272,7 @@ package body Yaml.C is
             when Document_Start => (Kind => Events.Document_Start,
                                     Start_Position => To_Ada (E.Start_Mark),
                                     End_Position => To_Ada (E.End_Mark),
-                                    Version => Strings.Null_Content,
+                                    Version => Text.Empty,
                                     Implicit_Start => Boolean (E.Data.DS_Implicit)),
             when Document_End => (Kind => Events.Document_End,
                                   Start_Position => To_Ada (E.Start_Mark),
@@ -299,12 +300,12 @@ package body Yaml.C is
                             Start_Position => To_Ada (E.Start_Mark),
                             End_Position => To_Ada (E.End_Mark),
                             Scalar_Properties => To_Properties (E.Data.Scalar_Tag, E.Data.Scalar_Anchor),
-                            Value => Strings.Import (E.Data.Value),
+                            Content => Text.Import (E.Data.Value),
                             Scalar_Style => E.Data.Scalar_Style),
             when Alias => (Kind => Events.Alias,
                            Start_Position => To_Ada (E.Start_Mark),
                            End_Position => To_Ada (E.End_Mark),
-                           Target => Strings.Import (E.Data.Ali_Anchor)),
+                           Target => Text.Import (E.Data.Ali_Anchor)),
             when No_Event => (others => <>));
    begin
       if E.Kind /= No_Event then
@@ -314,5 +315,5 @@ package body Yaml.C is
       return True;
    end Emitter_Emit;
 begin
-   Strings.Create (Creation_Pool, 8192);
+   Text.Create (Creation_Pool, 8192);
 end Yaml.C;

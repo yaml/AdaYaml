@@ -4,7 +4,7 @@
 with System;
 with Interfaces.C.Strings;
 with Yaml.Events;
-with Yaml.Strings;
+with Yaml.Text;
 private with Yaml.Parsing;
 private with Yaml.Presenting;
 
@@ -43,18 +43,18 @@ package Yaml.C is
          when Document_End =>
             DE_Implicit : Bool;
          when Alias =>
-            Ali_Anchor : Strings.Exported_String;
+            Ali_Anchor : Text.Exported;
          when Scalar =>
-            Scalar_Anchor, Scalar_Tag, Value : Strings.Exported_String;
+            Scalar_Anchor, Scalar_Tag, Value : Text.Exported;
             Length : Interfaces.C.size_t;
             Plain_Implicit, Quoted_Implicit : Bool;
             Scalar_Style : Events.Scalar_Style_Type;
          when Sequence_Start =>
-            Seq_Anchor, Seq_Tag : Strings.Exported_String;
+            Seq_Anchor, Seq_Tag : Text.Exported;
             Seq_Implicit : Bool;
             Seq_Style : Events.Collection_Style_Type;
          when Mapping_Start =>
-            Map_Anchor, Map_Tag : Strings.Exported_String;
+            Map_Anchor, Map_Tag : Text.Exported;
             Map_Implicit : Bool;
             Map_Style : Events.Collection_Style_Type;
          when others => null;

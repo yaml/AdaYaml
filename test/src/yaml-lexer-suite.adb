@@ -1,10 +1,10 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Yaml.Lexing.Buffering_Test;
-with Yaml.Lexing.Tokenization_Test;
+with Yaml.Lexer.Buffering_Test;
+with Yaml.Lexer.Tokenization_Test;
 
-package body Yaml.Lexing.Suite is
+package body Yaml.Lexer.Suite is
    Result : aliased AUnit.Test_Suites.Test_Suite;
    Buffering_TC : aliased Buffering_Test.TC;
    Tokenization_TC : aliased Tokenization_Test.TC;
@@ -15,4 +15,4 @@ package body Yaml.Lexing.Suite is
       AUnit.Test_Suites.Add_Test (Result'Access, Tokenization_TC'Access);
       return Result'Access;
    end Suite;
-end Yaml.Lexing.Suite;
+end Yaml.Lexer.Suite;

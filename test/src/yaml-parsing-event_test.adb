@@ -20,7 +20,7 @@ package body Yaml.Parsing.Event_Test is
       procedure Add_Test (Directory_Entry : Directory_Entry_Type) is
          Title_File : File_Type;
          use AUnit.Test_Cases.Registration;
-         Dir_Name : constant String := Simple_Name (Directory_Entry);
+         Dir_Name : constant Standard.String := Simple_Name (Directory_Entry);
       begin
          if Dir_Name'Length = 4 and then
            (not Ignored_Set.Contains (Dir_Name)) then
@@ -43,7 +43,7 @@ package body Yaml.Parsing.Event_Test is
       end Add_Test;
 
       procedure Add_To_Error_Set (Directory_Entry : Directory_Entry_Type) is
-         Name : constant String := Simple_Name (Directory_Entry);
+         Name : constant Standard.String := Simple_Name (Directory_Entry);
       begin
          if Name /= "." and Name /= ".." then
             Error_Set.Include (Name);
@@ -51,14 +51,14 @@ package body Yaml.Parsing.Event_Test is
       end Add_To_Error_Set;
 
       procedure Add_To_Ignored_Set (Directory_Entry : Directory_Entry_Type) is
-         Name : constant String := Simple_Name (Directory_Entry);
+         Name : constant Standard.String := Simple_Name (Directory_Entry);
       begin
          if Name /= "." and Name /= ".." then
             Ignored_Set.Include (Name);
          end if;
       end Add_To_Ignored_Set;
 
-      Tag_Dir : constant String := Compose ("yaml-test-suite", "tags");
+      Tag_Dir : constant Standard.String := Compose ("yaml-test-suite", "tags");
    begin
       Ignored_Set.Include ("meta");
       Ignored_Set.Include ("tags");
@@ -79,7 +79,7 @@ package body Yaml.Parsing.Event_Test is
    end Name;
 
    procedure Execute_Next_Test (T : in out Test_Cases.Test_Case'Class) is
-      Test_Dir : constant String :=
+      Test_Dir : constant Standard.String :=
         Compose ("yaml-test-suite", TC (T).Test_Cases.Element (TC (T).Cur));
       P : Parser;
       Expected : File_Type;
@@ -90,9 +90,9 @@ package body Yaml.Parsing.Event_Test is
       Open (Expected, In_File, Compose (Test_Dir, "test.event"));
       loop
          declare
-            Expected_Event : constant String := Get_Line (Expected);
+            Expected_Event : constant Standard.String := Get_Line (Expected);
             Actual : constant Events.Event := Streams.Next (P);
-            Actual_Event : constant String := Events.To_String (Actual);
+            Actual_Event : constant Standard.String := Events.To_String (Actual);
             use type Events.Event_Kind;
          begin
             if Expected_Event = Actual_Event then
@@ -117,7 +117,7 @@ package body Yaml.Parsing.Event_Test is
    end Execute_Next_Test;
 
    procedure Execute_Error_Test (T : in out Test_Cases.Test_Case'Class) is
-      Test_Dir : constant String :=
+      Test_Dir : constant Standard.String :=
         Compose ("yaml-test-suite", TC (T).Test_Cases.Element (TC (T).Cur));
       P : Parser;
       Output : Unbounded_String;
@@ -134,7 +134,7 @@ package body Yaml.Parsing.Event_Test is
       end loop;
       Open (Expected_Error, In_File, Compose (Test_Dir, "error"));
       declare
-         Expected_Message : constant String :=
+         Expected_Message : constant Standard.String :=
            (if End_Of_File (Expected_Error) then "" else
                  Get_Line (Expected_Error));
       begin

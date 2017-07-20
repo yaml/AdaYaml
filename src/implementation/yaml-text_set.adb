@@ -4,10 +4,11 @@
 with Ada.Strings.Hash;
 with Ada.Unchecked_Deallocation;
 
-package body Yaml.String_Sets is
+package body Yaml.Text_Set is
    use type Ada.Containers.Hash_Type;
 
-   function Non_Zero_Hash (S : String) return Ada.Containers.Hash_Type is
+   function Non_Zero_Hash (S : Standard.String)
+                           return Ada.Containers.Hash_Type is
       Hash : constant Ada.Containers.Hash_Type := Ada.Strings.Hash (S);
    begin
       if Hash = 0 then
@@ -17,16 +18,16 @@ package body Yaml.String_Sets is
       end if;
    end Non_Zero_Hash;
 
-   function Raw_Set (Object : in out String_Set;
+   function Raw_Set (Object : in out Reference;
                      Hash : Ada.Containers.Hash_Type;
-                     S : String)
+                     S : Standard.String)
                      return not null access Holder is
       Pos : Natural :=
         Natural (Hash mod Ada.Containers.Hash_Type (Object.Elements'Length));
       Cur : not null access Holder := Object.Elements (Pos)'Access;
    begin
       while Cur.Hash /= 0 and then
-        (Cur.Hash /= Hash or else Cur.Key.Get /= S) loop
+        (Cur.Hash /= Hash or else Cur.Key.Value /= S) loop
          Pos := Pos + 1;
          if Pos = Object.Elements'Length then
             Pos := 0;
@@ -39,7 +40,7 @@ package body Yaml.String_Sets is
    procedure Free is new Ada.Unchecked_Deallocation
      (Holder_Array, Holder_Array_Access);
 
-   function Grow_If_Needed (Object : in out String_Set) return Boolean is
+   function Grow_If_Needed (Object : in out Reference) return Boolean is
       Old_Elements : Holder_Array_Access := Object.Elements;
    begin
       if Object.Count = Object.Elements'Length / 2 then
@@ -47,7 +48,7 @@ package body Yaml.String_Sets is
          Object.Elements.all := (others => (Hash => 0, others => <>));
          for E of Old_Elements.all loop
             if E.Hash /= 0 then
-               Raw_Set (Object, E.Hash, E.Key.Get).all := E;
+               Raw_Set (Object, E.Hash, E.Key.Value).all := E;
             end if;
          end loop;
          Free (Old_Elements);
@@ -57,8 +58,8 @@ package body Yaml.String_Sets is
       end if;
    end Grow_If_Needed;
 
-   function Get (Object : in out String_Set; S : String; Create : Boolean)
-                 return not null access Holder is
+   function Get (Object : in out Reference; S : Standard.String;
+                 Create : Boolean) return not null access Holder is
       Hash : constant Ada.Containers.Hash_Type := Non_Zero_Hash (S);
    begin
       <<Start>>
@@ -72,15 +73,15 @@ package body Yaml.String_Sets is
             if Create then
                Object.Count := Object.Count + 1;
                Cur.Hash := Hash;
-               Cur.Key := Strings.From_String (Object.Pool, S);
+               Cur.Key := Text.From_String (Object.Pool, S);
             end if;
          end if;
          return Cur;
       end;
    end Get;
 
-   function Set (Object : in out String_Set;
-                 S : String; Value : Value_Type) return Boolean is
+   function Set (Object : in out Reference;
+                 S : Standard.String; Value : Value_Type) return Boolean is
       Hash : constant Ada.Containers.Hash_Type := Non_Zero_Hash (S);
    begin
       if Grow_If_Needed (Object) then null; end if;
@@ -90,7 +91,7 @@ package body Yaml.String_Sets is
          if Cur.Hash = 0 then
             Object.Count := Object.Count + 1;
             Cur.Hash := Hash;
-            Cur.Key := Strings.From_String (Object.Pool, S);
+            Cur.Key := Text.From_String (Object.Pool, S);
             Cur.Value := Value;
             return True;
          else
@@ -99,13 +100,13 @@ package body Yaml.String_Sets is
       end;
    end Set;
 
-   procedure Clear (Object : in out String_Set) is
+   procedure Clear (Object : in out Reference) is
    begin
       Object.Elements.all := (others => (Hash => 0, others => <>));
       Object.Count := 0;
    end Clear;
 
-   procedure Init (Object : in out String_Set; Pool : Strings.String_Pool;
+   procedure Init (Object : in out Reference; Pool : Text.Pool;
                    Initial_Size : Positive) is
    begin
       Object.Pool := Pool;
@@ -113,10 +114,10 @@ package body Yaml.String_Sets is
       Clear (Object);
    end Init;
 
-   procedure Finalize (Object : in out String_Set) is
+   procedure Finalize (Object : in out Reference) is
    begin
       if Object.Elements /= null then
          Free (Object.Elements);
       end if;
    end Finalize;
-end Yaml.String_Sets;
+end Yaml.Text_Set;

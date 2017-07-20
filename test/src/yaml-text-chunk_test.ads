@@ -4,9 +4,9 @@
 with AUnit; use AUnit;
 with AUnit.Test_Cases; use AUnit.Test_Cases;
 
-package Yaml.Strings.Chunk_Test is
+package Yaml.Text.Chunk_Test is
    type TC is new Test_Cases.Test_Case with record
-      Pool : String_Pool;
+      P : Pool;
    end record;
 
    overriding procedure Register_Tests (T : in out TC);
@@ -16,4 +16,4 @@ package Yaml.Strings.Chunk_Test is
 
    procedure Test_One_String (T : in out Test_Cases.Test_Case'Class);
    procedure Test_Two_Strings (T : in out Test_Cases.Test_Case'Class);
-end Yaml.Strings.Chunk_Test;
+end Yaml.Text.Chunk_Test;

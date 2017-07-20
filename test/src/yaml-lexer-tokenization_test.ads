@@ -4,9 +4,9 @@
 with AUnit; use AUnit;
 with AUnit.Test_Cases; use AUnit.Test_Cases;
 
-package Yaml.Lexing.Tokenization_Test is
+package Yaml.Lexer.Tokenization_Test is
    type TC is new Test_Cases.Test_Case with record
-      Pool : Strings.String_Pool;
+      Pool : Text.Pool;
    end record;
 
    overriding procedure Register_Tests (T : in out TC);
@@ -38,4 +38,4 @@ package Yaml.Lexing.Tokenization_Test is
    procedure Anchors_And_Aliases (T : in out Test_Cases.Test_Case'Class);
    procedure Empty_Lines (T : in out Test_Cases.Test_Case'Class);
 
-end Yaml.Lexing.Tokenization_Test;
+end Yaml.Lexer.Tokenization_Test;

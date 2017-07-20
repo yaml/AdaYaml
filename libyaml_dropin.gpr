@@ -9,8 +9,8 @@ library project Libyaml_Dropin is
    for Library_Interface use ("Yaml", "Yaml.C", "Yaml.Events", "Yaml.Parsing",
                               "Yaml.Sources", "Yaml.Sources.Files",
                               "Yaml.Sources.Text_IO", "Yaml.Stacks",
-                              "Yaml.Streams", "Yaml.Strings", "Yaml.Lexing",
-                              "Yaml.Lexing.Evaluation", "Yaml.String_Sets",
+                              "Yaml.Streams", "Yaml.Text", "Yaml.Lexer",
+                              "Yaml.Lexer.Evaluation", "Yaml.Text_Set",
                               "Yaml.Destinations", "Yaml.Destinations.Text_IO",
                               "Yaml.Destinations.C_Strings", "Yaml.Presenting",
                               "Yaml.Presenting.Analysis");
