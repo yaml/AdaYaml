@@ -1,26 +1,25 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-package body Yaml.Destinations.C_Strings is
-   function As_Destination (Pointer : System.Address;
+package body Yaml.Destination.C_String is
+   function As_Destination (Raw : System.Address;
                             Size : Interfaces.C.size_t;
                             Size_Written : access Interfaces.C.size_t)
-                            return Destination_Access is
-      Ret : constant access C_String_Destination :=
-        new C_String_Destination'(Ada.Finalization.Limited_Controlled with
-                                    Pointer => Pointer, Size => Integer (Size),
-                                    Size_Written => Size_Written);
+                            return Pointer is
+      Ret : constant access Instance :=
+        new Instance'(Ada.Finalization.Limited_Controlled with
+                      Raw => Raw, Size => Integer (Size),
+                      Size_Written => Size_Written);
    begin
       Ret.Size_Written.all := 0;
-      return Destination_Access (Ret);
+      return Pointer (Ret);
    end As_Destination;
 
-   overriding procedure Write_Data (D : in out C_String_Destination;
-                                    Buffer : String) is
+   overriding procedure Write_Data (D : in out Instance; Buffer : String) is
       use type Interfaces.C.size_t;
 
       Dest : String (1 .. D.Size);
-      for Dest'Address use D.Pointer;
+      for Dest'Address use D.Raw;
 
       New_Length : constant Integer := Integer (D.Size_Written.all) + Buffer'Length;
    begin
@@ -32,4 +31,4 @@ package body Yaml.Destinations.C_Strings is
       D.Size_Written.all :=
         D.Size_Written.all + Interfaces.C.size_t (Buffer'Length);
    end Write_Data;
-end Yaml.Destinations.C_Strings;
+end Yaml.Destination.C_String;

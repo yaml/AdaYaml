@@ -4,20 +4,20 @@
 with Interfaces.C;
 with System;
 
-package Yaml.Destinations.C_Strings is
-   type C_String_Destination is new Destination with private;
+package Yaml.Destination.C_String is
+   type Instance is new Destination.Instance with private;
 
-   function As_Destination (Pointer : System.Address;
+   function As_Destination (Raw : System.Address;
                             Size : Interfaces.C.size_t;
                             Size_Written : access Interfaces.C.size_t)
-                            return Destination_Access;
+                            return Pointer;
 
-   overriding procedure Write_Data (D : in out C_String_Destination;
+   overriding procedure Write_Data (D : in out Instance;
                                     Buffer : String);
 private
-   type C_String_Destination is new Destination with record
-      Pointer : System.Address;
+   type Instance is new Destination.Instance with record
+      Raw : System.Address;
       Size : Integer;
       Size_Written : access Interfaces.C.size_t;
    end record;
-end Yaml.Destinations.C_Strings;
+end Yaml.Destination.C_String;

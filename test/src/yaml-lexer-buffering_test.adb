@@ -3,7 +3,7 @@
 
 with AUnit.Assertions; use AUnit.Assertions;
 
-with Yaml.Sources.Files;
+with Yaml.Source.File;
 
 with Utils;
 
@@ -33,7 +33,7 @@ package body Yaml.Lexer.Buffering_Test is
       Expected : constant String :=
         Utils.File_Content (Data_Path) & End_Of_Input;
 
-      S : constant Sources.Source_Access := Sources.Files .As_Source (Data_Path);
+      S : constant Source.Pointer := Source.File.As_Source (Data_Path);
       L : Instance;
    begin
       Init (L, S, TC (T).Pool, 64);
@@ -55,7 +55,7 @@ package body Yaml.Lexer.Buffering_Test is
       Data_Path : constant String := "test/data/98char.yaml";
       Expected : constant String := Utils.File_Content (Data_Path);
 
-      S : constant Sources.Source_Access := Sources.Files.As_Source (Data_Path);
+      S : constant Source.Pointer := Source.File.As_Source (Data_Path);
       L : Instance;
    begin
       Init (L, S, TC (T).Pool, 64);

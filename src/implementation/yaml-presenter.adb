@@ -4,9 +4,9 @@
 with Ada.Strings.Fixed;
 with Ada.Unchecked_Deallocation;
 with Yaml.Text;
-with Yaml.Presenting.Analysis;
+with Yaml.Presenter.Analysis;
 
-package body Yaml.Presenting is
+package body Yaml.Presenter is
    use type Text.Reference;
    use type Events.Event_Kind;
    use type Events.Collection_Style_Type;
@@ -14,7 +14,7 @@ package body Yaml.Presenting is
    Line_End : constant Character := Character'Val (10);
    Max_Line_Length : constant := 80;
 
-   procedure Init (P : in out Presenter) is
+   procedure Init (P : in out Instance) is
    begin
       P.Buffer_Pos := 1;
       P.Cur_Column := 1;
@@ -29,8 +29,8 @@ package body Yaml.Presenting is
       P.Levels.Push (Level'(Before_Stream_Start, -2));
    end Init;
 
-   procedure Set_Output (P : in out Presenter;
-                         D : not null Destinations.Destination_Access) is
+   procedure Set_Output (P : in out Instance;
+                         D : not null Destination.Pointer) is
    begin
       Finalize (P);
       P.Dest := D;
@@ -38,7 +38,7 @@ package body Yaml.Presenting is
       Init (P);
    end Set_Output;
 
-   procedure Set_Output (P : in out Presenter;
+   procedure Set_Output (P : in out Instance;
                          Buffer : not null Buffer_Type) is
    begin
       Finalize (P);
@@ -47,8 +47,8 @@ package body Yaml.Presenting is
       Init (P);
    end Set_Output;
 
-   procedure Flush (P : in out Presenter) is
-      use type Destinations.Destination_Access;
+   procedure Flush (P : in out Instance) is
+      use type Destination.Pointer;
    begin
       if P.Dest /= null and then P.Buffer_Pos > 1 then
          P.Dest.Write_Data (P.Buffer (P.Buffer'First .. P.Buffer_Pos - 1));
@@ -59,10 +59,10 @@ package body Yaml.Presenting is
    procedure Free_S is new Ada.Unchecked_Deallocation
      (String, Buffer_Type);
 
-   procedure Finalize (Object : in out Presenter) is
+   procedure Finalize (Object : in out Instance) is
       procedure Free_D is new Ada.Unchecked_Deallocation
-        (Destinations.Destination'Class, Destinations.Destination_Access);
-      use type Destinations.Destination_Access;
+        (Destination.Instance'Class, Destination.Pointer);
+      use type Destination.Pointer;
    begin
       if Object.Dest /= null then
          Object.Flush;
@@ -73,7 +73,7 @@ package body Yaml.Presenting is
 
    type Allowed_Styles is (All_Of_Them, No_Compact);
 
-   procedure Put (P : in out Presenter;
+   procedure Put (P : in out Instance;
                   E : Events.Event) is
       use type Analysis.Necessary_Quoting;
 
@@ -125,7 +125,7 @@ package body Yaml.Presenting is
 
       procedure Write (S : String) with
         Pre => (for all C of S => C /= Character'Val (10)) is
-         use type Yaml.Destinations.Destination_Access;
+         use type Destination.Pointer;
       begin
          P.Cur_Column := P.Cur_Column + S'Length;
          if P.Buffer_Pos + S'Length - 1 > P.Buffer.all'Length then
@@ -146,7 +146,7 @@ package body Yaml.Presenting is
 
       procedure Write (C : Character) with
         Pre => C /= Character'Val (10) is
-         use type Yaml.Destinations.Destination_Access;
+         use type Destination.Pointer;
       begin
          P.Cur_Column := P.Cur_Column + 1;
          if P.Buffer_Pos > P.Buffer.all'Length then
@@ -163,7 +163,7 @@ package body Yaml.Presenting is
 
       procedure Next_Line (Count : Positive := 1) is
          use Ada.Strings.Fixed;
-         use type Destinations.Destination_Access;
+         use type Destination.Pointer;
       begin
          for I in 1 .. Count loop
             if P.Buffer_Pos > P.Buffer.all'Length then
@@ -990,8 +990,8 @@ package body Yaml.Presenting is
       end case;
    end Put;
 
-   procedure Put (P : in out Presenter;
-                  S : in out Streams.Event_Stream'Class) is
+   procedure Put (P : in out Instance;
+                  S : in out Stream.Reference'Class) is
       Cur : Events.Event := S.Next;
    begin
       loop
@@ -1001,4 +1001,4 @@ package body Yaml.Presenting is
       end loop;
    end Put;
 
-end Yaml.Presenting;
+end Yaml.Presenter;

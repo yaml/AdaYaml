@@ -1,7 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Yaml.Sources;
+with Yaml.Source;
 with Yaml.Text;
 with Ada.Strings.UTF_Encoding;
 
@@ -13,7 +13,7 @@ private package Yaml.Lexer is
    type Instance is limited private;
 
    procedure Init
-     (L : in out Instance; Input : Sources.Source_Access;
+     (L : in out Instance; Input : Source.Pointer;
       Pool : Text.Pool;
       Initial_Buffer_Size : Positive := Default_Initial_Buffer_Size);
    procedure Init (L : in out Instance; Input : UTF_String; Pool : Text.Pool);
@@ -108,7 +108,7 @@ private
       Prev_Lines_Chars : Natural;
         --  number of characters in all previous lines,
         --  used for calculating index.
-      Input       : Sources.Source_Access;  --  input provider
+      Input       : Source.Pointer;  --  input provider
       Sentinel    : Positive;
         --  the position at which, when reached, the buffer must be refilled
       Pos         : Positive;

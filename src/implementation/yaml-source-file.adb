@@ -1,9 +1,9 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-package body Yaml.Sources.Files is
+package body Yaml.Source.File is
 
-   overriding procedure Read_Data (S : in out File_Source; Buffer : out String;
+   overriding procedure Read_Data (S : in out Instance; Buffer : out String;
                                    Length : out Natural) is
       use type Ada.Directories.File_Size;
    begin
@@ -16,20 +16,20 @@ package body Yaml.Sources.Files is
       end;
    end Read_Data;
 
-   overriding procedure Finalize (Object : in out File_Source) is
+   overriding procedure Finalize (Object : in out Instance) is
    begin
       Ada.Streams.Stream_IO.Close (Object.File);
    end Finalize;
 
-   function As_Source (File_Path : String) return Source_Access is
-      Ret : constant access File_Source :=
-        new File_Source'(Source with Input_At => 0,
+   function As_Source (File_Path : String) return Pointer is
+      Ret : constant access Instance :=
+        new Instance'(Source.Instance with Input_At => 0,
                          Input_Length => Ada.Directories.Size (File_Path),
                          others => <>);
    begin
       Ada.Streams.Stream_IO.Open (Ret.File, Ada.Streams.Stream_IO.In_File,
                                   File_Path);
       Ret.Stream := Ada.Streams.Stream_IO.Stream (Ret.File);
-      return Source_Access (Ret);
+      return Pointer (Ret);
    end As_Source;
-end Yaml.Sources.Files;
+end Yaml.Source.File;

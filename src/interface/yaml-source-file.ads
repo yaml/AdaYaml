@@ -4,22 +4,22 @@
 private with Ada.Streams.Stream_IO;
 private with Ada.Directories;
 
-package Yaml.Sources.Files is
+package Yaml.Source.File is
    --  this provides streams which are backed by files on the file system.
 
-   type File_Source is new Source with private;
+   type Instance is new Source.Instance with private;
 
-   overriding procedure Read_Data (S : in out File_Source; Buffer : out String;
+   overriding procedure Read_Data (S : in out Instance; Buffer : out String;
                                    Length : out Natural);
 
-   overriding procedure Finalize (Object : in out File_Source);
+   overriding procedure Finalize (Object : in out Instance);
 
-   function As_Source (File_Path : String) return Source_Access;
+   function As_Source (File_Path : String) return Pointer;
 
 private
-   type File_Source is new Source with record
+   type Instance is new Source.Instance with record
       File   : Ada.Streams.Stream_IO.File_Type;
       Stream : Ada.Streams.Stream_IO.Stream_Access;
       Input_At, Input_Length : Ada.Directories.File_Size;
    end record;
-end Yaml.Sources.Files;
+end Yaml.Source.File;

@@ -6,14 +6,14 @@ library project Libyaml_Dropin is
    for Object_Dir use "obj";
    for Library_Dir use "lib";
    for Library_Kind use "relocatable";
-   for Library_Interface use ("Yaml", "Yaml.C", "Yaml.Events", "Yaml.Parsing",
-                              "Yaml.Sources", "Yaml.Sources.Files",
-                              "Yaml.Sources.Text_IO", "Yaml.Stacks",
-                              "Yaml.Streams", "Yaml.Text", "Yaml.Lexer",
+   for Library_Interface use ("Yaml", "Yaml.C", "Yaml.Events", "Yaml.Parser",
+                              "Yaml.Source", "Yaml.Source.File",
+                              "Yaml.Source.Text_IO", "Yaml.Stacks",
+                              "Yaml.Stream", "Yaml.Text", "Yaml.Lexer",
                               "Yaml.Lexer.Evaluation", "Yaml.Text_Set",
-                              "Yaml.Destinations", "Yaml.Destinations.Text_IO",
-                              "Yaml.Destinations.C_Strings", "Yaml.Presenting",
-                              "Yaml.Presenting.Analysis");
+                              "Yaml.Destination", "Yaml.Destination.Text_IO",
+                              "Yaml.Destination.C_String", "Yaml.Presenter",
+                              "Yaml.Presenter.Analysis");
    for Library_Standalone use "encapsulated";
    for Library_Auto_Init use "true";
 

@@ -3,7 +3,7 @@
 
 with Ada.Strings.Fixed;
 with Ada.Unchecked_Deallocation;
-with Yaml.Destinations.C_Strings;
+with Yaml.Destination.C_String;
 
 package body Yaml.C is
    Creation_Pool : Text.Pool;
@@ -152,19 +152,20 @@ package body Yaml.C is
       end case;
    end Event_Delete;
 
-   function Parser_Initialize (P : in out Parser) return Bool is
+   function Parser_Initialize (P : in out Parser_Type) return Bool is
    begin
       P := new Parser_Holder;
       return True;
    end Parser_Initialize;
 
-   procedure Parser_Delete (P : in out Parser) is
-      procedure Free is new Ada.Unchecked_Deallocation (Parser_Holder, Parser);
+   procedure Parser_Delete (P : in out Parser_Type) is
+      procedure Free is new Ada.Unchecked_Deallocation
+        (Parser_Holder, Parser_Type);
    begin
       Free (P);
    end Parser_Delete;
 
-   procedure Parser_Set_Input_String (P : in out Parser;
+   procedure Parser_Set_Input_String (P : in out Parser_Type;
                                       Input : Interfaces.C.Strings.chars_ptr;
                                       Size : Interfaces.C.size_t) is
    begin
@@ -181,7 +182,7 @@ package body Yaml.C is
        Line   => Mark_Position (C.Line),
        Column => Mark_Position (C.Column)));
 
-   function Parser_Parse (P : in out Parser; E : out Event) return Bool is
+   function Parser_Parse (P : in out Parser_Type; E : out Event) return Bool is
       Raw : constant Events.Event := P.P.Next;
       function To_Type return Event_Type is
         (case Raw.Kind is
@@ -251,7 +252,7 @@ package body Yaml.C is
                                  Size : Interfaces.C.size_t;
                                  Size_Written : access Interfaces.C.size_t) is
    begin
-      Em.E.Set_Output (Destinations.C_Strings.As_Destination
+      Em.E.Set_Output (Destination.C_String.As_Destination
                        (Output, Size, Size_Written));
    end Emitter_Set_Output;
 

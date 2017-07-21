@@ -5,7 +5,7 @@ with AUnit; use AUnit;
 with AUnit.Test_Cases; use AUnit.Test_Cases;
 with Ada.Containers.Vectors;
 
-package Yaml.Parsing.Event_Test is
+package Yaml.Parser.Event_Test is
    subtype Test_Case_Name is String (1 .. 4);
    package Test_Case_Vectors is new Ada.Containers.Vectors (Positive, Test_Case_Name);
 
@@ -20,4 +20,4 @@ package Yaml.Parsing.Event_Test is
 
    procedure Execute_Next_Test (T : in out Test_Cases.Test_Case'Class);
    procedure Execute_Error_Test (T : in out Test_Cases.Test_Case'Class);
-end Yaml.Parsing.Event_Test;
+end Yaml.Parser.Event_Test;

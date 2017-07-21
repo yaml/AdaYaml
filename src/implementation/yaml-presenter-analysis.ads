@@ -1,7 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-private package Yaml.Presenting.Analysis is
+private package Yaml.Presenter.Analysis is
    --  this package analyzes scalars to check how they can be represented
 
    type Necessary_Quoting is (None, Only_In_Flow, Single, Double);
@@ -31,4 +31,4 @@ private package Yaml.Presenting.Analysis is
    end record;
 
    function Features (S : String) return Scalar_Features;
-end Yaml.Presenting.Analysis;
+end Yaml.Presenter.Analysis;

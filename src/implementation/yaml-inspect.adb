@@ -1,17 +1,17 @@
 with Ada.Exceptions;
-with Yaml.Events.Buffers;
-with Yaml.Parsing;
+with Yaml.Events.Buffer;
+with Yaml.Parser;
 
 procedure Yaml.Inspect (Input : String) is
    use type Events.Event_Kind;
 
-   type Error_Kind is (None, Lexer, Parser);
+   type Error_Kind is (None, From_Lexer, From_Parser);
 
-   P : Parsing.Parser;
+   P : Parser.Reference;
    Cur_Pos     : Positive := 1;
    Next_Pos    : Positive;
    Cur_Event   : Events.Event;
-   Read_Events : Events.Buffers.Event_Buffer;
+   Read_Events : Events.Buffer.Reference;
    Occurred_Error : Error_Kind := None;
    Lexer_Token_Start, Lexer_Token_End : Mark;
    Exception_Message : access String;
@@ -92,13 +92,13 @@ begin
    exception
       when Error : Lexer_Error =>
          Emit_Unparseable (Input (Cur_Pos .. Input'Last));
-         Occurred_Error := Lexer;
+         Occurred_Error := From_Lexer;
          Lexer_Token_Start := P.Current_Lexer_Token_Start;
          Lexer_Token_End := P.Current_Input_Character;
          Exception_Message := new String'(Ada.Exceptions.Exception_Message (Error));
       when Error : Parser_Error =>
          Emit_Unparseable (Input (Cur_Pos .. Input'Last));
-         Occurred_Error := Parser;
+         Occurred_Error := From_Parser;
          Lexer_Token_Start := P.Recent_Lexer_Token_Start;
          Lexer_Token_End := P.Recent_Lexer_Token_End;
          Exception_Message := new String'(Ada.Exceptions.Exception_Message (Error));
@@ -112,10 +112,10 @@ begin
             Emit_Raw_Event (Cur_Event);
             exit when Cur_Event.Kind = Events.Stream_End;
          end loop;
-      when Lexer =>
+      when From_Lexer =>
          Emit_Lexer_Error (Lexer_Token_Start, Lexer_Token_End,
                            Exception_Message.all);
-      when Parser =>
+      when From_Parser =>
          Emit_Parser_Error (Lexer_Token_Start, Lexer_Token_End,
                             Exception_Message.all);
    end case;

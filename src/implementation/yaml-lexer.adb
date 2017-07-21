@@ -96,7 +96,7 @@ package body Yaml.Lexer is
       L.Cur := Next (L);
    end Handle_LF;
 
-   procedure Basic_Init (L : in out Instance; Input : Sources.Source_Access;
+   procedure Basic_Init (L : in out Instance; Input : Source.Pointer;
                         Buffer : Buffer_Type; Pool  : Text.Pool) is
    begin
       L.Input := Input;
@@ -115,7 +115,7 @@ package body Yaml.Lexer is
    end Basic_Init;
 
    procedure Init
-     (L : in out Instance; Input : Sources.Source_Access; Pool : Text.Pool;
+     (L : in out Instance; Input : Source.Pointer; Pool : Text.Pool;
       Initial_Buffer_Size : Positive := Default_Initial_Buffer_Size) is
    begin
       Basic_Init (L, Input, new String (1 .. Initial_Buffer_Size), Pool);
@@ -132,8 +132,8 @@ package body Yaml.Lexer is
 
    procedure Finish (L : in out Instance) is
       procedure Free is new Ada.Unchecked_Deallocation
-        (Sources.Source'Class, Sources.Source_Access);
-      use type Sources.Source_Access;
+        (Source.Instance'Class, Source.Pointer);
+      use type Source.Pointer;
    begin
       if L.Input /= null then
          Free (L.Input);

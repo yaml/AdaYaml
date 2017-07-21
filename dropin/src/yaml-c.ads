@@ -5,8 +5,8 @@ with System;
 with Interfaces.C.Strings;
 with Yaml.Events;
 with Yaml.Text;
-private with Yaml.Parsing;
-private with Yaml.Presenting;
+private with Yaml.Parser;
+private with Yaml.Presenter;
 
 package Yaml.C is
    --  this is an implementation of libyaml's C interface declared in yaml.h
@@ -123,15 +123,15 @@ package Yaml.C is
    procedure Event_Delete (E : in out Event) with Export, Convention => C,
      External_Name => "yaml_event_delete";
 
-   type Parser is limited private;
+   type Parser_Type is limited private;
 
-   function Parser_Initialize (P : in out Parser) return Bool with Export,
+   function Parser_Initialize (P : in out Parser_Type) return Bool with Export,
      Convention => C, External_Name => "yaml_parser_initialize";
 
-   procedure Parser_Delete (P : in out Parser) with Export, Convention => C,
-     External_Name => "yaml_parser_delete";
+   procedure Parser_Delete (P : in out Parser_Type) with Export,
+     Convention => C, External_Name => "yaml_parser_delete";
 
-   procedure Parser_Set_Input_String (P : in out Parser;
+   procedure Parser_Set_Input_String (P : in out Parser_Type;
                                       Input : Interfaces.C.Strings.chars_ptr;
                                       Size : Interfaces.C.size_t) with Export,
      Convention => C, External_Name => "yaml_parser_set_input_string";
@@ -139,8 +139,8 @@ package Yaml.C is
    --  yaml_parser_set_input_file must be implemented in C since there is no
    --  Ada type to map C's FILE type to.
 
-   function Parser_Parse (P : in out Parser; E : out Event) return Bool with
-     Export, Convention => C, External_Name => "yaml_parser_parse";
+   function Parser_Parse (P : in out Parser_Type; E : out Event) return Bool
+     with Export, Convention => C, External_Name => "yaml_parser_parse";
 
    type Emitter is limited private;
 
@@ -159,13 +159,13 @@ package Yaml.C is
      with Export, Convention => C, External_Name => "yaml_emitter_emit";
 private
    type Parser_Holder is record
-      P : Parsing.Parser;
+      P : Parser.Reference;
    end record;
 
-   type Parser is access Parser_Holder;
+   type Parser_Type is access Parser_Holder;
 
    type Emitter_Holder is record
-      E : Presenting.Presenter;
+      E : Presenter.Instance;
    end record;
 
    type Emitter is access Emitter_Holder;

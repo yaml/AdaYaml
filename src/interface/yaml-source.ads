@@ -3,17 +3,17 @@
 
 with Ada.Finalization;
 
-package Yaml.Sources is
+package Yaml.Source is
    pragma Preelaborate;
 
    --  a Source is anything that provides a YAML character stream. Sources are
    --  always single-use objects; the parser takes ownership of
    --  sources and deallocates them.
 
-   type Source is abstract new Ada.Finalization.Limited_Controlled with
+   type Instance is abstract new Ada.Finalization.Limited_Controlled with
      null record;
-   type Source_Access is access all Source'Class;
+   type Pointer is access all Instance'Class;
 
-   procedure Read_Data (S : in out Source; Buffer : out String;
+   procedure Read_Data (S : in out Instance; Buffer : out String;
                         Length : out Natural) is abstract;
-end Yaml.Sources;
+end Yaml.Source;

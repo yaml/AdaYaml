@@ -5,12 +5,12 @@ with Ada.Directories; use Ada.Directories;
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Containers.Hashed_Sets;
 with Ada.Strings.Hash;
-with Yaml.Sources.Files;
+with Yaml.Source.File;
 with Yaml.Events;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with AUnit.Assertions; use AUnit.Assertions;
 
-package body Yaml.Parsing.Event_Test is
+package body Yaml.Parser.Event_Test is
    procedure Register_Tests (T : in out TC) is
       package Test_Sets is new Ada.Containers.Hashed_Sets
         (Test_Case_Name, Ada.Strings.Hash, Standard."=");
@@ -81,17 +81,17 @@ package body Yaml.Parsing.Event_Test is
    procedure Execute_Next_Test (T : in out Test_Cases.Test_Case'Class) is
       Test_Dir : constant Standard.String :=
         Compose ("yaml-test-suite", TC (T).Test_Cases.Element (TC (T).Cur));
-      P : Parser;
+      P : Reference;
       Expected : File_Type;
       Output : Unbounded_String;
    begin
       TC (T).Cur := TC (T).Cur + 1;
-      P.Set_Input (Sources.Files.As_Source (Compose (Test_Dir, "in.yaml")));
+      P.Set_Input (Source.File.As_Source (Compose (Test_Dir, "in.yaml")));
       Open (Expected, In_File, Compose (Test_Dir, "test.event"));
       loop
          declare
             Expected_Event : constant Standard.String := Get_Line (Expected);
-            Actual : constant Events.Event := Streams.Next (P);
+            Actual : constant Events.Event := P.Next;
             Actual_Event : constant Standard.String := Events.To_String (Actual);
             use type Events.Event_Kind;
          begin
@@ -119,16 +119,16 @@ package body Yaml.Parsing.Event_Test is
    procedure Execute_Error_Test (T : in out Test_Cases.Test_Case'Class) is
       Test_Dir : constant Standard.String :=
         Compose ("yaml-test-suite", TC (T).Test_Cases.Element (TC (T).Cur));
-      P : Parser;
+      P : Reference;
       Output : Unbounded_String;
       Cur : Events.Event;
       Expected_Error : File_Type;
       use type Events.Event_Kind;
    begin
       TC (T).Cur := TC (T).Cur + 1;
-      P.Set_Input (Sources.Files.As_Source (Compose (Test_Dir, "in.yaml")));
+      P.Set_Input (Source.File.As_Source (Compose (Test_Dir, "in.yaml")));
       loop
-         Cur := Streams.Next (P);
+         Cur := P.Next;
          Append (Output, Events.To_String (Cur) & Character'Val (10));
          exit when Cur.Kind = Events.Stream_End;
       end loop;
@@ -148,4 +148,4 @@ package body Yaml.Parsing.Event_Test is
    end Execute_Error_Test;
 
 
-end Yaml.Parsing.Event_Test;
+end Yaml.Parser.Event_Test;

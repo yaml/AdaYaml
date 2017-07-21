@@ -1,7 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-package body Yaml.Presenting.Analysis is
+package body Yaml.Presenter.Analysis is
    function Features (S : String) return Scalar_Features is
       Pos : Positive := S'First;
       Cur : Character;
@@ -157,4 +157,4 @@ package body Yaml.Presenting.Analysis is
          end if;
       end return;
    end Features;
-end Yaml.Presenting.Analysis;
+end Yaml.Presenter.Analysis;
