@@ -49,7 +49,9 @@ private package Yaml.Lexer is
       Verbatim_Tag,      --  a verbatim tag, e.g. `!<tag:yaml.org,2002:str>`
       Anchor,            --  an anchor property of a node, e.g. `&anchor`
       Alias,             --  an alias property of a node, e.g. `*alias`
-      Annotation         --  an annotation property of a node, e.g. `@ann`
+      Annotation,        --  an annotation property of a node, e.g. `@ann`
+      Params_Start,      --  start of annotation parameters `(`
+      Params_End         --  end of annotation parameters `)`
      );
    subtype Scalar_Token_Kind is Token_Kind range Plain_Scalar .. Folded_Scalar;
    subtype Flow_Scalar_Token_Kind is
@@ -132,7 +134,8 @@ private
         --  tokens, it is allowed for a map value indicator to not be succeeded
         --  by whitespace.
       Cur         : Character;  --  recently read character
-      Flow_Depth  : Natural; --  current level of flow collections
+      Flow_Depth, Annotation_Depth  : Natural;
+        --  current level of flow collections and annotation parameter lists
       Value : Text.Reference;
         --  content of the recently read scalar or URI, if any.
       Pool : Text.Pool; --  used for generating Content
@@ -289,4 +292,9 @@ private
    --  state after having read a tag handle. this will always yield the
    --  corresponding tag suffix.
    function At_Tag_Suffix (L : in out Instance; T : out Token) return Boolean;
+
+   --  state after having read an annotation. checks whether the annotation
+   --  has parameters.
+   function After_Annotation (L : in out Instance; T : out Token)
+                              return Boolean;
 end Yaml.Lexer;

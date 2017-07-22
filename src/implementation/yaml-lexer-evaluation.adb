@@ -56,7 +56,7 @@ package body Yaml.Lexer.Evaluation is
       --  so we never have to do any bounds checking and growing of the string.
       Result : Out_Buffer_Type (L.Buffer.all'Length);
       After_Newline_State : constant State_Type :=
-        (if L.Flow_Depth = 0 then Line_Indentation'Access
+        (if L.Flow_Depth + L.Annotation_Depth = 0 then Line_Indentation'Access
            else Flow_Line_Indentation'Access);
    begin
       L.Seen_Multiline := False;
@@ -100,6 +100,12 @@ package body Yaml.Lexer.Evaluation is
                                  exit Multiline_Loop;
                               end if;
                               exit Space_Loop;
+                           when ')' =>
+                              if L.Annotation_Depth > 0 then
+                                 L.State := Inside_Line'Access;
+                                 exit Multiline_Loop;
+                              end if;
+                              exit Space_Loop;
                            when ' ' => null;
                            when others => exit Space_Loop;
                         end case;
@@ -114,6 +120,12 @@ package body Yaml.Lexer.Evaluation is
                   end if;
                when Flow_Indicator =>
                   if L.Flow_Depth > 0 then
+                     T.End_Pos := Cur_Mark (L);
+                     L.State := Inside_Line'Access;
+                     exit Multiline_Loop;
+                  end if;
+               when ')' =>
+                  if L.Annotation_Depth > 0 then
                      T.End_Pos := Cur_Mark (L);
                      L.State := Inside_Line'Access;
                      exit Multiline_Loop;
@@ -162,6 +174,7 @@ package body Yaml.Lexer.Evaluation is
             if
               (L.Cur = ':' and then not Next_Is_Plain_Safe (L)) or else
               L.Cur = '#' or else (L.Cur in Flow_Indicator and L.Flow_Depth > 0)
+              or else (L.Cur = ')' and L.Annotation_Depth > 0)
             then
                L.State := After_Newline_State;
                exit Multiline_Loop;

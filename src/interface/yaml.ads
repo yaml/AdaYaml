@@ -35,7 +35,8 @@ package Yaml is
 
    type Event_Kind is (Stream_Start, Stream_End, Document_Start, Document_End,
                        Alias, Scalar, Sequence_Start, Sequence_End,
-                       Mapping_Start, Mapping_End);
+                       Mapping_Start, Mapping_End, Annotation_Start,
+                       Annotation_End);
    type Collection_Style_Type is (Any, Block, Flow) with
      Convention => C;
    type Scalar_Style_Type is
@@ -62,14 +63,17 @@ package Yaml is
          when Mapping_Start | Sequence_Start =>
             Collection_Style : Collection_Style_Type;
             Collection_Properties : Properties;
+         when Annotation_Start =>
+            Annotation_Properties : Properties;
+            Name : Text.Reference;
          when Scalar =>
             Scalar_Properties : Properties;
             Content : Text.Reference;
             Scalar_Style : Scalar_Style_Type;
          when Alias =>
             Target : Text.Reference;
-         when Mapping_End | Sequence_End | Stream_Start | Stream_End =>
-            null;
+         when Mapping_End | Sequence_End | Annotation_End | Stream_Start |
+              Stream_End => null;
       end case;
    end record;
 

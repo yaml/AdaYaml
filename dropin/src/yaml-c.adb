@@ -195,7 +195,9 @@ package body Yaml.C is
             when Sequence_Start => Sequence_Start,
             when Sequence_End => Sequence_End,
             when Scalar => Scalar,
-            when Alias => Alias);
+            when Alias => Alias,
+            when Annotation_Start => Annotation_Start,
+            when Annotation_End => Annotation_End);
       function To_Data return Event_Data is
         (case Raw.Kind is
             when Stream_Start => (T => Stream_Start, Encoding => UTF8),
@@ -228,7 +230,13 @@ package body Yaml.C is
                                    Quoted_Implicit => False,
                                    Scalar_Style => Raw.Scalar_Style),
             when Alias => (T => Alias,
-                                  Ali_Anchor => Text.Export (Raw.Target)));
+                           Ali_Anchor => Text.Export (Raw.Target)),
+            when Annotation_Start => (T => Annotation_Start,
+                                      Ann_Anchor => Text.Export (Raw.Annotation_Properties.Anchor),
+                                      Ann_Tag    => Text.Export (Raw.Annotation_Properties.Tag),
+                                      Ann_Name   => Text.Export (Raw.Name)),
+            when Annotation_End => (T => Annotation_End));
+
    begin
       E := (Kind => To_Type, Data => To_Data,
             Start_Mark => To_C (Raw.Start_Position),
@@ -306,6 +314,14 @@ package body Yaml.C is
                            Start_Position => To_Ada (E.Start_Mark),
                            End_Position => To_Ada (E.End_Mark),
                            Target => Text.Import (E.Data.Ali_Anchor)),
+            when Annotation_Start => (Kind => Annotation_Start,
+                                      Start_Position => To_Ada (E.Start_Mark),
+                                      End_Position => To_Ada (E.End_Mark),
+                                      Annotation_Properties => To_Properties (E.Data.Ann_Tag, E.Data.Ann_Anchor),
+                                      Name => Text.Import (E.Data.Ann_Name)),
+            when Annotation_End => (Kind => Annotation_End,
+                                    Start_Position => To_Ada (E.Start_Mark),
+                                    End_Position => To_Ada (E.End_Mark)),
             when No_Event => (others => <>));
    begin
       if E.Kind /= No_Event then

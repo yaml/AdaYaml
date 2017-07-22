@@ -379,7 +379,10 @@ typedef enum yaml_event_type_e {
     /** A MAPPING-START event. */
     YAML_MAPPING_START_EVENT,
     /** A MAPPING-END event. */
-    YAML_MAPPING_END_EVENT
+    YAML_MAPPING_END_EVENT,
+    
+    YAML_ANNOTATION_START_EVENT,
+    YAML_ANNOTATION_END_EVENT
 } yaml_event_type_t;
 
 /** The event structure. */
@@ -466,7 +469,13 @@ typedef struct yaml_event_s {
             int implicit;
             /** The mapping style. */
             yaml_mapping_style_t style;
-        } mapping_start;
+      } mapping_start;
+      
+      struct {
+	yaml_char_t *anchor;
+	yaml_char_t *tag;
+	yaml_char_t *name;
+      } annotation_start;
 
     } data;
 

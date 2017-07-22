@@ -28,7 +28,7 @@ package Yaml.C is
    type Event_Type is
      (No_Event, Stream_Start, Stream_End, Document_Start, Document_End,
       Alias, Scalar, Sequence_Start, Sequence_End, Mapping_Start,
-      Mapping_End) with Convention => C;
+      Mapping_End, Annotation_Start, Annotation_End) with Convention => C;
 
    type Event_Data (T : Event_Type := No_Event) is record
       case T is
@@ -55,6 +55,9 @@ package Yaml.C is
             Map_Anchor, Map_Tag : Text.Exported;
             Map_Implicit : Bool;
             Map_Style : Collection_Style_Type;
+         when Annotation_Start =>
+            Ann_Anchor, Ann_Tag : Text.Exported;
+            Ann_Name : Text.Exported;
          when others => null;
       end case;
    end record with Unchecked_Union, Convention => C;

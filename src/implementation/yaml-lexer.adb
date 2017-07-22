@@ -106,6 +106,7 @@ package body Yaml.Lexer is
       L.Cur_Line := 1;
       L.State := Outside_Doc'Access;
       L.Flow_Depth := 0;
+      L.Annotation_Depth := 0;
       L.Line_Start_State := Outside_Doc'Access;
       L.Json_Enabling_State := After_Token'Access;
       L.Pool := Pool;
@@ -191,7 +192,8 @@ package body Yaml.Lexer is
    function Next_Is_Plain_Safe (L : Instance) return Boolean is
       (case L.Buffer (L.Pos) is
          when Space_Or_Line_End => False,
-         when Flow_Indicator => L.Flow_Depth = 0,
+          when Flow_Indicator => L.Flow_Depth + L.Annotation_Depth = 0,
+          when ')' => L.Annotation_Depth = 0,
           when others => True);
 
    function Next_Token (L : in out Instance) return Token is
@@ -610,7 +612,7 @@ package body Yaml.Lexer is
                                     Kind : Token_Kind) is
    begin
       Start_Token (L);
-      if L.Flow_Depth = 0 then
+      if L.Flow_Depth + L.Annotation_Depth = 0 then
          L.Json_Enabling_State := After_Json_Enabling_Token'Access;
          L.Line_Start_State := Flow_Line_Start'Access;
          L.Proposed_Indentation := -1;
@@ -630,7 +632,7 @@ package body Yaml.Lexer is
          raise Lexer_Error with "No flow collection to leave!";
       end if;
       L.Flow_Depth := L.Flow_Depth - 1;
-      if L.Flow_Depth = 0 then
+      if L.Flow_Depth + L.Annotation_Depth = 0 then
          L.Json_Enabling_State := After_Token'Access;
          L.Line_Start_State := Line_Start'Access;
       end if;
@@ -692,7 +694,7 @@ package body Yaml.Lexer is
          L.Cur := Next (L);
          exit when not (L.Cur in Ascii_Char | Digit | '-' | '_');
       end loop;
-      if not (L.Cur in Space_Or_Line_End | Flow_Indicator) then
+      if not (L.Cur in Space_Or_Line_End | Flow_Indicator | ')') then
          raise Lexer_Error with "Illegal character in anchor: " &
            Escaped (L.Cur);
       elsif L.Pos = L.Token_Start + 1 then
@@ -731,7 +733,7 @@ package body Yaml.Lexer is
             L.State := L.Json_Enabling_State;
             return True;
          when '>' | '|' =>
-            if L.Flow_Depth > 0 then
+            if L.Flow_Depth + L.Annotation_Depth > 0 then
                Evaluation.Read_Plain_Scalar (L, T);
             else
                Evaluation.Read_Block_Scalar (L, T);
@@ -748,6 +750,22 @@ package body Yaml.Lexer is
             return True;
          when ']' =>
             Leave_Flow_Collection (L, T, Flow_Seq_End);
+            return True;
+         when ')' =>
+            Start_Token (L);
+            if L.Annotation_Depth > 0 then
+               L.Annotation_Depth := L.Annotation_Depth - 1;
+               if L.Flow_Depth + L.Annotation_Depth = 0 then
+                  L.Json_Enabling_State := After_Token'Access;
+                  L.Line_Start_State := Line_Start'Access;
+               end if;
+               L.State := After_Token'Access;
+               L.Cur := Next (L);
+               T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+                     Kind => Params_End);
+            else
+               Evaluation.Read_Plain_Scalar (L, T);
+            end if;
             return True;
          when ',' =>
             Start_Token (L);
@@ -770,9 +788,20 @@ package body Yaml.Lexer is
                   Kind => Alias);
             return True;
          when '@' =>
-            Read_Anchor_Name (L);
+            Start_Token (L);
+            loop
+               L.Cur := Next (L);
+               exit when not (L.Cur in Ascii_Char | Digit | '-' | '_');
+            end loop;
+            if not (L.Cur in Space_Or_Line_End | '(') then
+               raise Lexer_Error with "Illegal character in annotation: " &
+                 Escaped (L.Cur);
+            elsif L.Pos = L.Token_Start + 1 then
+               raise Lexer_Error with "Annotation name must not be empty";
+            end if;
             T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
                   Kind => Annotation);
+            L.State := After_Annotation'Access;
             return True;
          when '`' =>
             raise Lexer_Error with
@@ -788,7 +817,7 @@ package body Yaml.Lexer is
       Cached_Indentation : constant Natural := L.Pos - L.Line_Start - 1;
    begin
       return Ret : constant Boolean := Inside_Line (L, T) do
-         if Ret and then L.Flow_Depth = 0 then
+         if Ret and then L.Flow_Depth + L.Annotation_Depth = 0 then
             if T.Kind in Node_Property_Kind then
                L.Proposed_Indentation := Cached_Indentation;
             else
@@ -896,5 +925,22 @@ package body Yaml.Lexer is
       L.State := After_Token'Access;
       return True;
    end At_Tag_Suffix;
+
+   function After_Annotation (L : in out Instance; T : out Token)
+                              return Boolean is
+   begin
+      L.State := After_Token'Access;
+      if L.Cur = '(' then
+         Start_Token (L);
+         T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+               Kind => Params_Start);
+         L.Annotation_Depth := L.Annotation_Depth + 1;
+         L.Proposed_Indentation := -1;
+         L.Cur := Next (L);
+         return True;
+      else
+         return False;
+      end if;
+   end After_Annotation;
 
 end Yaml.Lexer;

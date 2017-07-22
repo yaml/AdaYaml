@@ -217,4 +217,24 @@ private
    --  in a flow sequence.
    function After_Pair_Value (P : in out Implementation'Class;
                               E : out Event) return Boolean;
+
+   --  expects either another part of the parameter list or `)` in which case
+   --  the recently read comma is treated as trailing comma that does not start
+   --  a new parameter.
+   function After_Param_Sep (P : in out Implementation'Class; E : out Event)
+                          return Boolean;
+
+   --  the existence of node properties after a sequence separator (`,`) makes
+   --  the comma non-trailing and forces the generation of another param node,
+   --  even if it is an implicit empty scalar.
+   function After_Param_Sep_Props
+     (P : in out Implementation'Class; E : out Event) return Boolean;
+
+   --  expects either a `,` or a `)`
+   function After_Param (P : in out Implementation'Class; E : out Event)
+                         return Boolean;
+
+   --  end an annotation
+   function After_Annotation (P : in out Implementation'Class; E : out Event)
+                              return Boolean;
 end Yaml.Parser;

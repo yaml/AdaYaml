@@ -76,6 +76,11 @@ package body Yaml is
               Scalar_Indicator (E.Scalar_Style) & Escaped (E.Content);
          when Alias =>
             return "=ALI *" & E.Target.Value;
+         when Annotation_Start =>
+            return "+ANN" & Prop_String (E.Annotation_Properties) & " @" &
+              E.Name;
+         when Annotation_End =>
+            return "-ANN";
       end case;
    end To_String;
 end Yaml;
