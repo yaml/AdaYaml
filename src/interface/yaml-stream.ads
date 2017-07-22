@@ -2,7 +2,6 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Ada.Finalization;
-with Yaml.Events;
 
 package Yaml.Stream is
    --  event streams are the heart of YAML processing. a parser generates an
@@ -20,12 +19,12 @@ package Yaml.Stream is
    overriding procedure Finalize (Object : in out Reference);
 
    --  queries the next event from the stream.
-   function Next (S : in out Reference'Class) return Events.Event;
+   function Next (S : in out Reference'Class) return Event;
 
    --  returns the next event that would be returned by Next, but without
    --  advancing the stream (i.e. this function is idempotent). useful for
    --  semantic processing of the stream.
-   function Peek (S : in out Reference'Class) return Events.Event;
+   function Peek (S : in out Reference'Class) return Event;
 
    --  holder of implementation values. when implementing a stream generator,
    --  put the generator's state in a type derived from this.
@@ -34,7 +33,7 @@ package Yaml.Stream is
 
    --  to be provided by the stream generator implementation
    procedure Fetch (S : in out Implementation;
-                    E : out Events.Event) is abstract;
+                    E : out Event) is abstract;
 
    --  override this if you have cleanup to do.
    procedure Close_Stream (S : in out Implementation) is null;
@@ -55,7 +54,7 @@ private
 
    type Implementation is abstract tagged limited record
       Refcount : Natural := 1;
-      Cached : Events.Event;
+      Cached : Event;
       Peeked : Boolean := False;
    end record;
 end Yaml.Stream;

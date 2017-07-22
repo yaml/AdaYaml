@@ -4,7 +4,7 @@
 with Ada.Text_IO;
 with AUnit.Assertions; use AUnit.Assertions;
 
-package body Yaml.Text.Chunk_Test is
+package body Text.Chunk_Test is
    procedure Register_Tests (T : in out TC) is
       use AUnit.Test_Cases.Registration;
    begin
@@ -52,4 +52,4 @@ package body Yaml.Text.Chunk_Test is
       Assert (C2 = S2, "S2 mismatch!");
    end Test_Two_Strings;
 
-end Yaml.Text.Chunk_Test;
+end Text.Chunk_Test;

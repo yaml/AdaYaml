@@ -8,12 +8,11 @@ with Yaml.Source.Text_IO;
 with Yaml.Source.File;
 with Yaml.Parser;
 with Yaml.Stream;
-with Yaml.Events;  use Yaml.Events;
 
 procedure Yaml.To_Events is
    Input : Source.Pointer;
-   P  : Parser.Reference;
-   Cur   : Events.Event;
+   P     : Parser.Reference;
+   Cur   : Event;
 begin
    if Ada.Command_Line.Argument_Count = 0 then
       Input := Source.Text_IO.As_Source (Ada.Text_IO.Standard_Input);

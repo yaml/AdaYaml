@@ -1,17 +1,18 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 with Ada.Exceptions;
-with Yaml.Events.Buffer;
+with Yaml.Event_Buffer;
 with Yaml.Parser;
 
 procedure Yaml.Inspect (Input : String) is
-   use type Events.Event_Kind;
-
    type Error_Kind is (None, From_Lexer, From_Parser);
 
    P : Parser.Reference;
    Cur_Pos     : Positive := 1;
    Next_Pos    : Positive;
-   Cur_Event   : Events.Event;
-   Read_Events : Events.Buffer.Reference;
+   Cur_Event   : Event;
+   Read_Events : Event_Buffer.Reference;
    Occurred_Error : Error_Kind := None;
    Lexer_Token_Start, Lexer_Token_End : Mark;
    Exception_Message : access String;
@@ -87,7 +88,7 @@ begin
          end;
          End_Rendered_Event;
          Cur_Pos := Cur_Event.End_Position.Index;
-         exit when Cur_Event.Kind = Events.Stream_End;
+         exit when Cur_Event.Kind = Stream_End;
       end loop;
    exception
       when Error : Lexer_Error =>
@@ -110,7 +111,7 @@ begin
          loop
             Cur_Event := Read_Events.Next;
             Emit_Raw_Event (Cur_Event);
-            exit when Cur_Event.Kind = Events.Stream_End;
+            exit when Cur_Event.Kind = Stream_End;
          end loop;
       when From_Lexer =>
          Emit_Lexer_Error (Lexer_Token_Start, Lexer_Token_End,

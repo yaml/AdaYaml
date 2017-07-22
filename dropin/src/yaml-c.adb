@@ -70,7 +70,7 @@ package body Yaml.C is
 
    function Scalar_Event_Initialize
      (E : out Event; Anchor, Tag, Value : Interfaces.C.Strings.chars_ptr;
-      Plain_Implicit, Quoted_Implicit : Bool; Style : Events.Scalar_Style_Type)
+      Plain_Implicit, Quoted_Implicit : Bool; Style : Scalar_Style_Type)
       return Bool is
       Converted_Value : constant Standard.String :=
         Interfaces.C.Strings.Value (Value);
@@ -94,7 +94,7 @@ package body Yaml.C is
 
    function Sequence_Start_Event_Initialize
      (E : out Event; Anchor, Tag : Interfaces.C.Strings.chars_ptr;
-      Implicit : Bool; Style : Events.Collection_Style_Type) return Bool is
+      Implicit : Bool; Style : Collection_Style_Type) return Bool is
    begin
       E := (Kind => Sequence_Start, Data =>
               (T => Sequence_Start, Seq_Anchor => Text.Export
@@ -114,7 +114,7 @@ package body Yaml.C is
 
    function Mapping_Start_Event_Initialize
      (E : out Event; Anchor, Tag : Interfaces.C.Strings.chars_ptr;
-      Implicit : Bool; Style : Events.Collection_Style_Type) return Bool is
+      Implicit : Bool; Style : Collection_Style_Type) return Bool is
    begin
       E := (Kind => Mapping_Start, Data =>
               (T => Mapping_Start, Map_Anchor => Text.Export
@@ -183,43 +183,43 @@ package body Yaml.C is
        Column => Mark_Position (C.Column)));
 
    function Parser_Parse (P : in out Parser_Type; E : out Event) return Bool is
-      Raw : constant Events.Event := P.P.Next;
+      Raw : constant Yaml.Event := P.P.Next;
       function To_Type return Event_Type is
         (case Raw.Kind is
-            when Events.Stream_Start => Stream_Start,
-            when Events.Stream_End => Stream_End,
-            when Events.Document_Start => Document_Start,
-            when Events.Document_End => Document_End,
-            when Events.Mapping_Start => Mapping_Start,
-            when Events.Mapping_End => Mapping_End,
-            when Events.Sequence_Start => Sequence_Start,
-            when Events.Sequence_End => Sequence_End,
-            when Events.Scalar => Scalar,
-            when Events.Alias => Alias);
+            when Stream_Start => Stream_Start,
+            when Stream_End => Stream_End,
+            when Document_Start => Document_Start,
+            when Document_End => Document_End,
+            when Mapping_Start => Mapping_Start,
+            when Mapping_End => Mapping_End,
+            when Sequence_Start => Sequence_Start,
+            when Sequence_End => Sequence_End,
+            when Scalar => Scalar,
+            when Alias => Alias);
       function To_Data return Event_Data is
         (case Raw.Kind is
-            when Events.Stream_Start => (T => Stream_Start, Encoding => UTF8),
-            when Events.Stream_End => (T => Stream_End),
-            when Events.Document_Start => (T => Document_Start,
+            when Stream_Start => (T => Stream_Start, Encoding => UTF8),
+            when Stream_End => (T => Stream_End),
+            when Document_Start => (T => Document_Start,
                                            Version_Directive => System.Null_Address,
                                            Start_Dir => System.Null_Address,
                                            End_Dir => System.Null_Address,
                                            DS_Implicit => Bool (Raw.Implicit_Start)),
-            when Events.Document_End => (T => Document_End,
+            when Document_End => (T => Document_End,
                                          DE_Implicit => Bool (Raw.Implicit_End)),
-            when Events.Mapping_Start => (T => Mapping_Start,
+            when Mapping_Start => (T => Mapping_Start,
                                           Map_Anchor => Text.Export (Raw.Collection_Properties.Anchor),
                                           Map_Tag => Text.Export (Raw.Collection_Properties.Tag),
                                           Map_Implicit => False,
                                           Map_Style => Raw.Collection_Style),
-            when Events.Mapping_End => (T => Mapping_End),
-            when Events.Sequence_Start => (T => Sequence_Start,
+            when Mapping_End => (T => Mapping_End),
+            when Sequence_Start => (T => Sequence_Start,
                                           Seq_Anchor => Text.Export (Raw.Collection_Properties.Anchor),
                                           Seq_Tag => Text.Export (Raw.Collection_Properties.Tag),
                                           Seq_Implicit => False,
                                           Seq_Style => Raw.Collection_Style),
-            when Events.Sequence_End => (T => Sequence_End),
-            when Events.Scalar => (T => Scalar,
+            when Sequence_End => (T => Sequence_End),
+            when Scalar => (T => Scalar,
                                    Scalar_Anchor => Text.Export (Raw.Scalar_Properties.Anchor),
                                    Scalar_Tag => Text.Export (Raw.Scalar_Properties.Tag),
                                    Value => Text.Export (Raw.Content),
@@ -227,7 +227,7 @@ package body Yaml.C is
                                    Plain_Implicit => False,
                                    Quoted_Implicit => False,
                                    Scalar_Style => Raw.Scalar_Style),
-            when Events.Alias => (T => Alias,
+            when Alias => (T => Alias,
                                   Ali_Anchor => Text.Export (Raw.Target)));
    begin
       E := (Kind => To_Type, Data => To_Data,
@@ -258,52 +258,51 @@ package body Yaml.C is
 
    function Emitter_Emit (Em : in out Emitter; E : in out Event) return Bool is
       function To_Properties (Tag, Anchor : Text.Exported)
-                              return Events.Properties is
-        ((Anchor => Text.Import (Anchor), Tag => Text.Import (Tag),
-          Annotations => <>));
+                              return Properties is
+        ((Anchor => Text.Import (Anchor), Tag => Text.Import (Tag)));
 
-      function To_Event (E : Event) return Events.Event is
+      function To_Event (E : Event) return Yaml.Event is
         (case E.Kind is
-            when Stream_Start => (Kind => Events.Stream_Start,
+            when Stream_Start => (Kind => Stream_Start,
                                   Start_Position => To_Ada (E.Start_Mark),
                                   End_Position => To_Ada (E.End_Mark)),
-            when Stream_End => (Kind => Events.Stream_End,
+            when Stream_End => (Kind => Stream_End,
                                 Start_Position => To_Ada (E.Start_Mark),
                                 End_Position => To_Ada (E.End_Mark)),
-            when Document_Start => (Kind => Events.Document_Start,
+            when Document_Start => (Kind => Document_Start,
                                     Start_Position => To_Ada (E.Start_Mark),
                                     End_Position => To_Ada (E.End_Mark),
                                     Version => Text.Empty,
                                     Implicit_Start => Boolean (E.Data.DS_Implicit)),
-            when Document_End => (Kind => Events.Document_End,
+            when Document_End => (Kind => Document_End,
                                   Start_Position => To_Ada (E.Start_Mark),
                                   End_Position => To_Ada (E.End_Mark),
                                   Implicit_End => Boolean (E.Data.DE_Implicit)),
             when Mapping_Start =>
-           (Kind => Events.Mapping_Start,
+           (Kind => Mapping_Start,
             Start_Position => To_Ada (E.Start_Mark),
             End_Position => To_Ada (E.End_Mark),
             Collection_Style => E.Data.Map_Style,
             Collection_Properties => To_Properties (E.Data.Map_Tag, E.Data.Map_Anchor)),
-            when Mapping_End => (Kind => Events.Mapping_End,
+            when Mapping_End => (Kind => Mapping_End,
                                  Start_Position => To_Ada (E.Start_Mark),
                                  End_Position => To_Ada (E.End_Mark)),
             when Sequence_Start =>
-           (Kind => Events.Sequence_Start,
+           (Kind => Sequence_Start,
             Start_Position => To_Ada (E.Start_Mark),
             End_Position => To_Ada (E.End_Mark),
             Collection_Style => E.Data.Seq_Style,
             Collection_Properties => To_Properties (E.Data.Seq_Tag, E.Data.Seq_Anchor)),
-            when Sequence_End => (Kind => Events.Sequence_End,
+            when Sequence_End => (Kind => Sequence_End,
                                   Start_Position => To_Ada (E.Start_Mark),
                                   End_Position => To_Ada (E.End_Mark)),
-            when Scalar => (Kind => Events.Scalar,
+            when Scalar => (Kind => Scalar,
                             Start_Position => To_Ada (E.Start_Mark),
                             End_Position => To_Ada (E.End_Mark),
                             Scalar_Properties => To_Properties (E.Data.Scalar_Tag, E.Data.Scalar_Anchor),
                             Content => Text.Import (E.Data.Value),
                             Scalar_Style => E.Data.Scalar_Style),
-            when Alias => (Kind => Events.Alias,
+            when Alias => (Kind => Alias,
                            Start_Position => To_Ada (E.Start_Mark),
                            End_Position => To_Ada (E.End_Mark),
                            Target => Text.Import (E.Data.Ali_Anchor)),

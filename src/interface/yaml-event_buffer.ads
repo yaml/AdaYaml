@@ -1,6 +1,9 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 with Yaml.Stream;
 
-package Yaml.Events.Buffer is
+package Yaml.Event_Buffer is
    type Reference is new Stream.Reference with private;
 
    procedure Append (Object : in out Reference; E : Event);
@@ -19,10 +22,10 @@ private
    type Implementation_Pointer is access all Implementation;
 
    overriding procedure Fetch (Stream : in out Implementation;
-                               E : out Events.Event);
+                               E : out Event);
 
    overriding
    procedure Close_Stream (Stream : in out Implementation);
 
    type Reference is new Stream.Reference with null record;
-end Yaml.Events.Buffer;
+end Yaml.Event_Buffer;

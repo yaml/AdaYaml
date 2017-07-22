@@ -26,7 +26,7 @@ package body Yaml.Stream is
       end if;
    end Finalize;
 
-   function Next (S : in out Reference'Class) return Events.Event is
+   function Next (S : in out Reference'Class) return Event is
    begin
       if S.Impl.Peeked then
          S.Impl.Peeked := False;
@@ -37,9 +37,9 @@ package body Yaml.Stream is
       return S.Impl.Cached;
    end Next;
 
-   function Peek (S : in out Reference'Class) return Events.Event is
+   function Peek (S : in out Reference'Class) return Event is
    begin
-      return E : constant Events.Event := Next (S) do
+      return E : constant Event := Next (S) do
          S.Impl.Peeked := True;
       end return;
    end Peek;

@@ -3,8 +3,6 @@
 
 with System;
 with Interfaces.C.Strings;
-with Yaml.Events;
-with Yaml.Text;
 private with Yaml.Parser;
 private with Yaml.Presenter;
 
@@ -48,15 +46,15 @@ package Yaml.C is
             Scalar_Anchor, Scalar_Tag, Value : Text.Exported;
             Length : Interfaces.C.size_t;
             Plain_Implicit, Quoted_Implicit : Bool;
-            Scalar_Style : Events.Scalar_Style_Type;
+            Scalar_Style : Scalar_Style_Type;
          when Sequence_Start =>
             Seq_Anchor, Seq_Tag : Text.Exported;
             Seq_Implicit : Bool;
-            Seq_Style : Events.Collection_Style_Type;
+            Seq_Style : Collection_Style_Type;
          when Mapping_Start =>
             Map_Anchor, Map_Tag : Text.Exported;
             Map_Implicit : Bool;
-            Map_Style : Events.Collection_Style_Type;
+            Map_Style : Collection_Style_Type;
          when others => null;
       end case;
    end record with Unchecked_Union, Convention => C;
@@ -96,13 +94,13 @@ package Yaml.C is
 
    function Scalar_Event_Initialize
      (E : out Event; Anchor, Tag, Value : Interfaces.C.Strings.chars_ptr;
-      Plain_Implicit, Quoted_Implicit : Bool; Style : Events.Scalar_Style_Type)
+      Plain_Implicit, Quoted_Implicit : Bool; Style : Scalar_Style_Type)
       return Bool with Export, Convention => C,
      External_Name => "yaml_scalar_event_initialize";
 
    function Sequence_Start_Event_Initialize
      (E : out Event; Anchor, Tag : Interfaces.C.Strings.chars_ptr;
-      Implicit : Bool; Style : Events.Collection_Style_Type) return Bool with
+      Implicit : Bool; Style : Collection_Style_Type) return Bool with
      Export, Convention => C,
      External_Name => "yaml_sequence_start_event_initialize";
 
@@ -112,7 +110,7 @@ package Yaml.C is
 
    function Mapping_Start_Event_Initialize
      (E : out Event; Anchor, Tag : Interfaces.C.Strings.chars_ptr;
-      Implicit : Bool; Style : Events.Collection_Style_Type) return Bool with
+      Implicit : Bool; Style : Collection_Style_Type) return Bool with
      Export, Convention => C,
      External_Name => "yaml_mapping_start_event_initialize";
 

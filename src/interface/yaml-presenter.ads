@@ -3,7 +3,6 @@
 
 with Ada.Finalization;
 with Yaml.Destination;
-with Yaml.Events;
 with Yaml.Stream;
 with Yaml.Stacks;
 
@@ -17,8 +16,7 @@ package Yaml.Presenter is
    procedure Set_Output (P : in out Instance;
                          Buffer : not null Buffer_Type);
    
-   procedure Put (P : in out Instance;
-                  E : Events.Event);
+   procedure Put (P : in out Instance; E : Event);
    
    procedure Put (P : in out Instance;
                   S : in out Stream.Reference'Class);

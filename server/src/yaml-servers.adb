@@ -1,7 +1,6 @@
 with Ada.Exceptions;
 with Ada.Strings.Fixed;
 with Ada.Text_IO;
-with Yaml.Events;
 with Yaml.Inspect;
 
 package body Yaml.Servers is
@@ -149,17 +148,17 @@ package body Yaml.Servers is
       procedure Emit_Anchor is new Span_Emitter ("anchor");
       procedure Emit_Event_Content is new Span_Emitter ("content");
 
-      procedure Emit_Raw_Event (E : Events.Event) is
+      procedure Emit_Raw_Event (E : Event) is
       begin
          Client.Accumulate_Body
            ("<span class=""event event" & Ada.Strings.Fixed.Trim
               (Next_Event_Id'Img, Ada.Strings.Left) & ' ' & E.Kind'Img & """>");
-         Client.Accumulate_Body (Events.To_String (E));
+         Client.Accumulate_Body (To_String (E));
          Client.Accumulate_Body ("</span>" & Character'Val (10));
          Next_Event_Id := Next_Event_Id + 1;
       end Emit_Raw_Event;
 
-      procedure Start_Rendered_Event (E : Events.Event) is
+      procedure Start_Rendered_Event (E : Event) is
       begin
          Client.Accumulate_Body
            ("<span class=""event event" & Ada.Strings.Fixed.Trim

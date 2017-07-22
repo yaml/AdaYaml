@@ -2,7 +2,6 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Yaml.Source;
-with Yaml.Text;
 with Ada.Strings.UTF_Encoding;
 
 private package Yaml.Lexer is

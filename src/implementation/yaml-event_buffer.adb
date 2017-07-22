@@ -1,6 +1,9 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 with Ada.Unchecked_Deallocation;
 
-package body Yaml.Events.Buffer is
+package body Yaml.Event_Buffer is
    procedure Initialize (Object : in out Reference) is
    begin
       Stream.Create (Object, Stream.Implementation_Pointer'(
@@ -44,4 +47,4 @@ package body Yaml.Events.Buffer is
    begin
       Stream.Iterator := 1;
    end Close_Stream;
-end Yaml.Events.Buffer;
+end Yaml.Event_Buffer;

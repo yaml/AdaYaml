@@ -4,8 +4,6 @@
 with Ada.Finalization;
 
 package Yaml.Source is
-   pragma Preelaborate;
-
    --  a Source is anything that provides a YAML character stream. Sources are
    --  always single-use objects; the parser takes ownership of
    --  sources and deallocates them.

@@ -6,8 +6,6 @@ with Ada.Finalization;
 generic
    type Element_Type is private;
 package Yaml.Stacks is
-   pragma Preelaborate;
-
    --  this package provides a reference-counted stack. compared to Ada's
    --  standard container types, it has pointer semantics and is also able to
    --  query access to an element, which is useful for in-place modification.

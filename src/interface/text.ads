@@ -6,7 +6,7 @@ with Ada.Finalization;
 with System.Storage_Elements;
 private with Ada.Unchecked_Conversion;
 
-package Yaml.Text is
+package Text is
    --  this package defines a reference-counted string pointer type. it is used
    --  for all YAML data entities and relieves the user from the need to
    --  manually dispose events created by the parser.
@@ -240,4 +240,4 @@ private
    Empty : constant Reference :=
      (Ada.Finalization.Controlled with Data => <>);
 
-end Yaml.Text;
+end Text;

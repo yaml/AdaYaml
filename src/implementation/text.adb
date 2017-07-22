@@ -3,7 +3,7 @@
 
 with Ada.Unchecked_Deallocation;
 
-package body Yaml.Text is
+package body Text is
    type Header_Access is access Header;
    for Header_Access'Size use Standard'Address_Size;
 
@@ -333,4 +333,4 @@ package body Yaml.Text is
       end if;
    end Delete_Exported;
 
-end Yaml.Text;
+end Text;

@@ -4,7 +4,7 @@
 with AUnit; use AUnit;
 with AUnit.Test_Cases; use AUnit.Test_Cases;
 
-package Yaml.Text.Chunk_Test is
+package Text.Chunk_Test is
    type TC is new Test_Cases.Test_Case with record
       P : Pool;
    end record;
@@ -16,4 +16,4 @@ package Yaml.Text.Chunk_Test is
 
    procedure Test_One_String (T : in out Test_Cases.Test_Case'Class);
    procedure Test_Two_Strings (T : in out Test_Cases.Test_Case'Class);
-end Yaml.Text.Chunk_Test;
+end Text.Chunk_Test;
