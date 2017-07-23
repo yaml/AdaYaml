@@ -58,7 +58,7 @@ package Text is
      limited private with Implicit_Dereference => Data;
 
    --  this is a smart pointer. use Value to access its value.
-   type Reference is tagged private;
+   type Reference is tagged private with Constant_Indexing => Element;
 
    function Value (Object : Reference) return Accessor with Inline;
 
@@ -80,6 +80,8 @@ package Text is
 
    function "=" (Left : Reference; Right : String) return Boolean with Inline;
    function "=" (Left : String; Right : Reference) return Boolean with Inline;
+
+   function Element (Object : Reference; Position : Positive) return Character;
 
    --  create a new string from the given data. the string will be allocated
    --  within the pool.

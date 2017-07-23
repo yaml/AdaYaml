@@ -31,7 +31,8 @@ private
       After_Explicit_Block_Map_Key, After_Block_Map_Value, After_Seq_Header,
       After_Implicit_Seq_Start, After_Flow_Seq_Start,
       After_Block_Seq_Item, After_Implicit_Flow_Map_Key,
-      After_Explicit_Flow_Map_Key, After_Flow_Map_Value, After_Flow_Seq_Item);
+      After_Explicit_Flow_Map_Key, After_Flow_Map_Value, After_Flow_Seq_Item,
+      After_Annotation_Name, After_Annotation_Param);
    
    type Level is record
       Position : Position_Type;

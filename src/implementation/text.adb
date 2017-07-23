@@ -78,6 +78,9 @@ package body Text is
    function "=" (Left : String; Right : Reference) return Boolean is
      (Left = Right.Data.all);
 
+   function Element (Object : Reference; Position : Positive) return Character
+     is (Object.Data (Position));
+
    function From_String (P : in out Pool'Class; Data : String)
                          return Reference is
       Necessary : constant Pool_Offset :=

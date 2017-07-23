@@ -348,13 +348,109 @@ package body Yaml.Presenter is
       end Render_Multi_Line_Plain;
 
       procedure Render_Literal_Scalar with Pre => E.Kind = Scalar is
+         First_Char : Positive;
+         Next_Newline : Positive := 1;
       begin
-         Write (" |" & E.Content);
+         if E.Content.Length = 0 then
+            Write (" |-");
+         else
+            Write (" |");
+            if E.Content (E.Content.Length) = Character'Val (10) then
+               if E.Content.Length > 1 and then
+                       E.Content (E.Content.Length - 1) = Character'Val (10)
+               then
+                  Write ('+');
+               end if;
+            else
+               Write ('-');
+            end if;
+            if E.Content (1) = ' ' then
+               Write ('2');
+            end if;
+            Outer : loop
+               loop
+                  Next_Line;
+                  if Next_Newline > E.Content.Length then
+                     exit Outer;
+                  end if;
+                  exit when E.Content (Next_Newline) /= Character'Val (10);
+                  Next_Newline := Next_Newline + 1;
+               end loop;
+               First_Char := Next_Newline;
+               while Next_Newline <= E.Content.Length and then
+                 E.Content (Next_Newline) /= Character'Val (10) loop
+                  Next_Newline := Next_Newline + 1;
+               end loop;
+               Write (E.Content.Value.Data (First_Char .. Next_Newline - 1));
+               exit when Next_Newline > E.Content.Length or else
+                 (Next_Newline = E.Content.Length and then
+                  E.Content (Next_Newline) = Character'Val (10));
+               Next_Newline := Next_Newline + 1;
+            end loop Outer;
+         end if;
       end Render_Literal_Scalar;
 
       procedure Render_Folded_Scalar with Pre => E.Kind = Scalar is
+         Lookahead : Positive := 1;
+         First_Char : Positive;
+         Last_Space : Positive;
+
+         This_Max_Line_Length : constant Positive := Positive'Max
+           (Max_Line_Length / 2, Max_Line_Length - P.Levels.Top.Indentation);
       begin
-         Write (" >" & E.Content);
+         if E.Content.Length = 0 then
+            Write (" >-");
+         else
+            Write (" >");
+            if E.Content (E.Content.Length) = Character'Val (10) then
+               if E.Content.Length > 1 and then
+                 E.Content (E.Content.Length - 1) = Character'Val (10)
+               then
+                  Write ('+');
+               end if;
+            else
+               Write ('-');
+            end if;
+            if E.Content (1) = ' ' then
+               Write ('2');
+            end if;
+            Outer : loop
+               <<At_New_Line>>
+               loop
+                  if Lookahead > E.Content.Length then
+                     exit Outer;
+                  end if;
+                  Next_Line;
+                  exit when E.Content (Lookahead) /= Character'Val (10);
+                  Lookahead := Lookahead + 1;
+               end loop;
+               First_Char := Lookahead;
+               Last_Space := First_Char;
+               loop
+                  while not (E.Content (Lookahead) in ' ' | Character'Val (10)) loop
+                     Lookahead := Lookahead + 1;
+                     if Lookahead > E.Content.Length then
+                        Write (E.Content.Value.Data (First_Char .. E.Content.Length));
+                        exit Outer;
+                     end if;
+                  end loop;
+                  if E.Content (Lookahead) = Character'Val (10) then
+                     Write (E.Content.Value.Data (First_Char .. Lookahead - 1));
+                     Lookahead := Lookahead + 1;
+                     if Lookahead > E.Content.Length then
+                        exit Outer;
+                     end if;
+                     Next_Line;
+                     goto At_New_Line;
+                  end if;
+                  exit when Lookahead - First_Char >= This_Max_Line_Length;
+                  Last_Space := Lookahead;
+                  Lookahead := Lookahead + 1;
+               end loop;
+               Write (E.Content.Value.Data (First_Char .. Last_Space - 1));
+               Lookahead := Last_Space + 1;
+            end loop Outer;
+         end if;
       end Render_Folded_Scalar;
 
       procedure Render_Long_Scalar (In_Flow : Boolean;
@@ -511,6 +607,14 @@ package body Yaml.Presenter is
          end if;
       end Render_Alias;
 
+      procedure Render_Annotation is
+      begin
+         if Render_Inline_Properties (E.Annotation_Properties) then null; end if;
+         Write (" @" & E.Name);
+         P.Levels.Push ((Position => After_Annotation_Name,
+                         Indentation => P.Levels.Top.Indentation + 2));
+      end Render_Annotation;
+
       procedure Start_Document is
       begin
          case E.Kind is
@@ -611,6 +715,7 @@ package body Yaml.Presenter is
                --  empty mapping must be flow-style
                Write (" {}");
                P.Levels.Pop;
+            when Annotation_Start => Render_Annotation;
             when others =>
                raise Presenter_Error with
                  "Unexpected event (expected mapping key): " & E.Kind'Img;
@@ -683,7 +788,10 @@ package body Yaml.Presenter is
          end case;
       end Start_Block_Sequence_Item;
 
-      procedure Start_Flow_Sequence_Item (After_Comma : Boolean) is
+      procedure Start_Flow_Sequence_Item (After_Comma : Boolean;
+                                          After_Position : Position_Type;
+                                          End_Token : Event_Kind;
+                                          End_Char : Character) is
       begin
          case E.Kind is
             when Scalar =>
@@ -716,24 +824,26 @@ package body Yaml.Presenter is
                      Render_Scalar (True, Features);
                   end if;
                end;
-               P.Levels.Top.Position := After_Flow_Seq_Item;
+               P.Levels.Top.Position := After_Position;
             when Mapping_Start =>
                Next_Line;
-               P.Levels.Top.Position := After_Flow_Seq_Item;
+               P.Levels.Top.Position := After_Position;
                Start_Flow_Node (False, Mapping_Start_Descriptor);
             when Sequence_Start =>
                Next_Line;
-               P.Levels.Top.Position := After_Flow_Seq_Item;
+               P.Levels.Top.Position := After_Position;
                Start_Flow_Node (False, Sequence_Start_Descriptor);
             when Alias =>
                Render_Alias (After_Comma);
-               P.Levels.Top.Position := After_Flow_Seq_Item;
-            when Sequence_End =>
-               Write (']');
-               P.Levels.Pop;
+               P.Levels.Top.Position := After_Position;
             when others =>
-               raise Presenter_Error with
-                 "Unexpected event (expected sequence item): " & E.Kind'Img;
+               if E.Kind = End_Token then
+                  Write (End_Char);
+                  P.Levels.Pop;
+               else
+                  raise Presenter_Error with
+                    "Unexpected event (expected sequence item): " & E.Kind'Img;
+               end if;
          end case;
       end Start_Flow_Sequence_Item;
 
@@ -749,14 +859,15 @@ package body Yaml.Presenter is
               E.Kind'Img;
          when Before_Doc_Start => Start_Document;
          when After_Implicit_Doc_Start =>
-            P.Levels.Top.Position := Before_Doc_End;
             case E.Kind is
                when Scalar =>
+                  P.Levels.Top.Position := Before_Doc_End;
                   --  scalars at root level *must* have `---`
                   Write ("---");
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
                   Render_Long_Scalar (False, Analysis.Features (E.Content.Value));
                when Mapping_Start =>
+                  P.Levels.Top.Position := Before_Doc_End;
                   if E.Collection_Style /= Flow and then
                     (not Is_Empty (E.Collection_Properties)) then
                      Write ("---");
@@ -765,6 +876,7 @@ package body Yaml.Presenter is
                      Start_Node (False, All_Of_Them, Mapping_Start_Descriptor);
                   end if;
                when Sequence_Start =>
+                  P.Levels.Top.Position := Before_Doc_End;
                   if E.Collection_Style /= Flow and then
                     (not Is_Empty (E.Collection_Properties)) then
                      Write ("---");
@@ -773,25 +885,30 @@ package body Yaml.Presenter is
                      Start_Node (False, All_Of_Them, Sequence_Start_Descriptor);
                   end if;
                when Alias =>
+                  P.Levels.Top.Position := Before_Doc_End;
                   Next_Line;
                   Render_Alias (False);
+               when Annotation_Start => Render_Annotation;
                when others =>
                   raise Presenter_Error with
                     "Unexpected event (expected node start): " & E.Kind'Img;
             end case;
          when After_Directives_End =>
-            P.Levels.Top.Position := Before_Doc_End;
             case E.Kind is
                when Scalar =>
+                  P.Levels.Top.Position := Before_Doc_End;
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
                   Render_Long_Scalar (False, Analysis.Features (E.Content.Value));
                when Mapping_Start =>
+                  P.Levels.Top.Position := Before_Doc_End;
                   Start_Node (True, No_Compact, Mapping_Start_Descriptor);
                when Sequence_Start =>
                      Start_Node (True, No_Compact, Sequence_Start_Descriptor);
                when Alias =>
+                  P.Levels.Top.Position := Before_Doc_End;
                   Next_Line;
                   Render_Alias (False);
+               when Annotation_Start => Render_Annotation;
                when others =>
                   raise Presenter_Error with
                     "Unexpected event (expected node start): " & E.Kind'Img;
@@ -848,6 +965,7 @@ package body Yaml.Presenter is
                   --  empty mapping must be flow-style
                   Write ("{}");
                   P.Levels.Pop;
+               when Annotation_Start => Render_Annotation;
                when others =>
                   raise Presenter_Error with
                     "Unexpected event (expected mapping key): " & E.Kind'Img;
@@ -856,31 +974,41 @@ package body Yaml.Presenter is
          when After_Explicit_Block_Map_Key =>
             Next_Line;
             Write (':');
-            P.Levels.Top.Position := After_Block_Map_Value;
             case E.Kind is
                when Scalar =>
+                  P.Levels.Top.Position := After_Block_Map_Value;
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
                   Render_Scalar (False, Analysis.Features (E.Content.Value));
                when Mapping_Start =>
+                  P.Levels.Top.Position := After_Block_Map_Value;
                   Start_Node (True, All_Of_Them, Mapping_Start_Descriptor);
                when Sequence_Start =>
+                  P.Levels.Top.Position := After_Block_Map_Value;
                   Start_Node (True, All_Of_Them, Sequence_Start_Descriptor);
-               when Alias => Render_Alias (True);
+               when Alias =>
+                  P.Levels.Top.Position := After_Block_Map_Value;
+                  Render_Alias (True);
+               when Annotation_Start => Render_Annotation;
                when others =>
                   raise Presenter_Error with
                     "Unexpected event (expected mapping value): " & E.Kind'Img;
             end case;
          when After_Implicit_Block_Map_Key =>
-            P.Levels.Top.Position := After_Block_Map_Value;
             case E.Kind is
                when Scalar =>
+                  P.Levels.Top.Position := After_Block_Map_Value;
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
                   Render_Scalar (False, Analysis.Features (E.Content.Value));
                when Mapping_Start =>
+                  P.Levels.Top.Position := After_Block_Map_Value;
                   Start_Node (True, No_Compact, Mapping_Start_Descriptor);
                when Sequence_Start =>
+                  P.Levels.Top.Position := After_Block_Map_Value;
                   Start_Node (True, No_Compact, Sequence_Start_Descriptor);
-               when Alias => Render_Alias (True);
+               when Alias =>
+                  P.Levels.Top.Position := After_Block_Map_Value;
+                  Render_Alias (True);
+               when Annotation_Start => Render_Annotation;
                when others =>
                   raise Presenter_Error with
                     "Unexpected event (expected mapping value): " & E.Kind'Img;
@@ -911,6 +1039,9 @@ package body Yaml.Presenter is
                   Write ('-');
                   Render_Alias (True);
                   P.Levels.Top.Position := After_Block_Seq_Item;
+               when Annotation_Start =>
+                  Write ('-');
+                  Render_Annotation;
                when Sequence_End =>
                   Write ("[]");
                   P.Levels.Pop;
@@ -936,6 +1067,7 @@ package body Yaml.Presenter is
                when Sequence_Start =>
                   Start_Flow_Node (True, Sequence_Start_Descriptor);
                when Alias => Render_Alias (True);
+               when Annotation_Start => Render_Annotation;
                when others =>
                   raise Presenter_Error with
                     "Unexpected event (expected mapping value): " & E.Kind'Img;
@@ -953,6 +1085,7 @@ package body Yaml.Presenter is
                when Sequence_Start =>
                   Start_Flow_Node (True, Sequence_Start_Descriptor);
                when Alias => Render_Alias (True);
+               when Annotation_Start => Render_Annotation;
                when others =>
                   raise Presenter_Error with
                     "Unexpected event (expected mapping value): " & E.Kind'Img;
@@ -965,15 +1098,29 @@ package body Yaml.Presenter is
                Write (',');
                Start_Flow_Key_Value_Pair;
             end if;
-         when After_Flow_Seq_Start => Start_Flow_Sequence_Item (False);
+         when After_Flow_Seq_Start =>
+            Start_Flow_Sequence_Item (False, After_Flow_Seq_Item,
+                                      Sequence_End, ']');
          when After_Flow_Seq_Item =>
             if E.Kind = Sequence_End then
                Write (']');
                P.Levels.Pop;
             else
                Write (',');
-               Start_Flow_Sequence_Item (True);
+               Start_Flow_Sequence_Item (True, After_Flow_Seq_Item,
+                                        Sequence_End, ']');
             end if;
+         when After_Annotation_Name =>
+            if E.Kind = Annotation_End then
+               P.Levels.Pop;
+            else
+               Write ('(');
+               Start_Flow_Sequence_Item (False, After_Annotation_Param,
+                                         Annotation_End, ')');
+            end if;
+         when After_Annotation_Param =>
+            Start_Flow_Sequence_Item (True, After_Annotation_Param,
+                                      Annotation_End, ')');
       end case;
    end Put;
 
