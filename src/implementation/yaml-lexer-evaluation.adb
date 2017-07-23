@@ -42,9 +42,9 @@ package body Yaml.Lexer.Evaluation is
       O.Pos := O.Pos + S'Length;
    end Add;
 
-   function New_Content_From (Pool : in out Text.Pool;
+   function New_Content_From (Pool : in out Text.Pool.Reference;
                               O : Out_Buffer_Type) return Text.Reference is
-      (Text.From_String (Pool, O.Content (1 .. O.Pos - 1))) with Inline;
+      (Pool.From_String (O.Content (1 .. O.Pos - 1))) with Inline;
 
    -----------------------------------------------------------------------------
    --  implementation

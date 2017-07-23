@@ -14,9 +14,9 @@ package body Yaml.Parser is
    end Init;
 
    procedure Set_Input (P : in out Reference; Input : Source.Pointer) is
-      Pool : Text.Pool;
+      Pool : Text.Pool.Reference;
    begin
-      Text.Create (Pool, 8092);
+      Pool.Create (8092);
       declare
          PI : constant not null access Implementation :=
            new Implementation'(Stream.Implementation with
@@ -32,9 +32,9 @@ package body Yaml.Parser is
    end Set_Input;
 
    procedure Set_Input (P : in out Reference; Input : String) is
-      Pool : Text.Pool;
+      Pool : Text.Pool.Reference;
    begin
-      Text.Create (Pool, 8092);
+      Pool.Create (8092);
       declare
          PI : constant not null access Implementation :=
            new Implementation'(Stream.Implementation with
@@ -76,9 +76,9 @@ package body Yaml.Parser is
    begin
       Tag_Handle_Sets.Clear (P.Tag_Handles);
       pragma Warnings (Off);
-      if P.Tag_Handles.Set ("!", Text.From_String (P.Pool, "!")) and
+      if P.Tag_Handles.Set ("!", P.Pool.From_String ("!")) and
         P.Tag_Handles.Set ("!!",
-                           Text.From_String (P.Pool, "tag:yaml.org,2002:"))
+                           P.Pool.From_String ("tag:yaml.org,2002:"))
       then
          null;
       end if;
@@ -101,8 +101,7 @@ package body Yaml.Parser is
          raise Parser_Error with "Unexpected token (expected tag suffix): " &
            P.Current.Kind'Img;
       end if;
-      return Text.From_String
-        (P.Pool, Holder.Value & Lexer.Current_Content (P.L));
+      return P.Pool.From_String (Holder.Value & Lexer.Current_Content (P.L));
    end Parse_Tag;
 
    function To_Style (T : Lexer.Scalar_Token_Kind)
@@ -184,7 +183,7 @@ package body Yaml.Parser is
                raise Parser_Error with
                  "Duplicate YAML directive";
             end if;
-            Version := Text.From_String (P.Pool, Lexer.Full_Lexeme (P.L));
+            Version := P.Pool.From_String (Lexer.Full_Lexeme (P.L));
             P.Current := Lexer.Next_Token (P.L);
             return False;
          when Lexer.Tag_Directive =>
@@ -307,7 +306,7 @@ package body Yaml.Parser is
             E := Event'(Start_Position => P.Inline_Start,
                                End_Position   => P.Current.End_Pos,
                                Kind => Alias,
-                               Target => Text.From_String (P.Pool, Lexer.Short_Lexeme (P.L)));
+                               Target => P.Pool.From_String (Lexer.Short_Lexeme (P.L)));
             Header_End := P.Current.Start_Pos;
             P.Current := Lexer.Next_Token (P.L);
             if P.Current.Kind = Lexer.Map_Value_Ind then
@@ -518,7 +517,7 @@ package body Yaml.Parser is
             E := Event'(Start_Position => P.Inline_Start,
                                End_Position   => P.Current.End_Pos,
                                Kind => Alias,
-                               Target => Text.From_String (P.Pool, Lexer.Short_Lexeme (P.L)));
+                               Target => P.Pool.From_String (Lexer.Short_Lexeme (P.L)));
             P.Inline_Props := (others => <>);
             Header_End := P.Current.Start_Pos;
             P.Current := Lexer.Next_Token (P.L);
@@ -584,13 +583,13 @@ package body Yaml.Parser is
                raise Parser_Error with "Only one anchor allowed per element";
             end if;
             P.Inline_Props.Anchor :=
-              Text.From_String (P.Pool, Lexer.Short_Lexeme (P.L));
+              P.Pool.From_String (Lexer.Short_Lexeme (P.L));
          when Lexer.Annotation =>
             E := Event'(Start_Position => P.Inline_Start,
                         End_Position => P.Current.Start_Pos,
                         Kind => Annotation_Start,
                         Annotation_Properties => P.Inline_Props,
-                        Name => Text.From_String (P.Pool, Lexer.Short_Lexeme (P.L)));
+                        Name => P.Pool.From_String (Lexer.Short_Lexeme (P.L)));
             P.Inline_Props := (others => <>);
             P.Current := Lexer.Next_Token (P.L);
             if P.Current.Kind = Lexer.Params_Start then
@@ -699,7 +698,7 @@ package body Yaml.Parser is
             E := Event'(Start_Position => P.Inline_Start,
                                End_Position   => P.Current.End_Pos,
                                Kind => Alias,
-                               Target => Text.From_String (P.Pool, Lexer.Short_Lexeme (P.L)));
+                               Target => P.Pool.From_String (Lexer.Short_Lexeme (P.L)));
             Header_End := P.Current.Start_Pos;
             P.Current := Lexer.Next_Token (P.L);
             if P.Current.Kind = Lexer.Map_Value_Ind then
@@ -935,7 +934,7 @@ package body Yaml.Parser is
             E := Event'(Start_Position => P.Inline_Start,
                                End_Position   => P.Current.End_Pos,
                                Kind => Alias,
-                               Target => Text.From_String (P.Pool, Lexer.Short_Lexeme (P.L)));
+                               Target => P.Pool.From_String (Lexer.Short_Lexeme (P.L)));
          when Lexer.Flow_Scalar_Token_Kind =>
             E := Event'(Start_Position => P.Inline_Start,
                                End_Position   => P.Current.End_Pos,
@@ -1055,7 +1054,7 @@ package body Yaml.Parser is
             E := Event'(Start_Position => P.Inline_Start,
                                End_Position   => P.Current.End_Pos,
                                Kind => Alias,
-                               Target => Text.From_String (P.Pool, Lexer.Short_Lexeme (P.L)));
+                               Target => P.Pool.From_String (Lexer.Short_Lexeme (P.L)));
             P.Current := Lexer.Next_Token (P.L);
             P.Levels.Pop;
             return True;

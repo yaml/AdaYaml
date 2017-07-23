@@ -4,9 +4,10 @@
 with Ada.Strings.Fixed;
 with Ada.Unchecked_Deallocation;
 with Yaml.Destination.C_String;
+with Text.Pool;
 
 package body Yaml.C is
-   Creation_Pool : Text.Pool;
+   Creation_Pool : Text.Pool.Reference;
 
    Version_String : constant Interfaces.C.Strings.chars_ptr :=
      Interfaces.C.Strings.New_String
@@ -62,7 +63,7 @@ package body Yaml.C is
      (E : out Event; Anchor : Interfaces.C.Strings.chars_ptr) return Bool is
    begin
       E := (Kind => Alias, Data => (T => Alias, Ali_Anchor => Text.Export
-                                    (Text.From_String (Creation_Pool,
+                                    (Creation_Pool.From_String (
                                        Interfaces.C.Strings.Value (Anchor)))),
            others => <>);
       return True;
@@ -77,13 +78,13 @@ package body Yaml.C is
    begin
       E := (Kind => Scalar, Data => (T => Scalar,
                                      Scalar_Tag => Text.Export
-                                       (Text.From_String (Creation_Pool,
+                                       (Creation_Pool.From_String (
                                         Interfaces.C.Strings.Value (Tag))),
                                      Scalar_Anchor => Text.Export
-                                       (Text.From_String (Creation_Pool,
+                                       (Creation_Pool.From_String (
                                         Interfaces.C.Strings.Value (Anchor))),
                                      Value => Text.Export
-                                       (Text.From_String (Creation_Pool,
+                                       (Creation_Pool.From_String (
                                         Converted_Value)),
                                      Length => Converted_Value'Length,
                                      Plain_Implicit => Plain_Implicit,
@@ -98,9 +99,8 @@ package body Yaml.C is
    begin
       E := (Kind => Sequence_Start, Data =>
               (T => Sequence_Start, Seq_Anchor => Text.Export
-               (Text.From_String (Creation_Pool,
-                  Interfaces.C.Strings.Value (Anchor))),
-               Seq_Tag => Text.Export (Text.From_String (Creation_Pool,
+               (Creation_Pool.From_String (Interfaces.C.Strings.Value (Anchor))),
+               Seq_Tag => Text.Export (Creation_Pool.From_String (
                  Interfaces.C.Strings.Value (Tag))),
                Seq_Implicit => Implicit, Seq_Style => Style), others => <>);
       return True;
@@ -118,9 +118,9 @@ package body Yaml.C is
    begin
       E := (Kind => Mapping_Start, Data =>
               (T => Mapping_Start, Map_Anchor => Text.Export
-               (Text.From_String (Creation_Pool,
+               (Creation_Pool.From_String (
                   Interfaces.C.Strings.Value (Anchor))),
-               Map_Tag => Text.Export (Text.From_String (Creation_Pool,
+               Map_Tag => Text.Export (Creation_Pool.From_String (
                  Interfaces.C.Strings.Value (Tag))),
                Map_Implicit => Implicit, Map_Style => Style), others => <>);
       return True;
@@ -331,5 +331,5 @@ package body Yaml.C is
       return True;
    end Emitter_Emit;
 begin
-   Text.Create (Creation_Pool, 8192);
+   Creation_Pool.Create (8192);
 end Yaml.C;

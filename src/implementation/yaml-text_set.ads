@@ -3,6 +3,7 @@
 
 with Ada.Containers;
 with Ada.Finalization;
+with Text.Pool;
 
 generic
    type Value_Type is private;
@@ -20,7 +21,7 @@ package Yaml.Text_Set is
    function Set (Object : in out Reference; S : Standard.String;
                  Value : Value_Type) return Boolean;
 
-   procedure Init (Object : in out Reference; Pool : Text.Pool;
+   procedure Init (Object : in out Reference; Pool : Text.Pool.Reference;
                    Initial_Size : Positive);
    procedure Clear (Object : in out Reference);
 private
@@ -30,7 +31,7 @@ private
    type Reference is new Ada.Finalization.Limited_Controlled with record
       Count : Natural;
       Elements : Holder_Array_Access;
-      Pool : Text.Pool;
+      Pool : Text.Pool.Reference;
    end record;
 
    overriding procedure Finalize (Object : in out Reference);

@@ -73,7 +73,7 @@ package body Yaml.Text_Set is
             if Create then
                Object.Count := Object.Count + 1;
                Cur.Hash := Hash;
-               Cur.Key := Text.From_String (Object.Pool, S);
+               Cur.Key := Object.Pool.From_String (S);
             end if;
          end if;
          return Cur;
@@ -91,7 +91,7 @@ package body Yaml.Text_Set is
          if Cur.Hash = 0 then
             Object.Count := Object.Count + 1;
             Cur.Hash := Hash;
-            Cur.Key := Text.From_String (Object.Pool, S);
+            Cur.Key := Object.Pool.From_String (S);
             Cur.Value := Value;
             return True;
          else
@@ -106,7 +106,7 @@ package body Yaml.Text_Set is
       Object.Count := 0;
    end Clear;
 
-   procedure Init (Object : in out Reference; Pool : Text.Pool;
+   procedure Init (Object : in out Reference; Pool : Text.Pool.Reference;
                    Initial_Size : Positive) is
    begin
       Object.Pool := Pool;

@@ -79,7 +79,7 @@ package body Yaml.Lexer.Tokenization_Test is
       return V : constant Token_With_Value :=
         (Ada.Finalization.Controlled with Reference => new Token_With_Value_Holder (Kind => Tok)) do
          V.Reference.Refcount := 1;
-         V.Reference.Value := Text.From_String (TC (T).Pool, S);
+         V.Reference.Value := TC (T).Pool.From_String (S);
       end return;
    end With_String;
 
@@ -168,7 +168,7 @@ package body Yaml.Lexer.Tokenization_Test is
          when Empty_Token => "",
          when Indentation => '(' & Natural'(L.Pos - L.Line_Start - 1)'Img & ')'));
 
-   procedure Assert_Equals (P : Text.Pool;
+   procedure Assert_Equals (P : Text.Pool.Reference;
                             Input : String; Expected : Token_List) is
       L : Instance;
       I : Natural := 0;
@@ -248,7 +248,7 @@ package body Yaml.Lexer.Tokenization_Test is
 
    procedure Set_Up (T : in out TC) is
    begin
-      Text.Create (T.Pool, 8092);
+      T.Pool.Create (8092);
    end Set_Up;
 
    procedure Empty_Document (T : in out Test_Cases.Test_Case'Class) is

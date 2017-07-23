@@ -97,7 +97,7 @@ package body Yaml.Lexer is
    end Handle_LF;
 
    procedure Basic_Init (L : in out Instance; Input : Source.Pointer;
-                        Buffer : Buffer_Type; Pool  : Text.Pool) is
+                        Buffer : Buffer_Type; Pool  : Text.Pool.Reference) is
    begin
       L.Input := Input;
       L.Sentinel := Buffer.all'Last + 1;
@@ -116,7 +116,7 @@ package body Yaml.Lexer is
    end Basic_Init;
 
    procedure Init
-     (L : in out Instance; Input : Source.Pointer; Pool : Text.Pool;
+     (L : in out Instance; Input : Source.Pointer; Pool : Text.Pool.Reference;
       Initial_Buffer_Size : Positive := Default_Initial_Buffer_Size) is
    begin
       Basic_Init (L, Input, new String (1 .. Initial_Buffer_Size), Pool);
@@ -124,7 +124,8 @@ package body Yaml.Lexer is
       L.Cur := Next (L);
    end Init;
 
-   procedure Init (L : in out Instance; Input : String; Pool : Text.Pool) is
+   procedure Init (L : in out Instance; Input : String;
+                   Pool : Text.Pool.Reference) is
    begin
       Basic_Init (L, null, new String (1 .. Input'Length + 1), Pool);
       L.Buffer.all := Input & End_Of_Input;

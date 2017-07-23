@@ -6,7 +6,7 @@ with AUnit.Test_Cases; use AUnit.Test_Cases;
 
 package Yaml.Lexer.Tokenization_Test is
    type TC is new Test_Cases.Test_Case with record
-      Pool : Text.Pool;
+      Pool : Text.Pool.Reference;
    end record;
 
    overriding procedure Register_Tests (T : in out TC);

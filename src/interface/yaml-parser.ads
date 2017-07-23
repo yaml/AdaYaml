@@ -6,6 +6,7 @@ with Yaml.Source;
 private with Yaml.Lexer;
 private with Yaml.Stacks;
 private with Yaml.Text_Set;
+private with Text.Pool;
 
 package Yaml.Parser is
    --  this package implements a parser that generates an event stream from a
@@ -57,7 +58,7 @@ private
    package Tag_Handle_Sets is new Yaml.Text_Set (Text.Reference);
 
    type Implementation is new Stream.Implementation with record
-      Pool : Text.Pool;
+      Pool : Text.Pool.Reference;
       L : Lexer.Instance;
       Levels : Level_Stacks.Stack;
       Current : Lexer.Token;

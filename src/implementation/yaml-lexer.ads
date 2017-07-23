@@ -3,6 +3,7 @@
 
 with Yaml.Source;
 with Ada.Strings.UTF_Encoding;
+with Text.Pool;
 
 private package Yaml.Lexer is
    use Ada.Strings.UTF_Encoding;
@@ -13,9 +14,10 @@ private package Yaml.Lexer is
 
    procedure Init
      (L : in out Instance; Input : Source.Pointer;
-      Pool : Text.Pool;
+      Pool : Text.Pool.Reference;
       Initial_Buffer_Size : Positive := Default_Initial_Buffer_Size);
-   procedure Init (L : in out Instance; Input : UTF_String; Pool : Text.Pool);
+   procedure Init (L : in out Instance; Input : UTF_String;
+                   Pool : Text.Pool.Reference);
 
    procedure Finish (L : in out Instance);
 
@@ -138,7 +140,7 @@ private
         --  current level of flow collections and annotation parameter lists
       Value : Text.Reference;
         --  content of the recently read scalar or URI, if any.
-      Pool : Text.Pool; --  used for generating Content
+      Pool : Text.Pool.Reference; --  used for generating Content
       Seen_Multiline : Boolean;
         --  remember whether the last scalar was multiline
    end record;

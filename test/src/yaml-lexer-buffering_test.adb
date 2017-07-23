@@ -25,7 +25,7 @@ package body Yaml.Lexer.Buffering_Test is
 
    procedure Set_Up (T : in out TC) is
    begin
-      Text.Create (T.Pool, 8092);
+      T.Pool.Create (8092);
    end Set_Up;
 
    procedure Test_File_Without_Refill (T : in out Test_Cases.Test_Case'Class) is

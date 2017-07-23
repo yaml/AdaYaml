@@ -16,7 +16,7 @@ package body Text.Chunk_Test is
 
    procedure Set_Up (T : in out TC) is
    begin
-      Create (T.P, 128);
+      T.P.Create (128);
    end Set_Up;
 
    function Name (T : TC) return Message_String is
@@ -27,10 +27,10 @@ package body Text.Chunk_Test is
 
    procedure Test_One_String (T : in out Test_Cases.Test_Case'Class) is
       Test_Data : constant String := "123456";
-      C : constant Reference := From_String (TC (T).P, Test_Data);
+      C : constant Reference := TC (T).P.From_String (Test_Data);
    begin
       Ada.Text_IO.Put_Line ("Test one string, chunk content:");
-      Ada.Text_IO.Put_Line (Current_Chunk_As_String (TC (T).P));
+      Ada.Text_IO.Put_Line (TC (T).P.Current_Chunk_As_String);
       Assert (C = Test_Data, "Data mismatch!");
       declare
          C2 : constant Reference := C;
@@ -43,11 +43,11 @@ package body Text.Chunk_Test is
    procedure Test_Two_Strings (T : in out Test_Cases.Test_Case'Class) is
       S1 : constant String := "aaaa";
       S2 : constant String := "bbbb";
-      C1 : constant Reference := From_String (TC (T).P, S1);
-      C2 : constant Reference := From_String (TC (T).P, S2);
+      C1 : constant Reference := TC (T).P.From_String (S1);
+      C2 : constant Reference := TC (T).P.From_String (S2);
    begin
       Ada.Text_IO.Put_Line ("Test two strings, chunk content:");
-      Ada.Text_IO.Put_Line (Current_Chunk_As_String (TC (T).P));
+      Ada.Text_IO.Put_Line (TC (T).P.Current_Chunk_As_String);
       Assert (C1 = S1, "S1 mismatch, is " & C1);
       Assert (C2 = S2, "S2 mismatch!");
    end Test_Two_Strings;
