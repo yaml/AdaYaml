@@ -8,11 +8,11 @@ with Yaml.Parser;
 procedure Yaml.Inspect (Input : String) is
    type Error_Kind is (None, From_Lexer, From_Parser);
 
-   P : Parser.Reference;
+   P : Parser.Instance;
    Cur_Pos     : Positive := 1;
    Next_Pos    : Positive;
    Cur_Event   : Event;
-   Read_Events : Event_Buffer.Reference;
+   Read_Events : Event_Buffer.Instance;
    Occurred_Error : Error_Kind := None;
    Lexer_Token_Start, Lexer_Token_End : Mark;
    Exception_Message : access String;

@@ -1,6 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Finalization;
 with Text;
 
 package Yaml is
@@ -18,6 +19,16 @@ package Yaml is
    --  occurs when data cannot be written to a destination.
    Destination_Error : exception;
 
+   --  occurs when an event stream contains an invalid sequence of events.
+   Stream_Error : exception;
+
+   --  the version of the library. major and minor version correspond to the
+   --  YAML version, the patch version is local to this implementation.
+   function Version_Major return Natural with Inline;
+   function Version_Minor return Natural with Inline;
+   function Version_Patch return Natural with Inline;
+
+
    --  all positions in a mark start at 1
    subtype Mark_Position is Positive;
 
@@ -25,12 +36,6 @@ package Yaml is
    type Mark is record
       Index, Line, Column : Mark_Position;
    end record with Convention => C;
-
-   --  the version of the library. major and minor version correspond to the
-   --  YAML version, the patch version is local to this implementation.
-   function Version_Major return Natural with Inline;
-   function Version_Minor return Natural with Inline;
-   function Version_Patch return Natural with Inline;
 
 
    type Event_Kind is (Stream_Start, Stream_End, Document_Start, Document_End,
@@ -78,4 +83,28 @@ package Yaml is
    end record;
 
    function To_String (E : Event) return String;
+
+   --  base type for event streams. all streams can be used with
+   --  reference-counting smart pointers, so this base type implements the
+   --  reference counting. the actual stream implementation function `Next` is
+   --  to be implemented by derived types. It is not declared as abstract
+   --  function here to avoid dispatching. Deriving types must be able to
+   --  instantiate Yaml.Stream_Concept.
+   type Stream_Base is abstract limited new Ada.Finalization.Limited_Controlled
+     with private;
+
+   --  increases reference count. only call this explicitly when implementing
+   --  a reference-counting smart pointer.
+   procedure Increase_Refcount (Object : not null access Stream_Base'Class);
+
+   --  decreases reference count. only call this explicitly when implementing a
+   --  reference-counting smart pointer. this procedure will free the object
+   --  when the reference count hits zero, rendering the provided pointer
+   --  useless and dangerous to use afterwards!
+   procedure Decrease_Refcount (Object : not null access Stream_Base'Class);
+private
+   type Stream_Base is abstract limited new Ada.Finalization.Limited_Controlled
+   with record
+      Refcount : Natural := 1;
+   end record;
 end Yaml;

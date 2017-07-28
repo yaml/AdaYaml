@@ -1,6 +1,8 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Unchecked_Deallocation;
+
 package body Yaml is
    function Version_Major return Natural is (1);
    function Version_Minor return Natural is (3);
@@ -83,4 +85,23 @@ package body Yaml is
             return "-ANN";
       end case;
    end To_String;
+
+   procedure Increase_Refcount (Object : not null access Stream_Base'Class) is
+   begin
+      Object.Refcount := Object.Refcount + 1;
+   end Increase_Refcount;
+
+   procedure Decrease_Refcount (Object : not null access Stream_Base'Class) is
+      type Stream_Access is access all Stream_Base'Class;
+
+      Ptr : Stream_Access := Stream_Access (Object);
+
+      procedure Free is new Ada.Unchecked_Deallocation (Stream_Base'Class,
+                                                        Stream_Access);
+   begin
+      Ptr.Refcount := Ptr.Refcount - 1;
+      if Ptr.Refcount = 0 then
+         Free (Ptr);
+      end if;
+   end Decrease_Refcount;
 end Yaml;

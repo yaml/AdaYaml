@@ -7,11 +7,10 @@ with Ada.Command_Line;
 with Yaml.Source.Text_IO;
 with Yaml.Source.File;
 with Yaml.Parser;
-with Yaml.Stream;
 
 procedure Yaml.To_Events is
    Input : Source.Pointer;
-   P     : Parser.Reference;
+   P     : Parser.Instance;
    Cur   : Event;
 begin
    if Ada.Command_Line.Argument_Count = 0 then

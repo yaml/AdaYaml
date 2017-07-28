@@ -3,7 +3,7 @@
 
 with Ada.Finalization;
 with Yaml.Destination;
-with Yaml.Stream;
+with Yaml.Stream_Concept;
 with Yaml.Stacks;
 
 package Yaml.Presenter is
@@ -18,8 +18,10 @@ package Yaml.Presenter is
    
    procedure Put (P : in out Instance; E : Event);
    
-   procedure Put (P : in out Instance;
-                  S : in out Stream.Reference'Class);
+   generic
+      with package Stream is new Stream_Concept (<>);
+   procedure Consume (P : in out Instance;
+                      S : in out Stream.Instance);
    
    procedure Flush (P : in out Instance);
 private

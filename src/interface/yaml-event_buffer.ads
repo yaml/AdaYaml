@@ -1,31 +1,31 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Yaml.Stream;
+private with Ada.Finalization;
 
 package Yaml.Event_Buffer is
-   type Reference is new Stream.Reference with private;
+   type Instance is new Stream_Base with private;
+   type Reference (Data : not null access Instance) is tagged private with
+     Implicit_Dereference => Data;
 
-   procedure Append (Object : in out Reference; E : Event);
+   procedure Append (Object : in out Instance; E : Event);
+
+   function Next (Object : in out Instance) return Event;
+   procedure Reset (Object : in out Instance);
 private
    type Event_Array is array (Positive range <>) of Event;
    type Event_Array_Access is access Event_Array;
 
-   overriding procedure Initialize (Object : in out Reference);
+   type Reference (Data : not null access Instance) is new
+     Ada.Finalization.Controlled with null record;
 
-   type Implementation is new Stream.Implementation with
-      record
-         Iterator : Positive := 1;
-         Last     : Natural := 0;
-         Data     : not null Event_Array_Access := new Event_Array (1 .. 256);
-      end record;
-   type Implementation_Pointer is access all Implementation;
+   overriding procedure Adjust (Object : in out Reference);
+   overriding procedure Finalize (Object : in out Reference);
 
-   overriding procedure Fetch (Stream : in out Implementation;
-                               E : out Event);
-
-   overriding
-   procedure Close_Stream (Stream : in out Implementation);
-
-   type Reference is new Stream.Reference with null record;
+   type Instance is new Stream_Base with record
+      Iterator : Positive := 1;
+      Last     : Natural := 0;
+      Data     : not null Event_Array_Access := new Event_Array (1 .. 256);
+   end record;
+   type Instance_Pointer is access all Instance;
 end Yaml.Event_Buffer;

@@ -169,7 +169,7 @@ package body Yaml.C is
                                       Input : Interfaces.C.Strings.chars_ptr;
                                       Size : Interfaces.C.size_t) is
    begin
-      P.P.Set_Input (Interfaces.C.Strings.Value (Input, Size));
+      P.Instance.Set_Input (Interfaces.C.Strings.Value (Input, Size));
    end Parser_Set_Input_String;
 
    function To_C (M : Mark) return C_Mark is
@@ -183,7 +183,7 @@ package body Yaml.C is
        Column => Mark_Position (C.Column)));
 
    function Parser_Parse (P : in out Parser_Type; E : out Event) return Bool is
-      Raw : constant Yaml.Event := P.P.Next;
+      Raw : constant Yaml.Event := P.Instance.Next;
       function To_Type return Event_Type is
         (case Raw.Kind is
             when Stream_Start => Stream_Start,

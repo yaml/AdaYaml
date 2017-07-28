@@ -51,6 +51,22 @@ package body Text is
    function Element (Object : Reference; Position : Positive) return Character
      is (Object.Data (Position));
 
+   function Hold (Content : String) return Constant_Instance is
+      Ret : Constant_Instance :=
+        (Length => Content'Length + Positive (Header_Size) + 1,
+         Data => <>);
+      H : Header with Import;
+      for H'Address use Ret.Data (1)'Address;
+   begin
+      H.Pool := null;
+      H.Refcount := 1;
+      H.First := 1;
+      H.Last := Content'Length;
+      Ret.Data (Positive (Header_Size) + 1 .. Ret.Data'Last) :=
+        Content & Character'Val (0);
+      return Ret;
+   end Hold;
+
    procedure Adjust (Object : in out Reference) is
    begin
       if Object.Data /= null then
@@ -104,7 +120,7 @@ package body Text is
 
    function Held (Holder : Constant_Instance) return Reference is
      ((Reference'(Ada.Finalization.Controlled with
-                Data => To_UTF_8_String_Access (Holder.S'Address))));
+                Data => To_UTF_8_String_Access (Holder.Data (Positive (Header_Size) + 1)'Address))));
 
    function Export (Object : Reference) return Exported is
       H : constant access Header := Header_Of (Object.Data);

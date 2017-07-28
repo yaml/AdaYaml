@@ -7,9 +7,9 @@ library project Libyaml_Dropin is
    for Library_Dir use "lib";
    for Library_Kind use "relocatable";
    for Library_Interface use ("Yaml", "Yaml.C", "Yaml.Parser",
-                              "Yaml.Source", "Yaml.Source.File",
+                              "Yaml.Source", "Yaml.Source.File", "Yaml.Lexer",
                               "Yaml.Source.Text_IO", "Yaml.Stacks",
-                              "Yaml.Stream", "Text", "Yaml.Lexer",
+                              "Yaml.Stream_Concept", "Text", "Text.Pool",
                               "Yaml.Lexer.Evaluation", "Yaml.Text_Set",
                               "Yaml.Destination", "Yaml.Destination.Text_IO",
                               "Yaml.Destination.C_String", "Yaml.Presenter",

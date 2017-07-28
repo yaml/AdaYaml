@@ -87,8 +87,7 @@ package Text is
 
    --  note that there is a limit of 128 characters for Content values created
    --  like this.
-   function Hold (Content : String) return Constant_Instance
-     with Pre => (Content'Length <= 128);
+   function Hold (Content : String) return Constant_Instance;
 
    --  get a Reference value which is a reference to the string contained in the
    --  Holder.
@@ -186,21 +185,26 @@ private
 
    Header_Size : constant Pool_Offset := Header'Size / System.Storage_Unit;
 
-   type Constant_Instance is record
-      H : Header;
-      S : aliased String (1 .. 128);
-   end record;
-   for Constant_Instance use record
-      H at 0 range 0 .. Header_End;
-      S at 0 range Header_End + 1 .. Header_End + 128 * System.Storage_Unit;
+   type Constant_Instance (Length : Positive) is record
+      Data : String (1 .. Length);
    end record;
 
-   function Hold (Content : String) return Constant_Instance is
-     ((H => (Pool => null, First => 1, Last => Content'Length,
-             others => <>),
-       S => Content & (Content'Length + 1 .. 128 => <>)));
+   Chunk_Start_Index : constant := Chunk_Index_Start / System.Storage_Unit + 1;
+   Refcount_Start_Index : constant := Refcount_Start / System.Storage_Unit + 1;
+   First_Start_Index : constant := First_Start / System.Storage_Unit + 1;
+   Last_Start_Index  : constant := Last_Start / System.Storage_Unit + 1;
+   End_Index         : constant := (Header_End + 1) / System.Storage_Unit;
 
-   Empty_Holder : constant Constant_Instance := Hold ("");
+   Empty_Holder : constant Constant_Instance :=
+     (Length => Positive (Header_Size) + 1, Data =>
+          (1 .. Chunk_Start_Index - 1 => Character'Val (0),
+           Chunk_Start_Index .. Refcount_Start_Index - 1 => <>,
+           Refcount_Start_Index .. First_Start_Index - 2 => Character'Val (0),
+           First_Start_Index - 1 => Character'Val (1),
+           First_Start_Index .. Last_Start_Index - 2 => Character'Val (0),
+           Last_Start_Index - 1 => Character'Val (1),
+           Last_Start_Index .. End_Index => Character'Val (0),
+           End_Index + 1 => Character'Val (0)));
 
    type Accessor (Data : not null access constant UTF_8_String) is limited
       record
@@ -214,7 +218,7 @@ private
 
    type Reference is new Ada.Finalization.Controlled with record
       Data : UTF_8_String_Access :=
-        To_UTF_8_String_Access (Empty_Holder.S'Address);
+        To_UTF_8_String_Access (Empty_Holder.Data (Positive (Header_Size) + 1)'Address);
    end record;
 
    overriding procedure Adjust (Object : in out Reference);

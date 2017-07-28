@@ -749,6 +749,7 @@ package body Yaml.Presenter is
             when Mapping_End =>
                Write ('}');
                P.Levels.Pop;
+            when Annotation_Start => Render_Annotation;
             when others =>
                raise Presenter_Error with
                  "Unexpected event (expected mapping key): " & E.Kind'Img;
@@ -1124,15 +1125,14 @@ package body Yaml.Presenter is
       end case;
    end Put;
 
-   procedure Put (P : in out Instance;
-                  S : in out Stream.Reference'Class) is
-      Cur : Event := S.Next;
+   procedure Consume (P : in out Instance; S : in out Stream.Instance) is
+      Cur : Event := Stream.Next (S);
    begin
       loop
          P.Put (Cur);
          exit when Cur.Kind = Stream_End;
-         Cur := S.Next;
+         Cur := Stream.Next (S);
       end loop;
-   end Put;
+   end Consume;
 
 end Yaml.Presenter;

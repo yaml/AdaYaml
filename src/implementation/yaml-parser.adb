@@ -7,72 +7,74 @@ package body Yaml.Parser is
    use type Lexer.Token_Kind;
    use type Text.Reference;
 
-   procedure Init (P : not null access Implementation) with Inline is
+   function New_Parser return Reference is
+      Ptr : constant not null access Instance := new Instance;
    begin
+      return Reference'(Ada.Finalization.Controlled with Data => Ptr);
+   end New_Parser;
+
+   procedure Adjust (Object : in out Reference) is
+   begin
+      Increase_Refcount (Object.Data);
+   end Adjust;
+
+   procedure Finalize (Object : in out Reference) is
+   begin
+      Decrease_Refcount (Object.Data);
+   end Finalize;
+
+   procedure Init (P : in out Instance) with Inline is
+   begin
+      P.Levels := Level_Stacks.New_Stack (32);
       P.Levels.Push ((State => At_Stream_Start'Access, Indentation => -2));
+      P.Pool.Create (8092);
       Tag_Handle_Sets.Init (P.Tag_Handles, P.Pool, 16);
    end Init;
 
-   procedure Set_Input (P : in out Reference; Input : Source.Pointer) is
-      Pool : Text.Pool.Reference;
+   procedure Set_Input (P : in out Instance; Input : Source.Pointer) is
    begin
-      Pool.Create (8092);
-      declare
-         PI : constant not null access Implementation :=
-           new Implementation'(Stream.Implementation with
-              L => <>, Pool => Pool, Levels => Level_Stacks.New_Stack (32),
-              Current => <>, Cached => <>, Header_Props => <>,
-              Inline_Props => <>, Header_Start => <>, Inline_Start => <>,
-              Tag_Handles => <>, Block_Indentation => <>);
-      begin
-         Lexer.Init (PI.L, Input, Pool);
-         Init (PI);
-         Stream.Create (P, Stream.Implementation_Pointer (PI));
-      end;
+      Init (P);
+      Lexer.Init (P.L, Input, P.Pool);
    end Set_Input;
 
-   procedure Set_Input (P : in out Reference; Input : String) is
-      Pool : Text.Pool.Reference;
+   procedure Set_Input (P : in out Instance; Input : String) is
    begin
-      Pool.Create (8092);
-      declare
-         PI : constant not null access Implementation :=
-           new Implementation'(Stream.Implementation with
-              L => <>, Pool => Pool, Levels => Level_Stacks.New_Stack (32),
-              Current => <>, Cached => <>, Header_Props => <>,
-              Inline_Props => <>, Header_Start => <>, Inline_Start => <>,
-              Tag_Handles => <>, Block_Indentation => <>);
-      begin
-         Lexer.Init (PI.L, Input, Pool);
-         Init (PI);
-         Stream.Create (P, Stream.Implementation_Pointer (PI));
-      end;
+      Init (P);
+      Lexer.Init (P.L, Input, P.Pool);
    end Set_Input;
 
-   procedure Fetch (Stream : in out Implementation; E : out Event) is
+   function Next (P : in out Instance) return Event is
    begin
-      while not Stream.Levels.Top.State (Stream, E) loop
-         null;
-      end loop;
-   end Fetch;
+      return E : Event do
+         while not P.Levels.Top.State (P, E) loop
+            null;
+         end loop;
+      end return;
+   end Next;
 
-   function Current_Lexer_Token_Start (P : Reference) return Mark is
-     (Lexer.Recent_Start_Mark (Implementation_Pointer (P.Implementation_Access).L));
+   procedure Finalize (P : in out Instance) is
+   begin
+      Lexer.Finish (P.L);
+   end Finalize;
 
-   function Current_Input_Character (P : Reference) return Mark is
-     (Lexer.Cur_Mark (Implementation_Pointer (P.Implementation_Access).L));
 
-   function Recent_Lexer_Token_Start (P : Reference) return Mark is
-     (Implementation_Pointer (P.Implementation_Access).Current.Start_Pos);
+   function Current_Lexer_Token_Start (P : Instance) return Mark is
+     (Lexer.Recent_Start_Mark (P.L));
 
-   function Recent_Lexer_Token_End (P : Reference) return Mark is
-     (Implementation_Pointer (P.Implementation_Access).Current.End_Pos);
+   function Current_Input_Character (P : Instance) return Mark is
+     (Lexer.Cur_Mark (P.L));
+
+   function Recent_Lexer_Token_Start (P : Instance) return Mark is
+     (P.Current.Start_Pos);
+
+   function Recent_Lexer_Token_End (P : Instance) return Mark is
+     (P.Current.End_Pos);
 
    -----------------------------------------------------------------------------
    --                   internal utility subroutines
    -----------------------------------------------------------------------------
 
-   procedure Reset_Tag_Handles (P : in out Implementation'Class) is
+   procedure Reset_Tag_Handles (P : in out Class) is
    begin
       Tag_Handle_Sets.Clear (P.Tag_Handles);
       pragma Warnings (Off);
@@ -85,7 +87,7 @@ package body Yaml.Parser is
       pragma Warnings (On);
    end Reset_Tag_Handles;
 
-   function Parse_Tag (P : in out Implementation'Class)
+   function Parse_Tag (P : in out Class)
                        return Text.Reference is
       use type Ada.Containers.Hash_Type;
       Tag_Handle : constant String := Lexer.Full_Lexeme (P.L);
@@ -117,7 +119,7 @@ package body Yaml.Parser is
    --                        state implementations
    -----------------------------------------------------------------------------
 
-   function At_Stream_Start (P : in out Implementation'Class;
+   function At_Stream_Start (P : in out Class;
                              E : out Event) return Boolean is
    begin
       P.Levels.Top.all := (State => At_Stream_End'Access, Indentation => -2);
@@ -130,7 +132,7 @@ package body Yaml.Parser is
       return True;
    end At_Stream_Start;
 
-   function At_Stream_End (P : in out Implementation'Class;
+   function At_Stream_End (P : in out Class;
                            E : out Event) return Boolean is
       T : constant Lexer.Token := Lexer.Next_Token (P.L);
    begin
@@ -140,7 +142,7 @@ package body Yaml.Parser is
       return True;
    end At_Stream_End;
 
-   function Before_Doc (P : in out Implementation'Class;
+   function Before_Doc (P : in out Class;
                          E : out Event) return Boolean is
       Version : Text.Reference := Text.Empty;
    begin
@@ -223,7 +225,7 @@ package body Yaml.Parser is
       end case;
    end Before_Doc;
 
-   function After_Directives_End (P : in out Implementation'Class;
+   function After_Directives_End (P : in out Class;
                                   E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -263,7 +265,7 @@ package body Yaml.Parser is
       end case;
    end After_Directives_End;
 
-   function Before_Implicit_Root (P : in out Implementation'Class;
+   function Before_Implicit_Root (P : in out Class;
                                   E : out Event) return Boolean is
       pragma Unreferenced (E);
    begin
@@ -296,7 +298,7 @@ package body Yaml.Parser is
       end case;
    end Before_Implicit_Root;
 
-   function Require_Implicit_Map_Start (P : in out Implementation'Class;
+   function Require_Implicit_Map_Start (P : in out Class;
                                         E : out Event) return Boolean is
       Header_End : Mark;
    begin
@@ -367,7 +369,7 @@ package body Yaml.Parser is
       end case;
    end Require_Implicit_Map_Start;
 
-   function At_Block_Indentation (P : in out Implementation'Class;
+   function At_Block_Indentation (P : in out Class;
                                   E : out Event) return Boolean is
       Header_End : Mark;
    begin
@@ -464,7 +466,7 @@ package body Yaml.Parser is
       end case;
    end At_Block_Indentation;
 
-   function At_Block_Indentation_Props (P : in out Implementation'Class;
+   function At_Block_Indentation_Props (P : in out Class;
                                         E : out Event) return Boolean is
       Header_End : Mark;
    begin
@@ -563,7 +565,7 @@ package body Yaml.Parser is
       end case;
    end At_Block_Indentation_Props;
 
-   function Before_Node_Properties (P : in out Implementation'Class;
+   function Before_Node_Properties (P : in out Class;
                                     E : out Event) return Boolean is
       pragma Unreferenced (E);
    begin
@@ -615,7 +617,7 @@ package body Yaml.Parser is
       return False;
    end Before_Node_Properties;
 
-   function After_Block_Parent (P : in out Implementation'Class;
+   function After_Block_Parent (P : in out Class;
                                 E : out Event) return Boolean is
    begin
       P.Inline_Start := P.Current.Start_Pos;
@@ -657,7 +659,7 @@ package body Yaml.Parser is
       return False;
    end After_Block_Parent;
 
-   function After_Block_Parent_Props (P : in out Implementation'Class;
+   function After_Block_Parent_Props (P : in out Class;
                                       E : out Event) return Boolean is
       Header_End : Mark;
    begin
@@ -766,7 +768,7 @@ package body Yaml.Parser is
       end case;
    end After_Block_Parent_Props;
 
-   function Require_Inline_Block_Item (P : in out Implementation'Class;
+   function Require_Inline_Block_Item (P : in out Class;
                                        E : out Event) return Boolean is
       pragma Unreferenced (E);
    begin
@@ -781,7 +783,7 @@ package body Yaml.Parser is
       end case;
    end Require_Inline_Block_Item;
 
-   function Before_Doc_End (P : in out Implementation'Class;
+   function Before_Doc_End (P : in out Class;
                                E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -813,7 +815,7 @@ package body Yaml.Parser is
       return True;
    end Before_Doc_End;
 
-   function In_Block_Seq (P : in out Implementation'Class;
+   function In_Block_Seq (P : in out Class;
                           E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -860,7 +862,7 @@ package body Yaml.Parser is
       end case;
    end In_Block_Seq;
 
-   function After_Implicit_Map_Start (P : in out Implementation'Class;
+   function After_Implicit_Map_Start (P : in out Class;
                                       E : out Event) return Boolean is
    begin
       E := P.Cached;
@@ -868,7 +870,7 @@ package body Yaml.Parser is
       return True;
    end After_Implicit_Map_Start;
 
-   function Before_Block_Map_Key (P : in out Implementation'Class;
+   function Before_Block_Map_Key (P : in out Class;
                                   E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -926,7 +928,7 @@ package body Yaml.Parser is
       end case;
    end Before_Block_Map_Key;
 
-   function At_Block_Map_Key_Props (P : in out Implementation'Class;
+   function At_Block_Map_Key_Props (P : in out Class;
                                     E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -967,7 +969,7 @@ package body Yaml.Parser is
       return True;
    end At_Block_Map_Key_Props;
 
-   function After_Implicit_Key (P : in out Implementation'Class;
+   function After_Implicit_Key (P : in out Class;
                                 E : out Event) return Boolean is
       pragma Unreferenced (E);
    begin
@@ -983,7 +985,7 @@ package body Yaml.Parser is
       return False;
    end After_Implicit_Key;
 
-   function Before_Block_Map_Value (P : in out Implementation'Class;
+   function Before_Block_Map_Value (P : in out Class;
                                     E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -1041,7 +1043,7 @@ package body Yaml.Parser is
       end case;
    end Before_Block_Map_Value;
 
-   function Before_Flow_Item (P : in out Implementation'Class;
+   function Before_Flow_Item (P : in out Class;
                               E : out Event) return Boolean is
    begin
       P.Inline_Start := P.Current.Start_Pos;
@@ -1064,7 +1066,7 @@ package body Yaml.Parser is
       return False;
    end Before_Flow_Item;
 
-   function Before_Flow_Item_Props (P : in out Implementation'Class;
+   function Before_Flow_Item_Props (P : in out Class;
                                     E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -1110,7 +1112,7 @@ package body Yaml.Parser is
       return True;
    end Before_Flow_Item_Props;
 
-   function After_Flow_Map_Key (P : in out Implementation'Class;
+   function After_Flow_Map_Key (P : in out Class;
                                 E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -1134,7 +1136,7 @@ package body Yaml.Parser is
       end case;
    end After_Flow_Map_Key;
 
-   function After_Flow_Map_Value (P : in out Implementation'Class;
+   function After_Flow_Map_Value (P : in out Class;
                                   E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -1159,7 +1161,7 @@ package body Yaml.Parser is
       end case;
    end After_Flow_Map_Value;
 
-   function After_Flow_Seq_Item (P : in out Implementation'Class;
+   function After_Flow_Seq_Item (P : in out Class;
                                  E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -1184,7 +1186,7 @@ package body Yaml.Parser is
       end case;
    end After_Flow_Seq_Item;
 
-   function After_Flow_Map_Sep (P : in out Implementation'Class;
+   function After_Flow_Map_Sep (P : in out Class;
                                 E : out Event) return Boolean is
    begin
       case P.Current.Kind is
@@ -1204,7 +1206,7 @@ package body Yaml.Parser is
       return False;
    end After_Flow_Map_Sep;
 
-   function Possible_Next_Sequence_Item (P : in out Implementation'Class;
+   function Possible_Next_Sequence_Item (P : in out Class;
                                          E : out Event;
                                          End_Token : Lexer.Token_Kind;
                                          After_Props, After_Item : State_Type)
@@ -1257,7 +1259,7 @@ package body Yaml.Parser is
    end Possible_Next_Sequence_Item;
 
 
-   function After_Flow_Seq_Sep (P : in out Implementation'Class;
+   function After_Flow_Seq_Sep (P : in out Class;
                                 E : out Event) return Boolean is
    begin
       return Possible_Next_Sequence_Item (P, E, Lexer.Flow_Seq_End,
@@ -1265,7 +1267,7 @@ package body Yaml.Parser is
                                           After_Flow_Seq_Item'Access);
    end After_Flow_Seq_Sep;
 
-   function Forced_Next_Sequence_Item (P : in out Implementation'Class;
+   function Forced_Next_Sequence_Item (P : in out Class;
                                        E : out Event) return Boolean is
    begin
       if P.Current.Kind in Lexer.Flow_Scalar_Token_Kind then
@@ -1295,14 +1297,14 @@ package body Yaml.Parser is
       end if;
    end Forced_Next_Sequence_Item;
 
-   function After_Flow_Seq_Sep_Props (P : in out Implementation'Class;
+   function After_Flow_Seq_Sep_Props (P : in out Class;
                                       E : out Event) return Boolean is
    begin
       P.Levels.Top.State := After_Flow_Seq_Item'Access;
       return Forced_Next_Sequence_Item (P, E);
    end After_Flow_Seq_Sep_Props;
 
-   function Before_Pair_Value (P : in out Implementation'Class;
+   function Before_Pair_Value (P : in out Class;
                                E : out Event) return Boolean is
    begin
       if P.Current.Kind = Lexer.Map_Value_Ind then
@@ -1323,7 +1325,7 @@ package body Yaml.Parser is
       end if;
    end Before_Pair_Value;
 
-   function After_Implicit_Pair_Start (P : in out Implementation'Class;
+   function After_Implicit_Pair_Start (P : in out Class;
                                        E : out Event) return Boolean is
    begin
       E := P.Cached;
@@ -1333,7 +1335,7 @@ package body Yaml.Parser is
       return True;
    end After_Implicit_Pair_Start;
 
-   function After_Pair_Value (P : in out Implementation'Class;
+   function After_Pair_Value (P : in out Class;
                               E : out Event) return Boolean is
    begin
       E := Event'(Start_Position => P.Current.Start_Pos,
@@ -1343,12 +1345,7 @@ package body Yaml.Parser is
       return True;
    end After_Pair_Value;
 
-   procedure Close_Stream (Stream : in out Implementation) is
-   begin
-      Lexer.Finish (Stream.L);
-   end Close_Stream;
-
-   function After_Param_Sep (P : in out Implementation'Class; E : out Event)
+   function After_Param_Sep (P : in out Class; E : out Event)
                              return Boolean is
    begin
       return Possible_Next_Sequence_Item (P, E, Lexer.Params_End,
@@ -1357,13 +1354,13 @@ package body Yaml.Parser is
    end After_Param_Sep;
 
    function After_Param_Sep_Props
-     (P : in out Implementation'Class; E : out Event) return Boolean is
+     (P : in out Class; E : out Event) return Boolean is
    begin
       P.Levels.Top.State := After_Param'Access;
       return Forced_Next_Sequence_Item (P, E);
    end After_Param_Sep_Props;
 
-   function After_Param (P : in out Implementation'Class; E : out Event)
+   function After_Param (P : in out Class; E : out Event)
                          return Boolean is
    begin
       case P.Current.Kind is
@@ -1388,7 +1385,7 @@ package body Yaml.Parser is
       end case;
    end After_Param;
 
-   function After_Annotation (P : in out Implementation'Class; E : out Event)
+   function After_Annotation (P : in out Class; E : out Event)
                               return Boolean is
    begin
       E := Event'(Start_Position => P.Current.Start_Pos,

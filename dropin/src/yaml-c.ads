@@ -160,7 +160,7 @@ package Yaml.C is
      with Export, Convention => C, External_Name => "yaml_emitter_emit";
 private
    type Parser_Holder is record
-      P : Parser.Reference;
+      Instance : Parser.Instance;
    end record;
 
    type Parser_Type is access Parser_Holder;

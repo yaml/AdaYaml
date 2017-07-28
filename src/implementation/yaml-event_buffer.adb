@@ -4,47 +4,49 @@
 with Ada.Unchecked_Deallocation;
 
 package body Yaml.Event_Buffer is
-   procedure Initialize (Object : in out Reference) is
+   procedure Adjust (Object : in out Reference) is
    begin
-      Stream.Create (Object, Stream.Implementation_Pointer'(
-                     new Implementation));
-   end Initialize;
+      Increase_Refcount (Object.Data);
+   end Adjust;
 
-   procedure Append (Object : in out Reference; E : Event) is
-      Impl : constant Implementation_Pointer :=
-        Implementation_Pointer (Object.Implementation_Access);
+   procedure Finalize (Object : in out Reference) is
    begin
-      if Impl.Last = Impl.Data.all'Last then
+      Decrease_Refcount (Object.Data);
+   end Finalize;
+
+   procedure Append (Object : in out Instance; E : Event) is
+   begin
+      if Object.Last = Object.Data.all'Last then
          declare
             procedure Free is new Ada.Unchecked_Deallocation
               (Event_Array, Event_Array_Access);
             New_Data : constant not null access Event_Array :=
-              new Event_Array (1 .. Impl.Data.all'Last * 2);
-            Old_Data : Event_Array_Access := Impl.Data;
+              new Event_Array (1 .. Object.Data.all'Last * 2);
+            Old_Data : Event_Array_Access := Object.Data;
          begin
-            New_Data (1 .. Impl.Data.all'Last) := Impl.Data.all;
-            Impl.Data.all := New_Data.all;
+            New_Data (1 .. Object.Data.all'Last) := Object.Data.all;
+            Object.Data.all := New_Data.all;
             Free (Old_Data);
          end;
       end if;
-      Impl.Last := Impl.Last + 1;
-      Impl.Data (Impl.Last) := E;
+      Object.Last := Object.Last + 1;
+      Object.Data (Object.Last) := E;
    end Append;
 
-   procedure Fetch (Stream : in out Implementation;
-                    E : out Event) is
+   function Next (Object : in out Instance) return Event is
    begin
-      if Stream.Iterator > Stream.Last then
+      if Object.Iterator > Object.Last then
          raise Constraint_Error with
            "Tried to query more events than in buffer";
       else
-         E := Stream.Data (Stream.Iterator);
-         Stream.Iterator := Stream.Iterator + 1;
+         return E : constant Event := Object.Data (Object.Iterator) do
+            Object.Iterator := Object.Iterator + 1;
+         end return;
       end if;
-   end Fetch;
+   end Next;
 
-   procedure Close_Stream (Stream : in out Implementation) is
+   procedure Reset (Object : in out Instance) is
    begin
-      Stream.Iterator := 1;
-   end Close_Stream;
+      Object.Iterator := 1;
+   end Reset;
 end Yaml.Event_Buffer;

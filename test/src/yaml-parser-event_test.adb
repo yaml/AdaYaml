@@ -80,7 +80,7 @@ package body Yaml.Parser.Event_Test is
    procedure Execute_Next_Test (T : in out Test_Cases.Test_Case'Class) is
       Test_Dir : constant String :=
         Compose ("yaml-test-suite", TC (T).Test_Cases.Element (TC (T).Cur));
-      P : Reference;
+      P : Instance;
       Expected : File_Type;
       Output : Unbounded_String;
    begin
@@ -118,7 +118,7 @@ package body Yaml.Parser.Event_Test is
    procedure Execute_Error_Test (T : in out Test_Cases.Test_Case'Class) is
       Test_Dir : constant String :=
         Compose ("yaml-test-suite", TC (T).Test_Cases.Element (TC (T).Cur));
-      P : Reference;
+      P : Instance;
       Output : Unbounded_String;
       Cur : Event;
       Expected_Error : File_Type;
