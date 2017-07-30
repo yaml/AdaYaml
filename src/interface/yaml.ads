@@ -84,27 +84,32 @@ package Yaml is
 
    function To_String (E : Event) return String;
 
-   --  base type for event streams. all streams can be used with
-   --  reference-counting smart pointers, so this base type implements the
-   --  reference counting. the actual stream implementation function `Next` is
-   --  to be implemented by derived types. It is not declared as abstract
-   --  function here to avoid dispatching. Deriving types must be able to
-   --  instantiate Yaml.Stream_Concept.
-   type Stream_Base is abstract limited new Ada.Finalization.Limited_Controlled
-     with private;
+   --  base type for refcounted types (mainly event streams). all streams and
+   --  some other objects can be used with reference-counting smart pointers, so
+   --  this base type implements the reference counting. note that this type
+   --  does not have any stream semantic; that is to be implemented by child
+   --  types by providing a Stream_Concept instance (if they are streams).
+   --
+   --  beware that this type is only the vessel for the reference count and does
+   --  not do any reference counting itself; the reference-counting management
+   --  functions must be called from a smart pointer type. An object of a child
+   --  type can be used on the stack, in which case the reference count is not
+   --  used and instead the object just goes out of scope.
+   type Refcount_Base is abstract limited new
+     Ada.Finalization.Limited_Controlled with private;
 
    --  increases reference count. only call this explicitly when implementing
    --  a reference-counting smart pointer.
-   procedure Increase_Refcount (Object : not null access Stream_Base'Class);
+   procedure Increase_Refcount (Object : not null access Refcount_Base'Class);
 
    --  decreases reference count. only call this explicitly when implementing a
    --  reference-counting smart pointer. this procedure will free the object
    --  when the reference count hits zero, rendering the provided pointer
    --  useless and dangerous to use afterwards!
-   procedure Decrease_Refcount (Object : not null access Stream_Base'Class);
+   procedure Decrease_Refcount (Object : not null access Refcount_Base'Class);
 private
-   type Stream_Base is abstract limited new Ada.Finalization.Limited_Controlled
-   with record
+   type Refcount_Base is abstract limited new
+     Ada.Finalization.Limited_Controlled with record
       Refcount : Natural := 1;
    end record;
 end Yaml;

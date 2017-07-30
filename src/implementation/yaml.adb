@@ -86,18 +86,18 @@ package body Yaml is
       end case;
    end To_String;
 
-   procedure Increase_Refcount (Object : not null access Stream_Base'Class) is
+   procedure Increase_Refcount (Object : not null access Refcount_Base'Class) is
    begin
       Object.Refcount := Object.Refcount + 1;
    end Increase_Refcount;
 
-   procedure Decrease_Refcount (Object : not null access Stream_Base'Class) is
-      type Stream_Access is access all Stream_Base'Class;
+   procedure Decrease_Refcount (Object : not null access Refcount_Base'Class) is
+      type Base_Access is access all Refcount_Base'Class;
 
-      Ptr : Stream_Access := Stream_Access (Object);
+      Ptr : Base_Access := Base_Access (Object);
 
-      procedure Free is new Ada.Unchecked_Deallocation (Stream_Base'Class,
-                                                        Stream_Access);
+      procedure Free is new Ada.Unchecked_Deallocation (Refcount_Base'Class,
+                                                        Base_Access);
    begin
       Ptr.Refcount := Ptr.Refcount - 1;
       if Ptr.Refcount = 0 then

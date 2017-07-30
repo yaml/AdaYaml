@@ -3,7 +3,7 @@
 
 
 generic
-   type Instance is limited new Stream_Base with private;
+   type Instance is limited new Refcount_Base with private;
    with function Next (Object : in out Instance) return Event;
 package Yaml.Stream_Concept is
    pragma Warnings (Off, Next);

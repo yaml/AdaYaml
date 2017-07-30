@@ -34,14 +34,14 @@ package body Yaml.Transformation is
                        return Instance is
    begin
       Increase_Refcount (Original);
-      return (Stream_Base with
+      return (Refcount_Base with
                 Original => Original, Transformators => <>);
    end Transform;
 
    function Transform (Original : not null access Stream_Impl.Instance)
                        return Reference is
       Ptr : constant not null access Instance :=
-        new Instance'(Stream_Base with
+        new Instance'(Refcount_Base with
                          Original => Original, Transformators => <>);
    begin
       Increase_Refcount (Original);

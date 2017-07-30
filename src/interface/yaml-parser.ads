@@ -12,7 +12,7 @@ package Yaml.Parser is
    --  this package implements a parser that generates an event stream from a
    --  YAML characters stream source.
 
-   type Instance is limited new Stream_Base with private;
+   type Instance is limited new Refcount_Base with private;
    subtype Class is Instance'Class;
    type Reference (Data : not null access Instance) is tagged private with
      Implicit_Dereference => Data;
@@ -66,7 +66,7 @@ private
    package Level_Stacks is new Yaml.Stacks (Parsing_Level);
    package Tag_Handle_Sets is new Yaml.Text_Set (Text.Reference);
 
-   type Instance is limited new Stream_Base with record
+   type Instance is limited new Refcount_Base with record
       Pool : Text.Pool.Reference;
       L : Lexer.Instance;
       Levels : Level_Stacks.Stack;

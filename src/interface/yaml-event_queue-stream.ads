@@ -3,4 +3,4 @@
 
 with Yaml.Stream_Concept;
 
-package Yaml.Event_Buffer.Stream is new Stream_Concept (Instance, Next);
+package Yaml.Event_Queue.Stream is new Stream_Concept (Stream_Instance, Next);

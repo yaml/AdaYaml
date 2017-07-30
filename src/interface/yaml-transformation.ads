@@ -8,7 +8,7 @@ private with Ada.Containers.Indefinite_Vectors;
 generic
    with package Stream_Impl is new Stream_Concept (<>);
 package Yaml.Transformation is
-   type Instance is limited new Stream_Base with private;
+   type Instance is limited new Refcount_Base with private;
    type Reference (Data : not null access Instance) is tagged private;
 
    overriding procedure Finalize (Object : in out Instance);
@@ -32,7 +32,7 @@ private
    package Transformator_Vectors is new Ada.Containers.Indefinite_Vectors
      (Positive, Transformator.Pointer, Transformator."=");
 
-   type Instance is limited new Stream_Base with record
+   type Instance is limited new Refcount_Base with record
       Original : not null access Stream_Impl.Instance;
       Transformators : Transformator_Vectors.Vector;
    end record;
