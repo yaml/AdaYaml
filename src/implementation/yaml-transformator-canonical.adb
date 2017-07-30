@@ -1,4 +1,7 @@
+--  part of AdaYaml, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
 
+with Text;
 with Yaml.Tags;
 
 package body Yaml.Transformator.Canonical is
@@ -6,7 +9,7 @@ package body Yaml.Transformator.Canonical is
       use type Text.Reference;
 
       function Is_Non_Specific (Tag : Text.Reference) return Boolean is
-         (Tag = Tags.Question_Mark or Tag = Tags.Exclamation_Mark);
+         (Tag = Text.Empty or Tag = Tags.Exclamation_Mark);
    begin
       if Object.Current_Exists then
          raise Constraint_Error with

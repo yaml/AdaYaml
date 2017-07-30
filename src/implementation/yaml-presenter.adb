@@ -9,12 +9,19 @@ package body Yaml.Presenter is
    use type Text.Reference;
 
    Line_End : constant Character := Character'Val (10);
-   Max_Line_Length : constant := 80;
+
+   procedure Configure (P : in out Instance; Max_Line_Length : Line_Length_Type;
+                        Flow_Style : Flow_Style_Type) is
+   begin
+      P.Max_Line_Length := Max_Line_Length;
+      P.Flow_Style := Flow_Style;
+   end Configure;
 
    procedure Init (P : in out Instance) is
    begin
       P.Buffer_Pos := 1;
       P.Cur_Column := 1;
+      P.Cur_Max_Column := P.Max_Line_Length;
       if P.Levels.Initialized then
          --  may occur when parser is re-used
          while P.Levels.Length > 0 loop
@@ -81,12 +88,12 @@ package body Yaml.Presenter is
                                             In_Flow : Boolean)
                                             return Chosen_Scalar_Style_Type is
         (if Features.Single_Line_Length + P.Levels.Top.Indentation +
-           (if Features.Unquoted_Single_Line then 2 else 4) <= Max_Line_Length
+           (if Features.Unquoted_Single_Line then 2 else 4) <= P.Cur_Max_Column
          then Plain
          elsif Features.Max_Line_Length + P.Levels.Top.Indentation + 2 <=
-           Max_Line_Length then Literal elsif Features.Folding_Possible and then
-         Features.Max_Word_Length + P.Levels.Top.Indentation + 2 <=
-           Max_Line_Length then Folded else Single_Quoted);
+           P.Cur_Max_Column then Literal elsif Features.Folding_Possible
+         and then Features.Max_Word_Length + P.Levels.Top.Indentation + 2 <=
+           P.Cur_Max_Column then Folded else Single_Quoted);
 
       function Chosen_Scalar_Style (Features : Analysis.Scalar_Features;
                                     In_Flow : Boolean)
@@ -175,8 +182,22 @@ package body Yaml.Presenter is
             P.Buffer_Pos := P.Buffer_Pos + 1;
          end loop;
          P.Cur_Column := 1;
+         P.Cur_Max_Column := Positive'Max
+           (P.Max_Line_Length / 2, P.Max_Line_Length - P.Levels.Top.Indentation);
          Write (P.Levels.Top.Indentation * ' ');
       end Next_Line;
+
+      procedure Render_Tag (Tag : Text.Reference) is
+         Yaml_Tag_Prefix : constant String := "tag:yaml.org,2002:";
+      begin
+         if Tag.Length > Yaml_Tag_Prefix'Length and then
+           Tag.Value (1 .. Yaml_Tag_Prefix'Length) = Yaml_Tag_Prefix then
+            Write ("!!");
+            Write (Tag.Value (Yaml_Tag_Prefix'Length + 1 .. Tag.Length));
+         else
+            Write ("!<" & Tag & ">");
+         end if;
+      end Render_Tag;
 
       function Render_Inline_Properties (Props : Properties)
                                          return Boolean is
@@ -187,7 +208,8 @@ package body Yaml.Presenter is
                Wrote_Anything := True;
             end if;
             if Props.Tag /= Text.Empty then
-               Write (" !<" & Props.Tag & '>');
+               Write (' ');
+               Render_Tag (Props.Tag);
                Wrote_Anything := True;
             end if;
          end return;
@@ -202,7 +224,8 @@ package body Yaml.Presenter is
                Wrote_Anything := True;
             end if;
             if Props.Tag /= Text.Empty then
-               Write ("!<" & Props.Tag & "> ");
+               Render_Tag (Props.Tag);
+               Write (' ');
                Wrote_Anything := True;
             end if;
          end return;
@@ -211,7 +234,7 @@ package body Yaml.Presenter is
       procedure Render_Single_Line_Double_Quoted
         with Pre => E.Kind = Scalar is
       begin
-         Write (" """);
+         Write ('"');
          for C of E.Content.Value loop
             case C is
                when '"' | '\'          => Write ('\' & C);
@@ -228,10 +251,8 @@ package body Yaml.Presenter is
 
       procedure Render_Multi_Line_Double_Quoted
         with Pre => E.Kind = Scalar is
-         This_Max_Line_Length : constant Positive := Positive'Max
-           (Max_Line_Length / 2, Max_Line_Length - P.Levels.Top.Indentation);
          Buffer : String
-           (1 .. This_Max_Line_Length + P.Levels.Top.Indentation)
+           (1 .. P.Cur_Max_Column + P.Levels.Top.Indentation)
            := (1 => '"', others => <>);
          Pos : Positive := 2;
          Recent_Was_Space : Boolean := False;
@@ -257,7 +278,7 @@ package body Yaml.Presenter is
                   Recent_Was_Space := False;
                when Character'Val (10) =>
                   if not Recent_Was_Space and then
-                    Pos >= (This_Max_Line_Length * 3) / 4 then
+                    P.Cur_Column + Pos >= (P.Cur_Max_Column * 3) / 4 then
                      Write (Buffer (1 .. Pos - 1));
                      Next_Line (2);
                      Pos := 1;
@@ -272,8 +293,9 @@ package body Yaml.Presenter is
                   Recent_Was_Space := False;
                when ' ' =>
                   if not Recent_Was_Space and then
-                    Pos >= (This_Max_Line_Length * 3) / 4 then
-                     Write (Buffer (1 .. Pos - 1));
+                    P.Cur_Column + Pos >= (P.Cur_Max_Column * 3) / 4 then
+                     Buffer (Pos .. Pos + 1) := " \";
+                     Write (Buffer (1 .. Pos + 1));
                      Next_Line;
                      Pos := 1;
                      Recent_Was_Space := False;
@@ -287,7 +309,7 @@ package body Yaml.Presenter is
                   Pos := Pos + 1;
                   Recent_Was_Space := False;
             end case;
-            if Pos >= This_Max_Line_Length - 1 then
+            if P.Cur_Column + Pos >= P.Cur_Max_Column - 1 then
                Buffer (Pos) := '\';
                Write (Buffer (1 .. Pos));
                Next_Line;
@@ -295,6 +317,8 @@ package body Yaml.Presenter is
                Recent_Was_Space := False;
             end if;
          end loop;
+         Buffer (Pos) := '"';
+         Write (Buffer (1 .. Pos));
       end Render_Multi_Line_Double_Quoted;
 
       procedure Render_Single_Quoted with Pre => E.Kind = Scalar is
@@ -310,8 +334,6 @@ package body Yaml.Presenter is
 
       procedure Render_Multi_Line_Plain
         with Pre => E.Kind = Scalar is
-         This_Max_Line_Length : constant Positive := Positive'Max
-           (Max_Line_Length / 2, Max_Line_Length - P.Levels.Top.Indentation);
          Word_Start : Positive := 1;
          Pos : Positive := 1;
          First : Boolean := True;
@@ -319,7 +341,7 @@ package body Yaml.Presenter is
          while Pos < E.Content.Value.Data'Last loop
             if E.Content.Value.Data (Pos) = ' ' and then
               not (E.Content.Value.Data (Pos + 1) in ' ' | Character'Val (10)) then
-               if P.Cur_Column + Pos - Word_Start <= This_Max_Line_Length then
+               if P.Cur_Column + Pos - Word_Start <= P.Cur_Max_Column then
                   if First then
                      First := False;
                   else
@@ -335,7 +357,7 @@ package body Yaml.Presenter is
                Pos := Pos + 1;
             end if;
          end loop;
-         if P.Cur_Column + Pos - Word_Start <= This_Max_Line_Length then
+         if P.Cur_Column + Pos - Word_Start <= P.Cur_Max_Column then
             if First then
                First := False;
             else
@@ -394,9 +416,6 @@ package body Yaml.Presenter is
          Lookahead : Positive := 1;
          First_Char : Positive;
          Last_Space : Positive;
-
-         This_Max_Line_Length : constant Positive := Positive'Max
-           (Max_Line_Length / 2, Max_Line_Length - P.Levels.Top.Indentation);
       begin
          if E.Content.Length = 0 then
             Write (" >-");
@@ -443,7 +462,7 @@ package body Yaml.Presenter is
                      Next_Line;
                      goto At_New_Line;
                   end if;
-                  exit when Lookahead - First_Char >= This_Max_Line_Length;
+                  exit when Lookahead - First_Char >= P.Cur_Max_Column;
                   Last_Space := Lookahead;
                   Lookahead := Lookahead + 1;
                end loop;
@@ -482,15 +501,29 @@ package body Yaml.Presenter is
         with Pre => E.Kind = Scalar is
          use type Scalar_Style_Type;
       begin
-         if Features.Unquoted_Single_Line then
+         if P.Flow_Style = Canonical then
+            if E.Scalar_Style in Literal | Folded then
+               Render_Long_Scalar (True, Features);
+            elsif P.Cur_Column + Features.Single_Line_Length + 3 <=
+              P.Cur_Max_Column then
+               Write (' ');
+               Render_Single_Line_Double_Quoted;
+            else
+               P.Levels.Push ((Position => <>,
+                         Indentation => P.Levels.Top.Indentation + 2));
+               Next_Line;
+               Render_Multi_Line_Double_Quoted;
+               P.Levels.Pop;
+            end if;
+         elsif Features.Unquoted_Single_Line then
             if E.Scalar_Style in Any | Plain and then
               P.Cur_Column + Features.Single_Line_Length + 1 <=
-                Max_Line_Length then
+                P.Cur_Max_Column then
                Write (' ');
                Render_Single_Line_Plain;
             elsif E.Scalar_Style = Double_Quoted and then
               P.Cur_Column + Features.Single_Line_Length + 3 <=
-                Max_Line_Length then
+                P.Cur_Max_Column then
                Write (' ');
                Render_Single_Line_Double_Quoted;
             else
@@ -498,7 +531,7 @@ package body Yaml.Presenter is
             end if;
          elsif E.Scalar_Style in Any | Double_Quoted and then
            P.Cur_Column + Features.Single_Line_Length + 3 <=
-             Max_Line_Length then
+             P.Cur_Max_Column then
             Write (' ');
             Render_Single_Line_Double_Quoted;
          else
@@ -530,10 +563,10 @@ package body Yaml.Presenter is
              else Render_Newline_Properties (E.Collection_Properties)) then
             if Styles = No_Compact then
                if E.Collection_Style = Flow then
-                  P.Levels.Push ((Position => Descriptor.Flow_Pos,
-                                  Indentation => P.Levels.Top.Indentation + 2));
                   Next_Line;
                   Write (Descriptor.Flow_Char);
+                  P.Levels.Push ((Position => Descriptor.Flow_Pos,
+                                  Indentation => P.Levels.Top.Indentation + 2));
                else
                   P.Levels.Push ((Position => Descriptor.Implicit_Pos,
                                   Indentation => P.Levels.Top.Indentation + 2));
@@ -552,10 +585,10 @@ package body Yaml.Presenter is
             end if;
          elsif Styles = No_Compact then
             if E.Collection_Style = Flow then
-               P.Levels.Push ((Position => Descriptor.Flow_Pos,
-                               Indentation => P.Levels.Top.Indentation + 2));
                Next_Line;
                Write (Descriptor.Flow_Char);
+               P.Levels.Push ((Position => Descriptor.Flow_Pos,
+                               Indentation => P.Levels.Top.Indentation + 2));
             else
                P.Levels.Push ((Position => Descriptor.Implicit_Pos,
                                Indentation => P.Levels.Top.Indentation + 2));
@@ -596,7 +629,7 @@ package body Yaml.Presenter is
       procedure Render_Alias (Inline : Boolean) with Inline is
       begin
          if Inline then
-            if P.Cur_Column + E.Target.Length + 2 <= Max_Line_Length then
+            if P.Cur_Column + E.Target.Length + 2 <= P.Cur_Max_Column then
                Write (" *" & E.Target);
             else
                Next_Line;
@@ -648,38 +681,44 @@ package body Yaml.Presenter is
             Features : constant Analysis.Scalar_Features :=
               Analysis.Features (E.Content.Value);
          begin
-            if Features.Unquoted_Single_Line then
+            if P.Flow_Style = Compact and then
+              Features.Unquoted_Single_Line then
                if P.Cur_Column + Features.Single_Line_Length + 1 <=
-                 Max_Line_Length then
+                 P.Cur_Max_Column then
                   if Render_Newline_Properties (E.Scalar_Properties) then null; end if;
                   Render_Single_Line_Plain;
                   Write (':');
                   P.Levels.Top.Position :=
-                    (if In_Flow then After_Implicit_Flow_Map_Key else
+                    (if In_Flow then After_Flow_Map_Key else
                         After_Implicit_Block_Map_Key);
                else
                   Write ('?');
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
                   Render_Scalar (In_Flow, Features);
-                  P.Levels.Top.Position :=
-                    (if In_Flow then After_Explicit_Flow_Map_Key else
-                        After_Explicit_Block_Map_Key);
+                  if In_Flow then
+                     Next_Line;
+                     Write (':');
+                     P.Levels.Top.Position := After_Flow_Map_Key;
+                  else
+                     P.Levels.Top.Position := After_Explicit_Block_Map_Key;
+                  end if;
                end if;
-            elsif P.Cur_Column + Features.Single_Line_Length + 3 <=
-              Max_Line_Length then
+            elsif P.Flow_Style = Compact and then
+              P.Cur_Column + Features.Single_Line_Length + 3 <=
+                P.Cur_Max_Column then
                if Render_Newline_Properties (E.Scalar_Properties) then null; end if;
                Render_Single_Line_Double_Quoted;
                Write (':');
                P.Levels.Top.Position :=
-                 (if In_Flow then After_Implicit_Flow_Map_Key else
-                     After_Implicit_Block_Map_Key);
+                 (if In_Flow then After_Flow_Map_Key else After_Explicit_Block_Map_Key);
             else
                Write ('?');
                if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
                Render_Scalar (In_Flow, Features);
+               Next_Line;
+               Write (':');
                P.Levels.Top.Position :=
-                 (if In_Flow then After_Explicit_Flow_Map_Key else
-                     After_Explicit_Block_Map_Key);
+                 (if In_Flow then After_Flow_Map_Key else After_Implicit_Block_Map_Key);
             end if;
          end;
       end Render_Scalar_Mapping_Key;
@@ -702,7 +741,7 @@ package body Yaml.Presenter is
                Start_Node (True, No_Compact, Sequence_Start_Descriptor);
             when Alias =>
                if P.Cur_Column + E.Target.Length + 3 <=
-                 Max_Line_Length then
+                 P.Cur_Max_Column then
                   Render_Alias (False);
                   Write (" :");
                   P.Levels.Top.Position := After_Implicit_Block_Map_Key;
@@ -722,33 +761,47 @@ package body Yaml.Presenter is
          end case;
       end Start_Block_Key_Value_Pair;
 
-      procedure Start_Flow_Key_Value_Pair is
+      procedure Start_Flow_Key_Value_Pair with Pre => E.Kind /= Mapping_End is
       begin
+         if P.Flow_Style = Canonical then
+            Next_Line;
+         end if;
          case E.Kind is
             when Scalar => Render_Scalar_Mapping_Key (True);
             when Mapping_Start =>
-               Next_Line;
-               Write ('?');
-               P.Levels.Top.Position := After_Explicit_Flow_Map_Key;
-               Start_Flow_Node (True, Mapping_Start_Descriptor);
-            when Sequence_Start =>
-               Next_Line;
-               Write ('?');
-               P.Levels.Top.Position := After_Explicit_Flow_Map_Key;
-               Start_Flow_Node (True, Sequence_Start_Descriptor);
-            when Alias =>
-               if P.Cur_Column + E.Target.Length + 3 <= Max_Line_Length then
-                  Render_Alias (False);
-                  Write (" :");
-                  P.Levels.Top.Position := After_Implicit_Flow_Map_Key;
+               if P.Flow_Style = Compact then
+                  Write (" ?");
                else
                   Write ('?');
-                  Render_Alias (True);
-                  P.Levels.Top.Position := After_Explicit_Flow_Map_Key;
                end if;
-            when Mapping_End =>
-               Write ('}');
-               P.Levels.Pop;
+               Next_Line;
+               Write (':');
+               P.Levels.Top.Position := After_Flow_Map_Key;
+               Start_Flow_Node (True, Mapping_Start_Descriptor);
+            when Sequence_Start =>
+               if P.Flow_Style = Compact then
+                  Write (" ?");
+               else
+                  Write ('?');
+               end if;
+               Write (':');
+               P.Levels.Top.Position := After_Flow_Map_Key;
+               Start_Flow_Node (True, Sequence_Start_Descriptor);
+            when Alias =>
+               if P.Flow_Style = Compact and then
+                 P.Cur_Column + E.Target.Length + 3 <= P.Cur_Max_Column then
+                  Render_Alias (False);
+                  Write (" :");
+                  P.Levels.Top.Position := After_Flow_Map_Key;
+               else
+                  if P.Flow_Style = Compact then
+                     Next_Line;
+                  end if;
+                  Write ('?');
+                  Render_Alias (True);
+                  Write (':');
+                  P.Levels.Top.Position := After_Flow_Map_Key;
+               end if;
             when Annotation_Start => Render_Annotation;
             when others =>
                raise Presenter_Error with
@@ -792,11 +845,19 @@ package body Yaml.Presenter is
       procedure Start_Flow_Sequence_Item (After_Comma : Boolean;
                                           After_Position : Position_Type;
                                           End_Token : Event_Kind;
-                                          End_Char : Character) is
+                                          End_Char : Character;
+                                          Force_Inline : Boolean := False) is
+         Inline : Boolean;
       begin
+         if P.Flow_Style = Canonical and then not Force_Inline then
+            Next_Line;
+            Inline := True;
+         else
+            Inline := After_Comma;
+         end if;
          case E.Kind is
             when Scalar =>
-               if After_Comma then
+               if Inline then
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
                else
                   if Render_Newline_Properties (E.Scalar_Properties) then null; end if;
@@ -807,8 +868,8 @@ package body Yaml.Presenter is
                begin
                   if Features.Unquoted_Single_Line then
                      if P.Cur_Column + Features.Single_Line_Length + 2 <=
-                       Max_Line_Length then
-                        if After_Comma then
+                       P.Cur_Max_Column then
+                        if Inline then
                            Write (' ');
                         end if;
                         Render_Single_Line_Plain;
@@ -816,8 +877,8 @@ package body Yaml.Presenter is
                         Render_Scalar (True, Features);
                      end if;
                   elsif P.Cur_Column + Features.Single_Line_Length + 4 <=
-                    Max_Line_Length then
-                     if After_Comma then
+                    P.Cur_Max_Column then
+                     if Inline then
                         Write (' ');
                      end if;
                      Render_Single_Line_Double_Quoted;
@@ -835,7 +896,7 @@ package body Yaml.Presenter is
                P.Levels.Top.Position := After_Position;
                Start_Flow_Node (False, Sequence_Start_Descriptor);
             when Alias =>
-               Render_Alias (After_Comma);
+               Render_Alias (Inline);
                P.Levels.Top.Position := After_Position;
             when others =>
                if E.Kind = End_Token then
@@ -953,7 +1014,7 @@ package body Yaml.Presenter is
                   Write ('?');
                   Start_Node (True, All_Of_Them, Sequence_Start_Descriptor);
                when Alias =>
-                  if P.Cur_Column + E.Target.Length + 3 <= Max_Line_Length then
+                  if P.Cur_Column + E.Target.Length + 3 <= P.Cur_Max_Column then
                      Render_Alias (False);
                      Write (" :");
                      P.Levels.Top.Position := After_Implicit_Block_Map_Key;
@@ -989,7 +1050,9 @@ package body Yaml.Presenter is
                when Alias =>
                   P.Levels.Top.Position := After_Block_Map_Value;
                   Render_Alias (True);
-               when Annotation_Start => Render_Annotation;
+               when Annotation_Start =>
+                  P.Levels.Top.Position := After_Implicit_Block_Map_Key;
+                  Render_Annotation;
                when others =>
                   raise Presenter_Error with
                     "Unexpected event (expected mapping value): " & E.Kind'Img;
@@ -1056,34 +1119,25 @@ package body Yaml.Presenter is
             else
                Start_Block_Sequence_Item;
             end if;
-         when After_Flow_Map_Start => Start_Flow_Key_Value_Pair;
-         when After_Implicit_Flow_Map_Key =>
-            P.Levels.Top.Position := After_Flow_Map_Value;
+         when After_Flow_Map_Start =>
+            if E.Kind = Mapping_End then
+               --  make sure `{}` is rendered even in canonical style
+               Write ('}');
+               P.Levels.Pop;
+            else
+               Start_Flow_Key_Value_Pair;
+            end if;
+         when After_Flow_Map_Key =>
             case E.Kind is
                when Scalar =>
+                  P.Levels.Top.Position := After_Flow_Map_Value;
                   if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
                   Render_Scalar (True, Analysis.Features (E.Content.Value));
                when Mapping_Start =>
+                  P.Levels.Top.Position := After_Flow_Map_Value;
                   Start_Flow_Node (True, Mapping_Start_Descriptor);
                when Sequence_Start =>
-                  Start_Flow_Node (True, Sequence_Start_Descriptor);
-               when Alias => Render_Alias (True);
-               when Annotation_Start => Render_Annotation;
-               when others =>
-                  raise Presenter_Error with
-                    "Unexpected event (expected mapping value): " & E.Kind'Img;
-            end case;
-         when After_Explicit_Flow_Map_Key =>
-            Next_Line;
-            Write (':');
-            P.Levels.Top.Position := After_Flow_Map_Value;
-            case E.Kind is
-               when Scalar =>
-                  if Render_Inline_Properties (E.Scalar_Properties) then null; end if;
-                  Render_Scalar (True, Analysis.Features (E.Content.Value));
-               when Mapping_Start =>
-                  Start_Flow_Node (True, Mapping_Start_Descriptor);
-               when Sequence_Start =>
+                  P.Levels.Top.Position := After_Flow_Map_Value;
                   Start_Flow_Node (True, Sequence_Start_Descriptor);
                when Alias => Render_Alias (True);
                when Annotation_Start => Render_Annotation;
@@ -1093,8 +1147,11 @@ package body Yaml.Presenter is
             end case;
          when After_Flow_Map_Value =>
             if E.Kind = Mapping_End then
-               Write ('}');
                P.Levels.Pop;
+               if P.Flow_Style = Canonical then
+                  Next_Line;
+               end if;
+               Write ('}');
             else
                Write (',');
                Start_Flow_Key_Value_Pair;
@@ -1117,11 +1174,11 @@ package body Yaml.Presenter is
             else
                Write ('(');
                Start_Flow_Sequence_Item (False, After_Annotation_Param,
-                                         Annotation_End, ')');
+                                         Annotation_End, ')', True);
             end if;
          when After_Annotation_Param =>
             Start_Flow_Sequence_Item (True, After_Annotation_Param,
-                                      Annotation_End, ')');
+                                      Annotation_End, ')', True);
       end case;
    end Put;
 

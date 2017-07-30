@@ -9,6 +9,15 @@ with Yaml.Stacks;
 package Yaml.Presenter is
    type Instance is tagged limited private;
    type Buffer_Type is access all String;
+   
+   subtype Line_Length_Type is Integer range 20 .. Integer'Last;
+   
+   Default_Line_Length : constant Line_Length_Type := 80;
+   
+   type Flow_Style_Type is (Compact, Canonical);
+   
+   procedure Configure (P : in out Instance; Max_Line_Length : Line_Length_Type;
+                        Flow_Style : Flow_Style_Type);
 
    procedure Set_Output (P : in out Instance;
                          D : not null Destination.Pointer);
@@ -31,9 +40,8 @@ private
       After_Implicit_Doc_End, After_Implicit_Map_Start, After_Map_Header,
       After_Flow_Map_Start, After_Implicit_Block_Map_Key,
       After_Explicit_Block_Map_Key, After_Block_Map_Value, After_Seq_Header,
-      After_Implicit_Seq_Start, After_Flow_Seq_Start,
-      After_Block_Seq_Item, After_Implicit_Flow_Map_Key,
-      After_Explicit_Flow_Map_Key, After_Flow_Map_Value, After_Flow_Seq_Item,
+      After_Implicit_Seq_Start, After_Flow_Seq_Start, After_Block_Seq_Item,
+      After_Flow_Map_Key, After_Flow_Map_Value, After_Flow_Seq_Item,
       After_Annotation_Name, After_Annotation_Param);
    
    type Level is record
@@ -44,7 +52,10 @@ private
    package Level_Stacks is new Yaml.Stacks (Level);
    
    type Instance is new Ada.Finalization.Limited_Controlled with record
+      Max_Line_Length : Line_Length_Type := Default_Line_Length;
+      Flow_Style : Flow_Style_Type := Compact;
       Cur_Column : Positive;
+      Cur_Max_Column : Positive;
       Buffer_Pos : Positive;
       Buffer : Buffer_Type;
       Dest : Destination.Pointer;
