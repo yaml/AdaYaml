@@ -1,6 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Containers;
 with Ada.Strings.UTF_Encoding;
 with Ada.Finalization;
 with System.Storage_Elements;
@@ -74,6 +75,8 @@ package Text is
 
    function "=" (Left : Reference; Right : String) return Boolean with Inline;
    function "=" (Left : String; Right : Reference) return Boolean with Inline;
+
+   function Hash (Object : Reference) return Ada.Containers.Hash_Type;
 
    function Element (Object : Reference; Position : Positive) return Character;
 

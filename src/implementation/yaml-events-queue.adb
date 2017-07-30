@@ -1,12 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Ada.Unchecked_Deallocation;
-
-package body Yaml.Event_Queue is
-   procedure Free is new Ada.Unchecked_Deallocation
-     (Event_Array, Event_Array_Access);
-
+package body Yaml.Events.Queue is
    procedure Adjust (Object : in out Reference) is
    begin
       Increase_Refcount (Object.Data);
@@ -17,11 +12,15 @@ package body Yaml.Event_Queue is
       Decrease_Refcount (Object.Data);
    end Finalize;
 
-   procedure Finalize (Object : in out Instance) is
-      Ptr : Event_Array_Access := Object.Data;
+   procedure Copy_Data (Source : Instance;
+                        Target : not null Event_Array_Access) is
    begin
-      Free (Ptr);
-   end Finalize;
+      Target (1 .. Source.Data.all'Last - Source.First_Pos + 1) :=
+        Source.Data (Source.First_Pos .. Source.Data.all'Last);
+      Target (Source.Data.all'Last - Source.First_Pos + 2 ..
+                Source.Data.all'Last) :=
+          Source.Data (1 .. Source.First_Pos - 1);
+   end Copy_Data;
 
    procedure Append (Object : in out Instance; E : Event) is
    begin
@@ -30,24 +29,11 @@ package body Yaml.Event_Queue is
            "cannot manipulate event queue while a Stream_Instance exists";
       end if;
       if Object.Length = Object.Data.all'Length then
-         declare
-            New_Data : constant not null access Event_Array :=
-              new Event_Array (1 .. Object.Data.all'Last * 2);
-            Old_Data : Event_Array_Access := Object.Data;
-         begin
-            New_Data (1 .. Object.Data.all'Last - Object.First_Pos + 1) :=
-              Object.Data (Object.First_Pos .. Object.Data.all'Last);
-            New_Data (Object.Data.all'Last - Object.First_Pos + 2 ..
-                        Object.Data.all'Last) :=
-                Object.Data (1 .. Object.First_Pos - 1);
-            Object.Data.all := New_Data.all;
-            Free (Old_Data);
-            Object.First_Pos := 1;
-         end;
+         Object.Grow;
+         Object.First_Pos := 1;
       end if;
       Object.Length := Object.Length + 1;
-      Object.Data ((Object.First_Pos + Object.Length) mod Object.Data.all'Length) :=
-        E;
+      Object.Data ((Object.First_Pos + Object.Length) mod Object.Data.all'Length) := E;
    end Append;
 
    function Length (Object : in Instance) return Natural is
@@ -90,6 +76,7 @@ package body Yaml.Event_Queue is
                                 Offset => 0);
       begin
          Increase_Refcount (Object);
+         Object.Stream_Count := Object.Stream_Count + 1;
          return Stream_Reference'(Ada.Finalization.Controlled with
                                     Data => Ptr);
       end As_Stream;
@@ -112,6 +99,7 @@ package body Yaml.Event_Queue is
    procedure Finalize (Object : in out Stream_Instance) is
    begin
       Decrease_Refcount (Object.Buffer);
+      Object.Buffer.Stream_Count := Object.Buffer.Stream_Count - 1;
    end Finalize;
 
    overriding procedure Adjust (Object : in out Stream_Reference) is
@@ -123,4 +111,4 @@ package body Yaml.Event_Queue is
    begin
       Decrease_Refcount (Object.Data);
    end Finalize;
-end Yaml.Event_Queue;
+end Yaml.Events.Queue;

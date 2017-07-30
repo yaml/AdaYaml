@@ -2,7 +2,7 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Ada.Exceptions;
-with Yaml.Event_Queue;
+with Yaml.Events.Queue;
 with Yaml.Parser;
 
 procedure Yaml.Inspect (Input : String) is
@@ -12,7 +12,7 @@ procedure Yaml.Inspect (Input : String) is
    Cur_Pos     : Positive := 1;
    Next_Pos    : Positive;
    Cur_Event   : Event;
-   Read_Events : Event_Queue.Reference := Event_Queue.New_Queue;
+   Read_Events : Events.Queue.Reference := Events.Queue.New_Queue;
    Occurred_Error : Error_Kind := None;
    Lexer_Token_Start, Lexer_Token_End : Mark;
    Exception_Message : access String;
@@ -109,8 +109,8 @@ begin
    case Occurred_Error is
       when None =>
          declare
-            Iterator : constant Event_Queue.Stream_Reference :=
-              Event_Queue.Iteration.As_Stream (Read_Events.Data);
+            Iterator : constant Events.Queue.Stream_Reference :=
+              Events.Queue.Iteration.As_Stream (Read_Events.Data);
          begin
             loop
                Cur_Event := Iterator.Next;

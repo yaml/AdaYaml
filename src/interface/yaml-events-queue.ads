@@ -3,12 +3,8 @@
 
 private with Ada.Finalization;
 
-package Yaml.Event_Queue is
-   --  raised when trying to manipulate a queue while a Stream_Instance exists
-   --  for that queue.
-   State_Error : exception;
-
-   type Instance is new Refcount_Base with private;
+package Yaml.Events.Queue is
+   type Instance is limited new Refcount_Base with private;
    type Reference (Data : not null access Instance) is tagged private with
      Implicit_Dereference => Data;
 
@@ -31,22 +27,20 @@ package Yaml.Event_Queue is
                           return Stream_Reference;
    end Iteration;
 private
-   type Event_Array is array (Positive range <>) of Event;
-   type Event_Array_Access is access Event_Array;
-
    type Reference (Data : not null access Instance) is new
      Ada.Finalization.Controlled with null record;
 
    overriding procedure Adjust (Object : in out Reference);
    overriding procedure Finalize (Object : in out Reference);
 
-   type Instance is new Refcount_Base with record
-      First_Pos : Positive := 1;
-      Stream_Count, Length : Natural := 0;
-      Data : not null Event_Array_Access := new Event_Array (1 .. 256);
+   type Instance is limited new Event_Holder with record
+      First_Pos    : Positive := 1;
+      Stream_Count : Natural := 0;
    end record;
 
-   overriding procedure Finalize (Object : in out Instance);
+   overriding procedure Copy_Data (Source : Instance;
+                                   Target : not null Event_Array_Access)
+     with Pre => Target.all'Length >= Source.Data.all'Length;
 
    type Instance_Pointer is access all Instance;
 
@@ -63,4 +57,4 @@ private
    overriding procedure Adjust (Object : in out Stream_Reference);
    overriding procedure Finalize (Object : in out Stream_Reference);
 
-end Yaml.Event_Queue;
+end Yaml.Events.Queue;

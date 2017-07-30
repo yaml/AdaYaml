@@ -1,6 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Strings.Hash;
 with Ada.Unchecked_Deallocation;
 
 package body Text is
@@ -44,6 +45,9 @@ package body Text is
 
    function "=" (Left : Reference; Right : String) return Boolean is
      (Left.Data.all = Right);
+
+   function Hash (Object : Reference) return Ada.Containers.Hash_Type is
+     (Ada.Strings.Hash (Object.Data.all));
 
    function "=" (Left : String; Right : Reference) return Boolean is
      (Left = Right.Data.all);
