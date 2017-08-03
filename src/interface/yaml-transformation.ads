@@ -21,7 +21,8 @@ package Yaml.Transformation is
    function Next (Object : in out Instance) return Event;
 
    --  takes ownership of the given pointer.
-   procedure Append (Object : in out Instance; T : Transformator.Pointer);
+   procedure Append (Object : in out Instance;
+                     T : not null Transformator.Pointer);
 private
    type Reference (Data : not null access Instance) is
      new Ada.Finalization.Controlled with null record;
@@ -29,8 +30,10 @@ private
    overriding procedure Adjust (Object : in out Reference);
    overriding procedure Finalize (Object : in out Reference);
 
+   subtype Not_Null_Pointer is not null Transformator.Pointer;
+
    package Transformator_Vectors is new Ada.Containers.Indefinite_Vectors
-     (Positive, Transformator.Pointer, Transformator."=");
+     (Positive, Not_Null_Pointer, Transformator."=");
 
    type Instance is limited new Refcount_Base with record
       Original : not null access Stream_Impl.Instance;

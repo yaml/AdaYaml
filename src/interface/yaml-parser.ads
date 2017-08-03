@@ -2,11 +2,11 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Yaml.Source;
+with Text.Pool;
 private with Ada.Finalization;
 private with Yaml.Lexer;
 private with Yaml.Stacks;
 private with Yaml.Text_Set;
-private with Text.Pool;
 
 package Yaml.Parser is
    --  this package implements a parser that generates an event stream from a
@@ -45,8 +45,10 @@ package Yaml.Parser is
 
    function Next (P : in out Instance) return Event;
 
-   overriding procedure Finalize (P : in out Instance);
+   function Pool (P : Instance) return Text.Pool.Reference;
 private
+   overriding procedure Finalize (P : in out Instance);
+
    type Reference (Data : not null access Instance) is new
      Ada.Finalization.Controlled with null record;
 

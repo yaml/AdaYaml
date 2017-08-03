@@ -22,6 +22,10 @@ package Yaml is
    --  occurs when an event stream contains an invalid sequence of events.
    Stream_Error : exception;
 
+   --  occurs when annotation processing encounters an invalid usage of an
+   --  annotation.
+   Annotation_Error : exception;
+
    --  the version of the library. major and minor version correspond to the
    --  YAML version, the patch version is local to this implementation.
    function Version_Major return Natural with Inline;

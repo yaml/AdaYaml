@@ -11,6 +11,7 @@ with Yaml.Parser.Stream;
 with Yaml.Presenter;
 with Yaml.Destination.Text_IO;
 with Yaml.Source;
+with Yaml.Transformator.Annotation_Processor;
 with Yaml.Transformator.Canonical;
 with Yaml.Transformation;
 
@@ -35,6 +36,7 @@ begin
 
    P.Set_Input (Input);
    Trans.Append (new Transformator.Canonical.Instance);
+   Trans.Append (Transformator.Annotation_Processor.New_Processor (P.Pool));
    Pres.Configure (Presenter.Default_Line_Length, Presenter.Canonical);
    Pres.Set_Output (Destination.Text_IO.As_Destination (Ada.Text_IO.Standard_Output));
 

@@ -26,7 +26,7 @@ package body Yaml.Events is
       Old_Data : Event_Array_Access := Object.Data;
    begin
       Object.Copy_Data (New_Data); --  dispatches
-      Object.Data.all := New_Data.all;
+      Object.Data := New_Data;
       Free (Old_Data);
    end Grow;
 end Yaml.Events;

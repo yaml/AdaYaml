@@ -913,7 +913,8 @@ package body Yaml.Presenter is
       case P.Levels.Top.Position is
          when Before_Stream_Start =>
             if E.Kind /= Stream_Start then
-               raise Presenter_Error with "missing Stream_Start event";
+               raise Presenter_Error with "missing Stream_Start event; got " &
+                 E.Kind'Img;
             end if;
             P.Levels.Top.Position := Before_Doc_Start;
          when After_Stream_End =>
@@ -1161,8 +1162,11 @@ package body Yaml.Presenter is
                                       Sequence_End, ']');
          when After_Flow_Seq_Item =>
             if E.Kind = Sequence_End then
-               Write (']');
                P.Levels.Pop;
+               if P.Flow_Style = Canonical then
+                  Next_Line;
+               end if;
+               Write (']');
             else
                Write (',');
                Start_Flow_Sequence_Item (True, After_Flow_Seq_Item,

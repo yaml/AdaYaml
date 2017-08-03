@@ -15,14 +15,12 @@ package body Yaml.Transformation is
    end Finalize;
 
    procedure Finalize (Object : in out Instance) is
-      type Nullable is access all Transformator.Instance'Class;
-
       procedure Free is new Ada.Unchecked_Deallocation
-        (Transformator.Instance'Class, Nullable);
+        (Transformator.Instance'Class, Transformator.Pointer);
    begin
       for Element of Object.Transformators loop
          declare
-            Ptr : Nullable := Nullable (Element);
+            Ptr : Transformator.Pointer := Element;
          begin
             Free (Ptr);
          end;
@@ -78,7 +76,8 @@ package body Yaml.Transformation is
       return Current;
    end Next;
 
-   procedure Append (Object : in out Instance; T : Transformator.Pointer) is
+   procedure Append (Object : in out Instance;
+                     T : not null Transformator.Pointer) is
    begin
       Object.Transformators.Append (T);
    end Append;

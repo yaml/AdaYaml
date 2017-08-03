@@ -32,8 +32,8 @@ package body Yaml.Events.Queue is
          Object.Grow;
          Object.First_Pos := 1;
       end if;
+      Object.Data (((Object.First_Pos + Object.Length - 1) mod Object.Data.all'Length) + 1) := E;
       Object.Length := Object.Length + 1;
-      Object.Data ((Object.First_Pos + Object.Length) mod Object.Data.all'Length) := E;
    end Append;
 
    function Length (Object : in Instance) return Natural is

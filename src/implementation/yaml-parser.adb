@@ -52,6 +52,8 @@ package body Yaml.Parser is
       end return;
    end Next;
 
+   function Pool (P : Instance) return Text.Pool.Reference is (P.Pool);
+
    procedure Finalize (P : in out Instance) is
    begin
       Lexer.Finish (P.L);
