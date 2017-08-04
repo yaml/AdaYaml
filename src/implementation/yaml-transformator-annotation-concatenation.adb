@@ -1,6 +1,8 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Unchecked_Deallocation;
+
 package body Yaml.Transformator.Annotation.Concatenation is
    procedure Put (Object : in out Instance; E : Event) is
    begin
@@ -29,6 +31,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
          raise Stream_Error with
            "unexpected token (expected annotation start): " & E.Kind'Img;
       end if;
+      Object.Current.Start_Position := E.Start_Position;
       Object.State := After_Annotation_Start'Access;
    end Initial;
 
@@ -54,7 +57,10 @@ package body Yaml.Transformator.Annotation.Concatenation is
    begin
       case E.Kind is
          when Scalar =>
-            raise Annotation_Error with "@concat on scalars not implemented";
+            Object.Builder :=
+              new Text.Builder.Reference'(Text.Builder.Create (Object.Pool));
+            Object.Builder.Append (E.Content.Value);
+            Object.State := After_String'Access;
          when Sequence_Start =>
             Object.Depth := 1;
             Object.Current := Event'(Kind => Sequence_Start,
@@ -106,9 +112,26 @@ package body Yaml.Transformator.Annotation.Concatenation is
    end After_Sequence;
 
    procedure After_String (Object : in out Instance'Class; E : Event) is
+      procedure Free is new Ada.Unchecked_Deallocation
+        (Text.Builder.Reference, Builder_Pointer);
    begin
-      -- TODO
-      null;
+      case E.Kind is
+         when Scalar =>
+            Object.Builder.Append (E.Content.Value);
+         when Sequence_End =>
+            Object.Current := (Kind => Scalar, Scalar_Style => Any,
+                               Scalar_Properties => <>,
+                               Start_Position => Object.Current.Start_Position,
+                               End_Position => E.End_Position,
+                               Content => Object.Builder.Lock);
+            Object.Current_Exists := True;
+            Free (Object.Builder);
+            Object.State := After_List_End'Access;
+         when others =>
+            raise Annotation_Error with
+              "illegal element in sequence, expected another scalar: " &
+              E.Kind'Img;
+      end case;
    end After_String;
 
    procedure After_List_End (Object : in out Instance'Class; E : Event) is

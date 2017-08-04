@@ -8,8 +8,7 @@ package body Text is
    type Header_Access is access Header;
    for Header_Access'Size use Standard'Address_Size;
 
-   function Header_Of (S : UTF_8_String_Access) return access Header
-     with Inline is
+   function Header_Of (S : UTF_8_String_Access) return not null access Header is
       function Convert is new Ada.Unchecked_Conversion
         (System.Address, Header_Access);
       use System.Storage_Elements;
@@ -158,5 +157,120 @@ package body Text is
          Decrease_Usage (H.Pool, H.Chunk_Index);
       end if;
    end Delete_Exported;
+
+   function Fitting_Position (Length : Pool_Offset;
+                              P : Pool_Data_Access) return System.Address is
+      Necessary : constant Pool_Offset :=
+        Round_To_Header_Size (Length + 1);
+      Cur : Pool_Offset := P.Pos;
+
+      procedure Allocate_Next_Chunk is
+         Next : Chunk_Index_Type;
+      begin
+         for I in Chunk_Index_Type loop
+            if P.Chunks (I) = null then
+               Next := I;
+               goto Found;
+            end if;
+         end loop;
+
+         raise Storage_Error with "String pool depleted.";
+
+         <<Found>>
+
+         P.Chunks (Next) := new Pool_Array
+           (Pool_Offset (1) .. Pool_Offset'Max (
+            P.Chunks (P.Cur)'Length * 2,
+            Necessary + Header_Size));
+         P.Cur := Next;
+         P.Pos := 1;
+      end Allocate_Next_Chunk;
+   begin
+      loop
+         declare
+            C : constant Chunk := P.Chunks (P.Cur);
+            pragma Warnings (Off, C);
+            --  no 'may be modified via address clause'
+            H : Header with Import;
+            for H'Address use C (Cur)'Address;
+         begin
+            <<Check_Length>>
+
+            if H.Last >= Necessary then
+               P.Pos := Cur + Header_Size + Necessary;
+               if H.Last > Necessary then
+                  declare
+                     Next : Header with Import;
+                     for Next'Address use C (P.Pos)'Address;
+                     use System.Storage_Elements;
+                  begin
+                     Next.Refcount := 0;
+                     Next.Last := H.Last - Necessary - Header_Size;
+                  end;
+               else
+                  loop
+                     if P.Pos > C.all'Last then
+                        P.Pos := 1;
+                     end if;
+                     if P.Pos = Cur then
+                        Allocate_Next_Chunk;
+                        exit;
+                     end if;
+                     declare
+                        Next : Header with Import;
+                        for Next'Address use C (P.Pos)'Address;
+                     begin
+                        exit when Next.Refcount = 0;
+                        P.Pos := P.Pos + Header_Size +
+                          Round_To_Header_Size (Next.Last + 1);
+                     end;
+                  end loop;
+               end if;
+               H.Refcount := 1;
+               H.Pool := P;
+               H.Chunk_Index := P.Cur;
+               H.Last := Length;
+               H.First := 1;
+               P.Usage (P.Cur) :=
+                 P.Usage (P.Cur) + 1;
+               return H'Address + Header_Size;
+            else
+               declare
+                  Next_Pos : constant Pool_Offset :=
+                    Cur + Header_Size + H.Last;
+               begin
+                  if Next_Pos <= C.all'Last then
+                     declare
+                        Next : Header with Import;
+                        for Next'Address use C (Next_Pos)'Address;
+                     begin
+                        if Next.Refcount = 0 then
+                           H.Last := H.Last + Header_Size + Next.Last;
+                           goto Check_Length;
+                        end if;
+                     end;
+                  end if;
+               end;
+            end if;
+            Cur := Cur + H.Last + Header_Size;
+            loop
+               if Cur >= C.all'Last then
+                  Cur := 1;
+               end if;
+               if Cur = P.Pos then
+                  Allocate_Next_Chunk;
+                  exit;
+               end if;
+               declare
+                  Next : Header with Import;
+                  for Next'Address use C (Cur)'Address;
+               begin
+                  exit when Next.Refcount = 0;
+                  Cur := Cur + Round_To_Header_Size (Next.Last + 1);
+               end;
+            end loop;
+         end;
+      end loop;
+   end Fitting_Position;
 
 end Text;

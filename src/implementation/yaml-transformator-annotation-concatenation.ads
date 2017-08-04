@@ -1,6 +1,8 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+private with Text.Builder;
+
 package Yaml.Transformator.Annotation.Concatenation is
    type Instance is limited new Transformator.Instance with private;
 
@@ -25,7 +27,10 @@ private
    procedure After_String (Object : in out Instance'Class; E : Event);
    procedure After_List_End (Object : in out Instance'Class; E : Event);
 
+   type Builder_Pointer is access Text.Builder.Reference;
+
    type Instance is limited new Transformator.Instance with record
+      Builder : Builder_Pointer;
       Pool : Text.Pool.Reference;
       Depth : Natural := 0;
       State : State_Type := Initial'Access;

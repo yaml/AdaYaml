@@ -15,6 +15,9 @@ package Text.Pool is
    function From_String (P : in out Reference'Class; Data : String)
                          return Text.Reference;
 
+   function With_Length (P : in out Reference'Class; Length : Positive)
+                         return Text.Reference;
+
    --  for debugging
    function Current_Chunk_As_String (P : Reference) return String;
 private
