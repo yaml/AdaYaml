@@ -1,0 +1,117 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: Equity, Palatino, serif;
+}
+
+a {
+  text-decoration: inherit;
+  display: inline-block;
+}
+
+a:link, a:hover, a:active, a:visited {
+  color: inherit;
+}
+
+article a::first-letter {
+  text-decoration: underline;
+}
+
+a:link, a:visited {
+  text-decoration: none;
+}
+
+a:hover, a:active {
+  text-decoration: underline;
+}
+
+nav {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 200px;
+  background: black;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: Concourse, Helvetica, Arial, sans-serif;
+  font-weight: bold;
+}
+
+h1 {
+  font-size: x-large;
+}
+
+h2, h3, h4, h5, h6 {
+  font-size: large;
+}
+
+nav h1 {
+  font-family: 'Concourse C', Helvetica, Arial, sans-serif;
+  color: #eee;
+  font-size: xx-large;
+  font-weight: normal;
+  margin: 0 10px;
+  text-align: center;
+}
+
+nav h2 {
+  color: #666;
+  margin: 20px 0 15px 0;
+  text-align: center;
+  font-weight: normal;
+}
+
+nav .links a {
+  display: block;
+  padding: 4px 10px;
+  color: #eee;
+  font-family: Concourse, Helvetica, Arial, sans-serif;
+}
+
+nav .links a:hover, nav .links a:active, .github:hover, .github:active {
+  text-decoration: none;
+  background: #333;
+}
+
+article {
+  padding: 10px 10px 10px 210px;
+  margin: 0;
+  max-width: 720px;
+  line-height: 145%;
+}
+
+.highlight {
+  border: 1px solid #aaa;
+  margin: 1em 0.5em;
+  padding: 0.5em;
+}
+
+.highlight {
+  font-family: "Source Code Pro";
+  font-size: 95%;
+}
+
+.github {
+  position: absolute;
+  bottom: 2em;
+  left: 0;
+  right: 0;
+  text-align: center;
+  display: block;
+  padding: 4px 10px;
+  font-family: Concourse, Helvetica, Arial, sans-serif;
+}
+
+.github:link, .github:hover, .github:active, .github:visited {
+  color: white;
+}
+
+
+.github img {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+}

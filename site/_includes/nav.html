@@ -1,0 +1,13 @@
+<nav>
+  <h1><a href="{{ site.baseurl }}/">{{ site.title }}</a></h1>
+  <h2>Navigation</h2>
+  <div class="links">
+    {% assign pages = site.pages | sort:"weight"  %}
+    {% for my_page in pages %}
+      {% if my_page.title %}
+      <a class="page-link" href="{{ my_page.url | prepend: site.baseurl }}">{{ my_page.title }}</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <a class="github" href="https://github.com/yaml/AdaYaml/">Github Repository <img src="{{ "/img/github.svg" | prepend: site.baseurl }}"/></a>
+</nav>
