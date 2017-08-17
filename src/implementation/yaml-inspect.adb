@@ -12,7 +12,7 @@ procedure Yaml.Inspect (Input : String) is
    Cur_Pos     : Positive := 1;
    Next_Pos    : Positive;
    Cur_Event   : Event;
-   Read_Events : Events.Queue.Reference := Events.Queue.New_Queue;
+   Read_Events : constant Events.Queue.Reference := Events.Queue.New_Queue;
    Occurred_Error : Error_Kind := None;
    Lexer_Token_Start, Lexer_Token_End : Mark;
    Exception_Message : access String;
@@ -110,7 +110,7 @@ begin
       when None =>
          declare
             Iterator : constant Events.Queue.Stream_Reference :=
-              Events.Queue.Iteration.As_Stream (Read_Events.Data);
+              Events.Queue.Iteration.As_Stream (Read_Events);
          begin
             loop
                Cur_Event := Iterator.Next;

@@ -23,8 +23,7 @@ package Yaml.Events.Queue is
 
    package Iteration is
       --  must be in child package so that it is not a dispatching operation
-      function As_Stream (Object : not null access Instance)
-                          return Stream_Reference;
+      function As_Stream (Object : Reference) return Stream_Reference;
    end Iteration;
 private
    type Reference (Data : not null access Instance) is new

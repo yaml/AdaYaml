@@ -69,14 +69,14 @@ package body Yaml.Events.Queue is
    end New_Queue;
 
    package body Iteration is
-      function As_Stream (Object : not null access Instance)
-                          return Stream_Reference is
+      function As_Stream (Object : Reference) return Stream_Reference is
          Ptr : constant not null access Stream_Instance :=
-           new Stream_Instance'(Refcount_Base with Buffer => Object,
+           new Stream_Instance'(Refcount_Base with
+                                Buffer => Object.Data.all'Unchecked_Access,
                                 Offset => 0);
       begin
-         Increase_Refcount (Object);
-         Object.Stream_Count := Object.Stream_Count + 1;
+         Increase_Refcount (Ptr);
+         Ptr.Buffer.Stream_Count := Ptr.Buffer.Stream_Count + 1;
          return Stream_Reference'(Ada.Finalization.Controlled with
                                     Data => Ptr);
       end As_Stream;
