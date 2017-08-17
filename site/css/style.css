@@ -70,6 +70,13 @@ nav .links a {
   font-family: Concourse, Helvetica, Arial, sans-serif;
 }
 
+nav .links a.api {
+  font-family: "Source Code Pro", monospace;
+  padding-left: 20px;
+  font-size: 95%;
+  font-weight: normal;
+}
+
 nav .links a:hover, nav .links a:active, .github:hover, .github:active {
   text-decoration: none;
   background: #333;
@@ -89,7 +96,7 @@ article {
 }
 
 .highlight {
-  font-family: "Source Code Pro";
+  font-family: "Source Code Pro", monospace;
   font-size: 95%;
 }
 
