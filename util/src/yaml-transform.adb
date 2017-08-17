@@ -18,11 +18,12 @@ with Yaml.Transformation;
 procedure Yaml.Transform is
    package Parser_Transformation is new Transformation (Parser.Stream);
    package Transformation_Stream is new Stream_Concept
-     (Parser_Transformation.Instance, Parser_Transformation.Next);
+     (Parser_Transformation.Instance, Parser_Transformation.Reference,
+      Parser_Transformation.Next);
 
    Input : Source.Pointer;
    P  : Parser.Reference := Parser.New_Parser;
-   Trans : Parser_Transformation.Instance := Parser_Transformation.Transform (P.Data);
+   Trans : Parser_Transformation.Instance := Parser_Transformation.Transform (P);
    Pres  : Presenter.Instance;
 
    procedure Consume_Canonical is new

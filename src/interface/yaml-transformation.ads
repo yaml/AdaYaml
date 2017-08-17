@@ -13,10 +13,8 @@ package Yaml.Transformation is
 
    overriding procedure Finalize (Object : in out Instance);
 
-   function Transform (Original : not null access Stream_Impl.Instance)
-                       return Instance;
-   function Transform (Original : not null access Stream_Impl.Instance)
-                       return Reference;
+   function Transform (Original : Stream_Impl.Reference) return Instance;
+   function Transform (Original : Stream_Impl.Reference) return Reference;
 
    function Next (Object : in out Instance) return Event;
 

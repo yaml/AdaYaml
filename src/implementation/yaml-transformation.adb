@@ -28,21 +28,19 @@ package body Yaml.Transformation is
       Decrease_Refcount (Object.Original);
    end Finalize;
 
-   function Transform (Original : not null access Stream_Impl.Instance)
-                       return Instance is
+   function Transform (Original : Stream_Impl.Reference) return Instance is
    begin
-      Increase_Refcount (Original);
+      Increase_Refcount (Original.Data);
       return (Refcount_Base with
-                Original => Original, Transformators => <>);
+                Original => Original.Data.all'Unchecked_Access, Transformators => <>);
    end Transform;
 
-   function Transform (Original : not null access Stream_Impl.Instance)
-                       return Reference is
+   function Transform (Original : Stream_Impl.Reference) return Reference is
       Ptr : constant not null access Instance :=
         new Instance'(Refcount_Base with
-                         Original => Original, Transformators => <>);
+                         Original => Original.Data.all'Unchecked_Access, Transformators => <>);
    begin
-      Increase_Refcount (Original);
+      Increase_Refcount (Original.Data);
       return (Ada.Finalization.Controlled with Data => Ptr);
    end Transform;
 

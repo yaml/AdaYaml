@@ -3,4 +3,4 @@
 
 with Yaml.Stream_Concept;
 
-package Yaml.Parser.Stream is new Stream_Concept (Instance, Next);
+package Yaml.Parser.Stream is new Stream_Concept (Instance, Reference, Next);
