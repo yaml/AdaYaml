@@ -465,6 +465,7 @@ package body Yaml.Lexer.Evaluation is
             L.State := Stream_End'Access;
             goto End_Of_Input_Target;
          end if;
+         Separation_Lines := Separation_Lines + 1;
          T.End_Pos := Cur_Mark (L);
          End_Line (L);
 
@@ -496,11 +497,11 @@ package body Yaml.Lexer.Evaluation is
 
          --  line folding
          if T.Kind = Literal_Scalar then
-            Add (Result, (1 .. Separation_Lines + 1 => Line_Feed));
-         elsif Separation_Lines = 0 then
+            Add (Result, (1 .. Separation_Lines  => Line_Feed));
+         elsif Separation_Lines = 1 then
             Add (Result, ' ');
          else
-            Add (Result, (1 .. Separation_Lines => Line_Feed));
+            Add (Result, (1 .. Separation_Lines - 1 => Line_Feed));
          end if;
       end loop Block_Content;
 
@@ -541,8 +542,11 @@ package body Yaml.Lexer.Evaluation is
       --  handling trailing empty lines
       case Chomp is
          when Strip => null;
-         when Clip => Add (Result, Line_Feed);
-         when Keep => Add (Result, (1 .. Separation_Lines + 1 => Line_Feed));
+         when Clip =>
+            if Result.Pos /= 1 then
+               Add (Result, Line_Feed);
+            end if;
+         when Keep => Add (Result, (1 .. Separation_Lines => Line_Feed));
       end case;
 
       L.Value := New_Content_From (L.Pool, Result);

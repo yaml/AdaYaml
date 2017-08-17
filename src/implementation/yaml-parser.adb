@@ -318,7 +318,7 @@ package body Yaml.Parser is
       P.Current := Lexer.Next_Token (P.L);
       case P.Current.Kind is
          when Lexer.Seq_Item_Ind | Lexer.Map_Key_Ind | Lexer.Map_Value_Ind =>
-            P.Levels.Top.State := After_Block_Parent'Access;
+            P.Levels.Top.State := After_Compact_Parent'Access;
             return False;
          when Lexer.Scalar_Token_Kind =>
             P.Levels.Top.State := Require_Implicit_Map_Start'Access;
@@ -329,7 +329,7 @@ package body Yaml.Parser is
                             Indentation => <>));
             return False;
          when Lexer.Flow_Map_Start | Lexer.Flow_Seq_Start =>
-            P.Levels.Top.State := After_Block_Parent_Props'Access;
+            P.Levels.Top.State := After_Compact_Parent_Props'Access;
             return False;
          when others =>
             raise Parser_Error with
@@ -455,7 +455,7 @@ package body Yaml.Parser is
             P.Header_Props := (others => <>);
             P.Levels.Top.all := (State => In_Block_Seq'Access,
                                  Indentation => Lexer.Recent_Indentation (P.L));
-            P.Levels.Push ((State => After_Block_Parent'Access,
+            P.Levels.Push ((State => After_Compact_Parent'Access,
                             Indentation => Lexer.Recent_Indentation (P.L)));
             P.Current := Lexer.Next_Token (P.L);
             return True;
@@ -468,7 +468,7 @@ package body Yaml.Parser is
             P.Header_Props := (others => <>);
             P.Levels.Top.all := (State => Before_Block_Map_Value'Access,
                                  Indentation => Lexer.Recent_Indentation (P.L));
-            P.Levels.Push ((State => After_Block_Parent'Access,
+            P.Levels.Push ((State => After_Compact_Parent'Access,
                             Indentation => Lexer.Recent_Indentation (P.L)));
             P.Current := Lexer.Next_Token (P.L);
             return True;
@@ -657,13 +657,13 @@ package body Yaml.Parser is
       return False;
    end Before_Node_Properties;
 
-   function After_Block_Parent (P : in out Class;
+   function After_Compact_Parent (P : in out Class;
                                 E : out Event) return Boolean is
    begin
       P.Inline_Start := P.Current.Start_Pos;
       case P.Current.Kind is
          when Lexer.Node_Property_Kind =>
-            P.Levels.Top.State := After_Block_Parent_Props'Access;
+            P.Levels.Top.State := After_Compact_Parent_Props'Access;
             P.Levels.Push ((State => Before_Node_Properties'Access,
                             Indentation => <>));
          when Lexer.Seq_Item_Ind =>
@@ -675,7 +675,7 @@ package body Yaml.Parser is
             P.Header_Props := (others => <>);
             P.Levels.Top.all := (State => In_Block_Seq'Access,
                                  Indentation => Lexer.Recent_Indentation (P.L));
-            P.Levels.Push ((State => After_Block_Parent'Access,
+            P.Levels.Push ((State => After_Compact_Parent'Access,
                             Indentation => Lexer.Recent_Indentation (P.L)));
             P.Current := Lexer.Next_Token (P.L);
             return True;
@@ -688,18 +688,18 @@ package body Yaml.Parser is
             P.Header_Props := (others => <>);
             P.Levels.Top.all := (State => Before_Block_Map_Value'Access,
                                  Indentation => Lexer.Recent_Indentation (P.L));
-            P.Levels.Push ((State => After_Block_Parent'Access,
+            P.Levels.Push ((State => After_Compact_Parent'Access,
                             Indentation => Lexer.Recent_Indentation (P.L)));
             P.Current := Lexer.Next_Token (P.L);
             return True;
          when others =>
-            P.Levels.Top.State := After_Block_Parent_Props'Access;
+            P.Levels.Top.State := After_Compact_Parent_Props'Access;
             return False;
       end case;
       return False;
-   end After_Block_Parent;
+   end After_Compact_Parent;
 
-   function After_Block_Parent_Props (P : in out Class;
+   function After_Compact_Parent_Props (P : in out Class;
                                       E : out Event) return Boolean is
       Header_End : Mark;
    begin
@@ -806,6 +806,113 @@ package body Yaml.Parser is
               "Unexpected token (expected newline or flow item start): " &
               P.Current.Kind'Img;
       end case;
+   end After_Compact_Parent_Props;
+
+   function After_Block_Parent (P : in out Class;
+                                E : out Event) return Boolean is
+      pragma Unreferenced (E);
+   begin
+      P.Inline_Start := P.Current.Start_Pos;
+      case P.Current.Kind is
+         when Lexer.Node_Property_Kind =>
+            P.Levels.Top.State := After_Block_Parent_Props'Access;
+            P.Levels.Push ((State => Before_Node_Properties'Access,
+                            Indentation => <>));
+         when Lexer.Seq_Item_Ind | Lexer.Map_Key_Ind =>
+            raise Parser_Error with
+              "Compact notation not allowed after implicit key";
+         when others =>
+            P.Levels.Top.State := After_Block_Parent_Props'Access;
+            return False;
+      end case;
+      return False;
+   end After_Block_Parent;
+
+   function After_Block_Parent_Props (P : in out Class;
+                                      E : out Event) return Boolean is
+      Header_End : Mark;
+   begin
+      P.Levels.Top.Indentation := Lexer.Recent_Indentation (P.L);
+      case P.Current.Kind is
+         when Lexer.Indentation =>
+            P.Header_Start := P.Inline_Start;
+            P.Levels.Top.all :=
+              (State => At_Block_Indentation'Access,
+               Indentation => P.Levels.Element (P.Levels.Length - 1).Indentation);
+            return False;
+         when Lexer.Stream_End | Lexer.Document_End | Lexer.Directives_End =>
+            E := Event'(Start_Position => P.Inline_Start,
+                               End_Position => P.Current.Start_Pos,
+                               Kind => Scalar,
+                               Scalar_Properties => P.Inline_Props,
+                               Scalar_Style => Plain,
+                               Content => Text.Empty);
+            P.Inline_Props := (others => <>);
+            P.Levels.Pop;
+            return True;
+         when Lexer.Map_Value_Ind =>
+            raise Parser_Error with
+              "Compact notation not allowed after implicit key";
+         when Lexer.Alias =>
+            E := Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Alias,
+                               Target => P.Pool.From_String (Lexer.Short_Lexeme (P.L)));
+            Header_End := P.Current.Start_Pos;
+            P.Current := Lexer.Next_Token (P.L);
+            if P.Current.Kind = Lexer.Map_Value_Ind then
+               P.Cached := E;
+               E := Event'(Start_Position => Header_End,
+                                  End_Position   => Header_End,
+                                  Kind => Mapping_Start,
+                                  Collection_Properties => (others => <>),
+                                  Collection_Style => Block);
+               P.Levels.Top.State := After_Implicit_Map_Start'Access;
+            else
+               P.Levels.Pop;
+            end if;
+            return True;
+         when Lexer.Scalar_Token_Kind =>
+            E := Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Scalar,
+                               Scalar_Properties => P.Inline_Props,
+                               Scalar_Style => To_Style (P.Current.Kind),
+                               Content => Lexer.Current_Content (P.L));
+            P.Inline_Props := (others => <>);
+            Header_End := P.Current.Start_Pos;
+            P.Current := Lexer.Next_Token (P.L);
+            if P.Current.Kind = Lexer.Map_Value_Ind then
+               raise Parser_Error with
+                 "Compact notation not allowed after implicit key";
+            end if;
+            P.Levels.Pop;
+            return True;
+         when Lexer.Flow_Map_Start =>
+            E := Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Mapping_Start,
+                               Collection_Properties => P.Inline_Props,
+                               Collection_Style => Flow);
+            P.Inline_Props := (others => <>);
+            P.Levels.Top.State := After_Flow_Map_Sep'Access;
+            P.Current := Lexer.Next_Token (P.L);
+            return True;
+         when Lexer.Flow_Seq_Start =>
+            E := Event'(Start_Position => P.Inline_Start,
+                               End_Position   => P.Current.End_Pos,
+                               Kind => Sequence_Start,
+                               Collection_Properties => P.Inline_Props,
+                               Collection_Style => Flow);
+            P.Inline_Props := (others => <>);
+            P.Levels.Top.State := After_Flow_Seq_Sep'Access;
+            P.Current := Lexer.Next_Token (P.L);
+            return True;
+         when others =>
+            raise Parser_Error with
+              "Unexpected token (expected newline or flow item start): " &
+              P.Current.Kind'Img;
+      end case;
    end After_Block_Parent_Props;
 
    function Require_Inline_Block_Item (P : in out Class;
@@ -818,7 +925,7 @@ package body Yaml.Parser is
             raise Parser_Error with
               "Node properties may not stand alone on a line";
          when others =>
-            P.Levels.Top.State := After_Block_Parent_Props'Access;
+            P.Levels.Top.State := After_Compact_Parent_Props'Access;
             return False;
       end case;
    end Require_Inline_Block_Item;
@@ -884,7 +991,7 @@ package body Yaml.Parser is
          when Lexer.Seq_Item_Ind =>
             P.Current := Lexer.Next_Token (P.L);
             P.Levels.Push
-              ((State => After_Block_Parent'Access, Indentation => P.Block_Indentation));
+              ((State => After_Compact_Parent'Access, Indentation => P.Block_Indentation));
             return False;
          when others =>
             if P.Levels.Element (P.Levels.Length - 1).Indentation =
@@ -940,7 +1047,7 @@ package body Yaml.Parser is
          when Lexer.Map_Key_Ind =>
             P.Levels.Top.State := Before_Block_Map_Value'Access;
             P.Levels.Push
-              ((State => After_Block_Parent'Access,
+              ((State => After_Compact_Parent'Access,
                 Indentation => P.Levels.Top.Indentation));
             P.Current := Lexer.Next_Token (P.L);
             return False;
@@ -1061,7 +1168,7 @@ package body Yaml.Parser is
          when Lexer.Map_Value_Ind =>
             P.Levels.Top.State := Before_Block_Map_Key'Access;
             P.Levels.Push
-              ((State => After_Block_Parent'Access,
+              ((State => After_Compact_Parent'Access,
                 Indentation => P.Levels.Top.Indentation));
             P.Current := Lexer.Next_Token (P.L);
             return False;

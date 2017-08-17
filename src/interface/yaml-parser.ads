@@ -135,9 +135,16 @@ private
                                         E : out Event) return Boolean;
 
    --  state inside a block line where a new node may start in compact notation,
-   --  e.g. after a `-` or `:`. this only sets the node start position and then
-   --  advances to After_Block_Parent_Props while possibly reading node
-   --  properties in between.
+   --  e.g. after a `-`, `?` or `:` after an explicit key.
+   function After_Compact_Parent (P : in out Class;
+                                  E : out Event) return Boolean;
+
+   --  this either starts compact nodes or advances to the next line
+   function After_Compact_Parent_Props (P : in out Class;
+                                        E : out Event) return Boolean;
+
+   --  similar to After_Compact_Parent, but disallows compact notation. This
+   --  is used after a `:` of an implicit key.
    function After_Block_Parent (P : in out Class;
                                 E : out Event) return Boolean;
 
