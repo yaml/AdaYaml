@@ -53,7 +53,7 @@ allocating them in a pool, create a `Constant_Instance` object with the function
 {% highlight ada %}
 with Text;
 
-package My_Package
+package My_Package is
    My_Constant : constant Text.Reference;
 private
    My_Constant_Holder : constant Text.Constant_Instance := Text.Hold ("value");
