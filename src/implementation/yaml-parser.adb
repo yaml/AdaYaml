@@ -2,6 +2,7 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Ada.Containers;
+with Text.Builder;
 
 package body Yaml.Parser is
    use type Lexer.Token_Kind;
@@ -42,6 +43,12 @@ package body Yaml.Parser is
       Init (P);
       Lexer.Init (P.L, Input, P.Pool);
    end Set_Input;
+
+   procedure Set_Warning_Handler
+     (P : in out Instance; Handler : access Warning_Handler'Class) is
+   begin
+      P.Handler := Handler;
+   end Set_Warning_Handler;
 
    function Next (P : in out Instance) return Event is
    begin
@@ -147,37 +154,41 @@ package body Yaml.Parser is
    function Before_Doc (P : in out Class;
                          E : out Event) return Boolean is
       Version : Text.Reference := Text.Empty;
+      Seen_Directives : Boolean := False;
    begin
-      case P.Current.Kind is
+      loop
+         case P.Current.Kind is
          when Lexer.Document_End =>
-            Reset_Tag_Handles (P);
+            if Seen_Directives then
+               raise Parser_Error with "Directives must be followed by '---'";
+            end if;
             P.Current := Lexer.Next_Token (P.L);
-            return False;
          when Lexer.Directives_End =>
             E := Event'(Start_Position => P.Current.Start_Pos,
-                               End_Position => P.Current.End_Pos,
-                               Kind => Document_Start,
-                               Implicit_Start => False,
-                               Version => Version);
+                        End_Position => P.Current.End_Pos,
+                        Kind => Document_Start,
+                        Implicit_Start => False,
+                        Version => Version);
             P.Current := Lexer.Next_Token (P.L);
             P.Levels.Top.State := Before_Doc_End'Access;
             P.Levels.Push ((State => After_Directives_End'Access,
-                              Indentation => -1));
+                            Indentation => -1));
             return True;
          when Lexer.Stream_End =>
             P.Levels.Pop;
             return False;
          when Lexer.Indentation =>
             E := Event'(Start_Position => P.Current.Start_Pos,
-                               End_Position   => P.Current.End_Pos,
-                               Kind => Document_Start,
-                               Implicit_Start => True,
-                               Version => Version);
+                        End_Position   => P.Current.End_Pos,
+                        Kind => Document_Start,
+                        Implicit_Start => True,
+                        Version => Version);
             P.Levels.Top.State := Before_Doc_End'Access;
             P.Levels.Push ((State => Before_Implicit_Root'Access,
-                              Indentation => -1));
+                            Indentation => -1));
             return True;
          when Lexer.Yaml_Directive =>
+            Seen_Directives := True;
             P.Current := Lexer.Next_Token (P.L);
             if P.Current.Kind /= Lexer.Directive_Param then
                raise Parser_Error with
@@ -188,9 +199,12 @@ package body Yaml.Parser is
                  "Duplicate YAML directive";
             end if;
             Version := P.Pool.From_String (Lexer.Full_Lexeme (P.L));
+            if Version /= "1.3" and then P.Handler /= null then
+               P.Handler.Wrong_Yaml_Version (Version.Value);
+            end if;
             P.Current := Lexer.Next_Token (P.L);
-            return False;
          when Lexer.Tag_Directive =>
+            Seen_Directives := True;
             P.Current := Lexer.Next_Token (P.L);
             if P.Current.Kind /= Lexer.Tag_Handle then
                raise Parser_Error with
@@ -217,14 +231,38 @@ package body Yaml.Parser is
                end if;
             end;
             P.Current := Lexer.Next_Token (P.L);
-            return False;
          when Lexer.Unknown_Directive =>
-            raise Parser_Error with "Not implemented: unknown directives";
+            Seen_Directives := True;
+            if P.Handler /= null then
+               declare
+                  Name : constant String := Lexer.Short_Lexeme (P.L);
+                  Params : Text.Builder.Reference := Text.Builder.Create (P.Pool);
+                  First : Boolean := True;
+               begin
+                  loop
+                     P.Current := Lexer.Next_Token (P.L);
+                     exit when P.Current.Kind /= Lexer.Directive_Param;
+                     if First then
+                        First := False;
+                     else
+                        Params.Append (' ');
+                     end if;
+                     Params.Append (Lexer.Full_Lexeme (P.L));
+                  end loop;
+                  P.Handler.Unknown_Directive (Name, Params.Lock.Value.Data.all);
+               end;
+            else
+               loop
+                  P.Current := Lexer.Next_Token (P.L);
+                  exit when P.Current.Kind /= Lexer.Directive_Param;
+               end loop;
+            end if;
          when others =>
             raise Parser_Error with
               "Unexpected token (expected directive or document start): " &
               P.Current.Kind'Img;
-      end case;
+         end case;
+      end loop;
    end Before_Doc;
 
    function After_Directives_End (P : in out Class;
@@ -1244,6 +1282,15 @@ package body Yaml.Parser is
             P.Levels.Push ((State => Before_Pair_Value'Access, others => <>));
             P.Levels.Push ((State => Before_Flow_Item'Access, others => <>));
             return True;
+         when Lexer.Map_Value_Ind =>
+            P.Levels.Top.State := After_Item;
+            E := Event'(Start_Position => P.Current.Start_Pos,
+                        End_Position   => P.Current.End_Pos,
+                        Kind           => Mapping_Start,
+                        Collection_Properties => (others => <>),
+                        Collection_Style => Flow);
+            P.Levels.Push ((State => At_Empty_Pair_Key'Access, others => <>));
+            return True;
          when others =>
             if P.Current.Kind = End_Token then
                E := Event'(Start_Position => P.Current.Start_Pos,
@@ -1305,6 +1352,18 @@ package body Yaml.Parser is
       P.Levels.Top.State := After_Flow_Seq_Item'Access;
       return Forced_Next_Sequence_Item (P, E);
    end After_Flow_Seq_Sep_Props;
+
+   function At_Empty_Pair_Key (P : in out Class; E : out Event) return Boolean
+   is begin
+      P.Levels.Top.State := Before_Pair_Value'Access;
+      E := Event'(Start_Position => P.Current.Start_Pos,
+                  End_Position   => P.Current.Start_Pos,
+                  Kind           => Scalar,
+                  Scalar_Properties => (others => <>),
+                  Scalar_Style   => Plain,
+                  Content        => Text.Empty);
+      return True;
+   end At_Empty_Pair_Key;
 
    function Before_Pair_Value (P : in out Class;
                                E : out Event) return Boolean is

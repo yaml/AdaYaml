@@ -213,17 +213,18 @@ package body Yaml.Lexer.Evaluation is
       L.Seen_Multiline := True;
       Result.Pos := Before_Space;
       loop
-         case L.Cur is
-            when ' ' => L.Cur := Next (L);
-            when Line_Feed =>
-               Handle_LF (L);
-               Newlines := Newlines + 1;
-            when Carriage_Return =>
-               Handle_CR (L);
-               Newlines := Newlines + 1;
-            when others =>
-               exit;
+         case Start_Line (L) is
+            when Content | Comment => exit;
+            when Directives_End_Marker =>
+               raise Lexer_Error with "Illegal '---' within quoted scalar";
+            when Document_End_Marker =>
+               raise Lexer_Error with "Illegal '...' within quoted scalar";
+            when Newline => End_Line (L);
+            when Stream_End =>
+               raise Lexer_Error with
+                 "Unexpected end of input (quoted string not closed)";
          end case;
+         Newlines := Newlines + 1;
       end loop;
       if Newlines = 0 then
          null;

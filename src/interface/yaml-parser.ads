@@ -17,6 +17,12 @@ package Yaml.Parser is
    type Reference (Data : not null access Instance) is tagged private with
      Implicit_Dereference => Data;
 
+   type Warning_Handler is limited interface;
+   procedure Wrong_Yaml_Version (Handler : in out Warning_Handler;
+                                 Version : String) is abstract;
+   procedure Unknown_Directive (Handler      : in out Warning_Handler;
+                                Name, Params : String) is abstract;
+
    function New_Parser return Reference;
 
    --  instructs the parser to parse the input provided by the given Source.
@@ -26,6 +32,12 @@ package Yaml.Parser is
 
    --  instructs the parser to parse the input provided as String.
    procedure Set_Input (P : in out Instance; Input : String);
+
+   --  register a handler whose subroutines are called when the corresponding
+   --  warning condition is met. May be set to null in which case no handler
+   --  is called (default behavior).
+   procedure Set_Warning_Handler
+     (P : in out Instance; Handler : access Warning_Handler'Class);
 
    --  retrieve the position where the lexer last tried to start reading a
    --  token. this function can be used when a Lexer_Error occurred.
@@ -78,6 +90,7 @@ private
       Header_Props, Inline_Props : Properties;
       Header_Start, Inline_Start : Mark;
       Block_Indentation : Indentation_Type;
+      Handler : access Warning_Handler'Class;
    end record;
    type Instance_Pointer is access Instance;
 
@@ -207,6 +220,10 @@ private
    --  even if it is an implicit empty scalar.
    function After_Flow_Seq_Sep_Props (P : in out Class;
                                       E : out Event) return Boolean;
+
+   --  used for emitting an empty scalar in the case that a pair with empty key
+   --  is encountered.
+   function At_Empty_Pair_Key (P : in out Class; E : out Event) return Boolean;
 
    --  expects the value of an implicit key-value pair inside a flow sequence.
    function Before_Pair_Value (P : in out Class;
