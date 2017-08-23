@@ -9,8 +9,8 @@ correct.
 Current YAML test suite status:
 
 ```
-Total Tests Run:   208
-Successful Tests:  208
+Total Tests Run:   224
+Successful Tests:  224
 Failed Assertions: 0
 Unexpected Errors: 0
 ```

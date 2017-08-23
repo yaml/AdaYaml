@@ -189,6 +189,11 @@ private
    function Before_Block_Map_Value (P : in out Class;
                                     E : out Event) return Boolean;
 
+   --  expects a newline after any node in a block context
+   --  (not used after implicit block mapping keys)
+   function Before_Block_Indentation (P : in out Class;
+                                      E : out Event) return Boolean;
+
    --  expects any item valid in flow mode
    function Before_Flow_Item (P : in out Class;
                               E : out Event) return Boolean;
