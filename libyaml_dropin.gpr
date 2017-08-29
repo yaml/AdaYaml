@@ -17,6 +17,9 @@ library project Libyaml_Dropin is
    for Library_Standalone use "encapsulated";
    for Library_Auto_Init use "true";
 
+   for Source_Dirs use ("dropin/src", "dropin/include", "src/interface", "src/implementation",
+                        "text/src/interface", "text/src/implementation");
+
    type Mode_Type is ("debug", "release");
    Mode : Mode_Type := external ("Mode", "debug");
 
@@ -43,6 +46,4 @@ library project Libyaml_Dropin is
             ("-gnat12", "-gnatwa", "-gnatwl", "-O3", "-gnaty3abcefhiklmNprt", "-fstack-check");
       end case;
    end Compiler;
-
-   for Source_Dirs use ("dropin/src", "dropin/include", "src/interface", "src/implementation");
 end Libyaml_Dropin;

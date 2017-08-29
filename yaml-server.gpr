@@ -1,7 +1,7 @@
 with "yaml";
 with "components-connections_server-http_server";
 
-project Yaml_Server is
+project Yaml.Server is
    for Languages use ("ada");
 
    for Object_Dir use "server/obj";
@@ -15,4 +15,4 @@ project Yaml_Server is
    package Ide renames Yaml.Ide;
 
    for Source_Dirs use ("server/src");
-end Yaml_Server;
+end Yaml.Server;

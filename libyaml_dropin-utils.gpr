@@ -1,6 +1,6 @@
 with "libyaml_dropin";
 
-project Libyaml_Dropin_Utils is
+project Libyaml_Dropin.Utils is
    for Languages use ("c");
 
    for Object_Dir use "dropin/util/obj";
@@ -14,4 +14,4 @@ project Libyaml_Dropin_Utils is
    --  package Ide renames Yaml.Ide;
 
    for Source_Dirs use ("dropin/util/src", "dropin/include");
-end Libyaml_Dropin_Utils;
+end Libyaml_Dropin.Utils;

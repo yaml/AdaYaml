@@ -1,7 +1,7 @@
 with "yaml";
 with "aunit";
 
-project Yaml_Unittests is
+project Yaml.Tests is
    for Languages use ("ada");
 
    for Object_Dir use "test/obj";
@@ -16,4 +16,4 @@ project Yaml_Unittests is
    package Ide renames Yaml.Ide;
 
    for Source_Dirs use ("test/src");
-end Yaml_Unittests;
+end Yaml.Tests;

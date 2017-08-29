@@ -1,12 +1,9 @@
-with "text/parser_text";
-
-library project Yaml is
+library project Parser_Text is
    for Languages use ("ada");
 
-   for Library_Name use "AdaYaml";
+   for Library_Name use "parsertext";
 
-   for Source_Dirs use ("src/interface",
-                        "src/implementation");
+   for Source_Dirs use ("src/interface", "src/implementation");
    for Object_Dir use "obj";
    for Library_Dir use "lib";
 
@@ -36,4 +33,4 @@ library project Yaml is
             ("-gnat12", "-gnatwa", "-gnatwl", "-O3", "-gnaty3abcefhiklmNprt", "-fstack-check");
       end case;
    end Compiler;
-end Yaml;
+end Parser_Text;

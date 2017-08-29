@@ -1,6 +1,6 @@
 with "yaml";
 
-project Yaml_Utils is
+project Yaml.Utils is
    for Languages use ("ada");
 
    for Object_Dir use "util/obj";
@@ -14,4 +14,4 @@ project Yaml_Utils is
    package Ide renames Yaml.Ide;
 
    for Source_Dirs use ("util/src");
-end Yaml_Utils;
+end Yaml.Utils;

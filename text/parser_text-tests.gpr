@@ -1,0 +1,18 @@
+with "parser_text";
+with "aunit";
+
+project Parser_Text.Tests is
+   for Languages use ("ada");
+
+   for Object_Dir use "test/obj";
+   for Library_Dir use "test/lib";
+   for Exec_Dir use "test/bin";
+
+   for Main use ("text-harness.adb");
+
+   package Builder renames Parser_Text.Builder;
+   package Compiler renames Parser_Text.Compiler;
+   package Ide renames Parser_Text.Ide;
+
+   for Source_Dirs use ("test/src");
+end Parser_Text.Tests;
