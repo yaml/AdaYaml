@@ -6,9 +6,9 @@ weight: 4
 api: True
 ---
 
-The `Text` package lives outside of the `Yaml` package hierarchy because a) it
-is not YAML-specific and b) the public `Yaml.Event` type in the base package
-depends on it. Its goals are:
+The `Text` package comes from the separate [ParserText][1] project. It is not
+YAML-specific, but has been written to support AdaYaml. The goals of the `Text`
+package are:
 
  * To implement reference-counting on strings so that they can be passed safely
    and efficiently as part of the `Yaml.Event` type.
@@ -24,7 +24,7 @@ resulting code is pretty compiler-specific and most probably will only work with
 GNAT for the forseeable future (even if other compilers start to support
 Ada 2012).
 
-## Using Text.Reference
+## Using `Text.Reference`
 
 To query the value of a `Text.Reference`, use the `Value` function which returns
 an `Accessor` that implicitly dereferences to an `UTF_8_String` access. The
@@ -32,7 +32,7 @@ value is not modifyable. The initial value of a `Text.Reference` is the empty
 string; you can always safely call `Value` since the underlying pointer may
 never be `null`.
 
-## Creating Text.References
+## Creating a `Text.Reference`
 
 If you want to create own `Text.Reference` values, you need a
 `Text.Pool.Reference`. The underlying object needs a lot of memory, so the
@@ -44,7 +44,7 @@ you can query its pool with the `Pool` function to avoid using two pools.
 If you want to create a `Text.Reference` by subsequently appending content, use
 `Text.Builder.Reference`.
 
-## Providing Text.Reference Constants
+## Providing `Text.Reference` Constants
 
 If you want to have package-level constants of `Text.Reference`, instead of
 allocating them in a pool, create a `Constant_Instance` object with the function
@@ -61,3 +61,4 @@ private
 end My_Package;
 {% endhighlight %}
 
+ [1]: https://github.com/flyx/ParserText

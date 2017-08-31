@@ -1,7 +1,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  font-family: Equity, Palatino, serif;
+  font-family: Concourse, Helvetia, Arial, sans-serif;
 }
 
 a {
@@ -35,7 +35,6 @@ nav {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: Concourse, Helvetica, Arial, sans-serif;
   font-weight: bold;
 }
 
@@ -45,6 +44,10 @@ h1 {
 
 h2, h3, h4, h5, h6 {
   font-size: large;
+}
+
+h1.api, h1 code, h2 code, h3 code, h4 code, h5 code, h6 code {
+  font-family: 'Concourse C', Helvetica, Arial, sans-serif;
 }
 
 nav h1 {
@@ -67,13 +70,11 @@ nav .links a {
   display: block;
   padding: 4px 10px;
   color: #eee;
-  font-family: Concourse, Helvetica, Arial, sans-serif;
 }
 
 nav .links a.api {
-  font-family: "Source Code Pro", monospace;
+  font-family: 'Concourse C', Helvetica, Arial, sans-serif;
   padding-left: 20px;
-  font-size: 95%;
   font-weight: normal;
 }
 
@@ -95,9 +96,15 @@ article {
   padding: 0.5em;
 }
 
-.highlight {
-  font-family: "Source Code Pro", monospace;
-  font-size: 95%;
+.highlight, code {
+  font-family: "Source Code Pro", Menlo, "Courier New", Courier, monospace;
+  font-size: 90%;
+}
+
+p code {
+  background: #ddd;
+  border-radius: 5px;
+  padding: 0px 3px;
 }
 
 .github {
@@ -108,7 +115,6 @@ article {
   text-align: center;
   display: block;
   padding: 4px 10px;
-  font-family: Concourse, Helvetica, Arial, sans-serif;
 }
 
 .github:link, .github:hover, .github:active, .github:visited {
