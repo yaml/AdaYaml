@@ -247,5 +247,7 @@ private
                               P : Pool_Data_Access) return System.Address;
 
    function Header_Of (S : UTF_8_String_Access) return not null access Header;
+
+   function As_String (C : Chunk) return String;
 end Text;
 

@@ -73,16 +73,5 @@ package body Text.Pool is
    end Finalize;
 
    function Current_Chunk_As_String (P : Reference) return String is
-      C : constant Chunk := P.Data.Chunks (P.Data.Cur);
-      function Hex (Val : Integer) return Character is
-        (if Val < 10 then Character'Val (Val + Character'Pos ('0')) else
-            Character'Val (Val - 10 + Character'Pos ('A')));
-   begin
-      return Ret : String (1 .. Positive (C.all'Last) * 2) do
-         for I in C.all'Range loop
-            Ret (Integer (I) * 2 - 1) := Hex (Integer (C (I)) / 16);
-            Ret (Integer (I) * 2) := Hex (Integer (C (I)) mod 16);
-         end loop;
-      end return;
-   end Current_Chunk_As_String;
+     (As_String (P.Data.Chunks (P.Data.Cur)));
 end Text.Pool;

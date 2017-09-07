@@ -2,6 +2,7 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Ada.Strings.Hash;
+with Ada.Strings.Unbounded;
 with Ada.Unchecked_Deallocation;
 
 package body Text is
@@ -113,7 +114,7 @@ package body Text is
             if H.Pool /= null then
                H.Refcount := H.Refcount - 1;
                if H.Refcount = 0 then
-                  H.Last := Round_To_Header_Size (H.Last);
+                  H.Last := Round_To_Header_Size (H.Last + 1);
                   Decrease_Usage (H.Pool, H.Chunk_Index);
                end if;
             end if;
@@ -266,11 +267,35 @@ package body Text is
                   for Next'Address use C (Cur)'Address;
                begin
                   exit when Next.Refcount = 0;
-                  Cur := Cur + Round_To_Header_Size (Next.Last + 1);
+                  Cur := Cur + Header_Size + Round_To_Header_Size (Next.Last + 1);
                end;
             end loop;
          end;
       end loop;
    end Fitting_Position;
 
+   function As_String (C : Chunk) return String is
+      use Ada.Strings.Unbounded;
+      Cur : Pool_Offset := 1;
+      Output : Unbounded_String;
+   begin
+      loop
+         declare
+            H : Header with Import;
+            for H'Address use C (Cur)'Address;
+         begin
+            Append (Output, "Refcount:" & H.Refcount'Img & Character'Val (10));
+            if H.Refcount = 0 then
+               Append (Output, "Length:" & H.Last'Img & Character'Val (10));
+               Cur := Cur + Header_Size + H.Last;
+            else
+               Append (Output, "Content: " & To_UTF_8_String_Access (C (Cur + Header_Size)'Address).all);
+               Cur := Cur + Header_Size + Round_To_Header_Size (H.Last + 1);
+            end if;
+         end;
+         exit when Cur > C.all'Last;
+         Append (Output, Character'Val (10) & Character'Val (10));
+      end loop;
+      return To_String (Output);
+   end As_String;
 end Text;
