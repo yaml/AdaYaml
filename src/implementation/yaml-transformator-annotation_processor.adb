@@ -17,7 +17,8 @@ package body Yaml.Transformator.Annotation_Processor is
 
    function New_Processor (Pool : Text.Pool.Reference)
                            return Pointer is
-     (new Instance'(Ada.Finalization.Limited_Controlled with Pool => Pool, others => <>));
+     (new Instance'(Ada.Finalization.Limited_Controlled with Pool => Pool,
+                    Context => Events.Context.Empty, others => <>));
 
    procedure Set_Globals (Object : in out Instance;
                           Value : Events.Store.Instance) is

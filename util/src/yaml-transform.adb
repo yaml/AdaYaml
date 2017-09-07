@@ -19,10 +19,11 @@ procedure Yaml.Transform is
    package Parser_Transformation is new Transformation (Parser.Stream);
    package Transformation_Stream is new Stream_Concept
      (Parser_Transformation.Instance, Parser_Transformation.Reference,
+      Parser_Transformation.Accessor, Parser_Transformation.Value,
       Parser_Transformation.Next);
 
    Input : Source.Pointer;
-   P  : Parser.Reference := Parser.New_Parser;
+   P  : constant Parser.Reference := Parser.New_Parser;
    Trans : Parser_Transformation.Instance := Parser_Transformation.Transform (P);
    Pres  : Presenter.Instance;
 
@@ -35,9 +36,9 @@ begin
       Input := Source.File.As_Source (Ada.Command_Line.Argument (1));
    end if;
 
-   P.Set_Input (Input);
+   P.Value.Set_Input (Input);
    Trans.Append (new Transformator.Canonical.Instance);
-   Trans.Append (Transformator.Annotation_Processor.New_Processor (P.Pool));
+   Trans.Append (Transformator.Annotation_Processor.New_Processor (P.Value.Pool));
    Pres.Configure (Presenter.Default_Line_Length, Presenter.Canonical);
    Pres.Set_Output (Destination.Text_IO.As_Destination (Ada.Text_IO.Standard_Output));
 

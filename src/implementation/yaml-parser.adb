@@ -14,6 +14,9 @@ package body Yaml.Parser is
       return Reference'(Ada.Finalization.Controlled with Data => Ptr);
    end New_Parser;
 
+   function Value (Object : Reference) return Accessor is
+     ((Data => Object.Data));
+
    procedure Adjust (Object : in out Reference) is
    begin
       Increase_Refcount (Object.Data);

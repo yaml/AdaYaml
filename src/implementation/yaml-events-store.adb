@@ -20,6 +20,12 @@ package body Yaml.Events.Store is
       return (Ada.Finalization.Controlled with Data => Object.Data);
    end Optional;
 
+   function Required (Object : Optional_Reference'Class) return Reference is
+   begin
+      Increase_Refcount (Object.Data);
+      return (Ada.Finalization.Controlled with Data => Object.Data);
+   end Required;
+
    procedure Memorize (Object : in out Instance; Item : Event) is
       use type Text.Reference;
    begin
@@ -105,18 +111,20 @@ package body Yaml.Events.Store is
    end Copy;
 
    package body Iteration is
-      function Retrieve (Object : not null access Instance;
+      function Retrieve (Object : Reference;
                          Position : Anchored_Position)
                          return Stream_Reference is
          Ptr : constant not null access Stream_Instance :=
            new Stream_Instance'(Refcount_Base with Object => Object,
                                 Depth => 0, Current => Positive (Position));
       begin
-         Increase_Refcount (Object);
-         Object.Stream_Count := Object.Stream_Count + 1;
+         Object.Data.Stream_Count := Object.Data.Stream_Count + 1;
          return Stream_Reference'(Ada.Finalization.Controlled with Data => Ptr);
       end Retrieve;
    end Iteration;
+
+   function Value (Object : Stream_Reference) return Stream_Accessor is
+      ((Data => Object.Data));
 
    function Next (Object : in out Stream_Instance) return Event is
    begin
@@ -124,7 +132,7 @@ package body Yaml.Events.Store is
          raise Constraint_Error with
            "tried to query item after end of anchored node";
       end if;
-      return Item : constant Event := Object.Object.Data (Object.Current) do
+      return Item : constant Event := Object.Object.Data.Data (Object.Current) do
          case Item.Kind is
             when Scalar => Object.Depth := Natural'Max (1, Object.Depth);
             when Mapping_Start | Sequence_Start =>
@@ -160,8 +168,7 @@ package body Yaml.Events.Store is
 
    procedure Finalize (Object : in out Stream_Instance) is
    begin
-      Object.Object.Stream_Count := Object.Object.Stream_Count - 1;
-      Decrease_Refcount (Object.Object);
+      Object.Object.Data.Stream_Count := Object.Object.Data.Stream_Count - 1;
    end Finalize;
 
    procedure Adjust (Object : in out Stream_Reference) is

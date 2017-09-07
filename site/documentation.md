@@ -27,11 +27,12 @@ Since reference counting makes it necessary to use smart pointers instead of raw
 access types, AdaYaml uses naming conventions derived from [Rosen '95][3] to
 communicate the nature of these smart pointer types:
 
- * A type named `Reference` always is a reference to a reference-counted heap
-   object. If and how the referenced object is directly accessible depends on
-   the type. If the type has the `Implicit_Dereference` aspect, it dereferences
-   to an access type pointing to the heap object. Copying a value of such a type
-   always results in the reference being copied.
+ * A type named `Reference` or suffixed with `_Reference` always is a reference
+   to a reference-counted heap object. It is always a tagged type and always has
+   a function `Value` which retrieves an `Accessor` type to access the
+   underlying object. The `Accessor` type is used to [prevent deallocation][4]
+   and always has the `Implicit_Dereference` aspect. Copying a `Reference` type
+   always performs a shallow copy.
  * A type named `Instance` typically allocates its content on the stack
    (if used as a stack variable), but may contain references to heap values. If
    a `Reference` type exists wrapping an `Instance` type, using the `Reference`
@@ -112,3 +113,4 @@ end Print_Events;
  [1]: http://gnuada.sourceforge.net
  [2]: https://docs.adacore.com/gprbuild-docs/html/gprbuild_ug.html
  [3]: http://dl.acm.org/citation.cfm?id=224131
+ [4]: http://www.adacore.com/adaanswers/gems/gem-107-preventing-deallocation-for-reference-counted-types/

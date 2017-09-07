@@ -982,17 +982,20 @@ package body Yaml.Presenter is
                  "Unexpected event (expected document end): " & E.Kind'Img;
             end if;
             if E.Implicit_End then
-               Write (Character'Val (10));
+               Next_Line;
                P.Levels.Top.Position := After_Implicit_Doc_End;
             else
-               Write (Character'Val (10) & "..." & Character'Val (10));
+               Next_Line;
+               Write ("...");
+               Next_Line;
                P.Levels.Top.Position := Before_Doc_Start;
             end if;
          when After_Implicit_Doc_End =>
             case E.Kind is
                when Document_Start =>
                   if E.Version /= Text.Empty then
-                     Write ("..." & Character'Val (10));
+                     Write ("...");
+                     Next_Line;
                   end if;
                   Start_Document;
                when Stream_End =>

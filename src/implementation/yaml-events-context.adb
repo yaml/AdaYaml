@@ -31,5 +31,5 @@ package body Yaml.Events.Context is
    end Position;
 
    function Retrieve (Pos : Cursor) return  Store.Stream_Reference is
-     (Store.Iteration.Retrieve (Pos.Target.Value.Data, Pos.Position));
+     (Store.Iteration.Retrieve (Pos.Target.Required, Pos.Position));
 end Yaml.Events.Context;

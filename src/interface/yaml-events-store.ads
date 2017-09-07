@@ -22,6 +22,7 @@ package Yaml.Events.Store is
      Pre => Object /= Null_Reference;
 
    function Optional (Object : Reference'Class) return Optional_Reference;
+   function Required (Object : Optional_Reference'Class) return Reference;
 
    procedure Memorize (Object : in out Instance; Item : Event);
    function Position (Object : Instance; Alias : Text.Reference)
@@ -33,13 +34,15 @@ package Yaml.Events.Store is
    procedure Copy (Source : in Instance; Target : in out Instance);
 
    type Stream_Instance is limited new Refcount_Base with private;
-   type Stream_Reference (Data : not null access Stream_Instance) is
-     tagged private;
+   type Stream_Reference is tagged private;
+   type Stream_Accessor (Data : not null access Stream_Instance) is
+     null record with Implicit_Dereference => Data;
 
+   function Value (Object : Stream_Reference) return Stream_Accessor;
    function Next (Object : in out Stream_Instance) return Event;
 
    package Iteration is
-      function Retrieve (Object : not null access Instance;
+      function Retrieve (Object : Reference;
                          Position : Anchored_Position) return Stream_Reference
         with Pre => Position /= No_Element;
    end Iteration;
@@ -75,15 +78,16 @@ private
    No_Element : constant Anchored_Position := 0;
 
    type Stream_Instance is limited new Refcount_Base with record
-      Object  : not null access Instance;
+      Object  : Reference;
       Depth   : Natural;
       Current : Positive;
    end record;
 
    overriding procedure Finalize (Object : in out Stream_Instance);
 
-   type Stream_Reference (Data : not null access Stream_Instance) is new
-     Ada.Finalization.Controlled with null record;
+   type Stream_Reference is new Ada.Finalization.Controlled with record
+      Data : not null access Stream_Instance;
+   end record;
 
    overriding procedure Adjust (Object : in out Stream_Reference);
    overriding procedure Finalize (Object : in out Stream_Reference);

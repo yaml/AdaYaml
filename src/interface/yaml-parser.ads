@@ -14,8 +14,11 @@ package Yaml.Parser is
 
    type Instance is limited new Refcount_Base with private;
    subtype Class is Instance'Class;
-   type Reference (Data : not null access Instance) is tagged private with
+   type Reference is tagged private;
+   type Accessor (Data : not null access Instance) is null record with
      Implicit_Dereference => Data;
+
+   function Value (Object : Reference) return Accessor;
 
    type Warning_Handler is limited interface;
    procedure Wrong_Yaml_Version (Handler : in out Warning_Handler;
@@ -61,8 +64,9 @@ package Yaml.Parser is
 private
    overriding procedure Finalize (P : in out Instance);
 
-   type Reference (Data : not null access Instance) is new
-     Ada.Finalization.Controlled with null record;
+   type Reference is new Ada.Finalization.Controlled with record
+      Data : not null access Instance;
+   end record;
 
    overriding procedure Adjust (Object : in out Reference);
    overriding procedure Finalize (Object : in out Reference);

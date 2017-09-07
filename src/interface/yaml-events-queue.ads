@@ -5,7 +5,8 @@ private with Ada.Finalization;
 
 package Yaml.Events.Queue is
    type Instance is limited new Refcount_Base with private;
-   type Reference (Data : not null access Instance) is tagged private with
+   type Reference is tagged private;
+   type Accessor (Data : not null access Instance) is null record with
      Implicit_Dereference => Data;
 
    procedure Append (Object : in out Instance; E : Event);
@@ -13,12 +14,15 @@ package Yaml.Events.Queue is
    function First (Object : in Instance) return Event;
    procedure Dequeue (Object : in out Instance);
 
+   function Value (Object : Reference) return Accessor;
    function New_Queue return Reference;
 
    type Stream_Instance is new Refcount_Base with private;
-   type Stream_Reference (Data : not null access Stream_Instance) is
-     tagged private with Implicit_Dereference => Data;
+   type Stream_Reference is tagged private;
+   type Stream_Accessor (Data : not null access Stream_Instance) is
+     null record with Implicit_Dereference => Data;
 
+   function Value (Object : Stream_Reference) return Stream_Accessor;
    function Next (Object : in out Stream_Instance) return Event;
 
    package Iteration is
@@ -26,8 +30,9 @@ package Yaml.Events.Queue is
       function As_Stream (Object : Reference) return Stream_Reference;
    end Iteration;
 private
-   type Reference (Data : not null access Instance) is new
-     Ada.Finalization.Controlled with null record;
+   type Reference is new Ada.Finalization.Controlled with record
+      Data : not null access Instance;
+   end record;
 
    overriding procedure Adjust (Object : in out Reference);
    overriding procedure Finalize (Object : in out Reference);
@@ -44,14 +49,15 @@ private
    type Instance_Pointer is access all Instance;
 
    type Stream_Instance is new Refcount_Base with record
-      Buffer : not null access Instance;
+      Buffer : Reference;
       Offset : Natural := 0;
    end record;
 
    overriding procedure Finalize (Object : in out Stream_Instance);
 
-   type Stream_Reference (Data : not null access Stream_Instance) is
-     new Ada.Finalization.Controlled with null record;
+   type Stream_Reference is new Ada.Finalization.Controlled with record
+      Data : not null access Stream_Instance;
+   end record;
 
    overriding procedure Adjust (Object : in out Stream_Reference);
    overriding procedure Finalize (Object : in out Stream_Reference);

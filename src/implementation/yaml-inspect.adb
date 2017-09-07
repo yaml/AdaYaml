@@ -23,7 +23,7 @@ begin
    begin
       loop
          Cur_Event := P.Next;
-         Read_Events.Append (Cur_Event);
+         Read_Events.Value.Append (Cur_Event);
 
          if Cur_Event.Start_Position.Index > Cur_Pos then
             Next_Pos := Cur_Pos;
@@ -113,7 +113,7 @@ begin
               Events.Queue.Iteration.As_Stream (Read_Events);
          begin
             loop
-               Cur_Event := Iterator.Next;
+               Cur_Event := Iterator.Value.Next;
                Emit_Raw_Event (Cur_Event);
                exit when Cur_Event.Kind = Stream_End;
             end loop;

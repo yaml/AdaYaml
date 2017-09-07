@@ -62,6 +62,9 @@ package body Yaml.Events.Queue is
       end if;
    end Dequeue;
 
+   function Value (Object : Reference) return Accessor is
+     ((Data => Object.Data));
+
    function New_Queue return Reference is
       Ptr : constant not null access Instance := new Instance;
    begin
@@ -71,26 +74,27 @@ package body Yaml.Events.Queue is
    package body Iteration is
       function As_Stream (Object : Reference) return Stream_Reference is
          Ptr : constant not null access Stream_Instance :=
-           new Stream_Instance'(Refcount_Base with
-                                Buffer => Object.Data.all'Unchecked_Access,
+           new Stream_Instance'(Refcount_Base with Buffer => Object,
                                 Offset => 0);
       begin
-         Increase_Refcount (Ptr);
-         Ptr.Buffer.Stream_Count := Ptr.Buffer.Stream_Count + 1;
+         Ptr.Buffer.Data.Stream_Count := Ptr.Buffer.Data.Stream_Count + 1;
          return Stream_Reference'(Ada.Finalization.Controlled with
                                     Data => Ptr);
       end As_Stream;
    end Iteration;
 
+   function Value (Object : Stream_Reference) return Stream_Accessor is
+     ((Data => Object.Data));
+
    function Next (Object : in out Stream_Instance) return Event is
-      Index : constant Positive := (Object.Buffer.First_Pos + Object.Offset) mod
-        Object.Buffer.Data.all'Last;
+      Index : constant Positive := (Object.Buffer.Data.First_Pos + Object.Offset) mod
+        Object.Buffer.Data.Data.all'Last;
    begin
-      if Object.Offset = Object.Buffer.Length then
+      if Object.Offset = Object.Buffer.Data.Length then
          raise Constraint_Error with
            "Tried to query more events than in queue";
       else
-         return E : constant Event := Object.Buffer.Data (Index) do
+         return E : constant Event := Object.Buffer.Data.Data (Index) do
             Object.Offset := Object.Offset + 1;
          end return;
       end if;
@@ -98,8 +102,7 @@ package body Yaml.Events.Queue is
 
    procedure Finalize (Object : in out Stream_Instance) is
    begin
-      Decrease_Refcount (Object.Buffer);
-      Object.Buffer.Stream_Count := Object.Buffer.Stream_Count - 1;
+      Object.Buffer.Data.Stream_Count := Object.Buffer.Data.Stream_Count - 1;
    end Finalize;
 
    overriding procedure Adjust (Object : in out Stream_Reference) is

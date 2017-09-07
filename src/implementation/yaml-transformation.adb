@@ -25,26 +25,24 @@ package body Yaml.Transformation is
             Free (Ptr);
          end;
       end loop;
-      Decrease_Refcount (Object.Original);
    end Finalize;
 
    function Transform (Original : Stream_Impl.Reference) return Instance is
    begin
-      Increase_Refcount (Original.Data);
-      return (Refcount_Base with
-              Original => Original.Data.all'Unchecked_Access,
+      return (Refcount_Base with Original => Original,
               Transformators => <>);
    end Transform;
 
    function Transform (Original : Stream_Impl.Reference) return Reference is
       Ptr : constant not null access Instance :=
-        new Instance'(Refcount_Base with
-                      Original => Original.Data.all'Unchecked_Access,
+        new Instance'(Refcount_Base with Original => Original,
                       Transformators => <>);
    begin
-      Increase_Refcount (Original.Data);
       return (Ada.Finalization.Controlled with Data => Ptr);
    end Transform;
+
+   function Value (Object : Reference) return Accessor is
+     ((Data => Object.Data));
 
    function Next (Object : in out Instance) return Event is
       use type Transformator_Vectors.Cursor;
@@ -58,7 +56,8 @@ package body Yaml.Transformation is
             Transformator_Vectors.Previous (Cursor);
          end loop;
          if Cursor = Transformator_Vectors.No_Element then
-            Current := Stream_Impl.Next (Object.Original.all);
+            Current :=
+              Stream_Impl.Next (Stream_Impl.Value (Object.Original).Data.all);
             Cursor := Object.Transformators.First;
          else
             Current := Transformator_Vectors.Element (Cursor).Next;

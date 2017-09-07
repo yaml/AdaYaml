@@ -26,4 +26,4 @@ clean:
 	gprclean -P libyaml_dropin.gpr
 	gprclean -P libyaml_dropin-utils.gpr
 
-.PHONY: adayaml test utils all
+.PHONY: adayaml test utils all dropin dropin_utils

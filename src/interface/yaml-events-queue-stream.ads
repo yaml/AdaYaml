@@ -4,4 +4,4 @@
 with Yaml.Stream_Concept;
 
 package Yaml.Events.Queue.Stream is new Stream_Concept
-  (Stream_Instance, Stream_Reference, Next);
+  (Stream_Instance, Stream_Reference, Stream_Accessor, Value, Next);
