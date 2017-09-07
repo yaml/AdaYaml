@@ -30,7 +30,7 @@ library project Yaml is
       case Mode is
       when "debug" =>
          for Default_Switches ("ada") use
-            ("-gnat12", "-gnatwa", "-gnatwl", "-gnaty3abcefhiklmNprt", "-g", "-fstack-check");
+            ("-gnat12", "-gnatwa", "-gnatwl", "-gnata", "-gnaty3abcefhiklmNprt", "-g", "-fstack-check");
       when "release" =>
          for Default_Switches ("ada") use
             ("-gnat12", "-gnatwa", "-gnatwl", "-O3", "-gnaty3abcefhiklmNprt", "-fstack-check");

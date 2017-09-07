@@ -21,9 +21,11 @@ package body Yaml.Transformator.Annotation.Concatenation is
       return Object.Current;
    end Next;
 
-   function New_Concatenation (Pool : Text.Pool.Reference)
+   function New_Concatenation (Pool : Text.Pool.Reference;
+                               Context : Events.Context.Instance)
                                return not null Pointer is
-      (new Instance'(Transformator.Instance with Pool => Pool, others => <>));
+     (new Instance'(Transformator.Instance with Pool => Pool,
+                    Context => Context, others => <>));
 
    procedure Initial (Object : in out Instance'Class; E : Event) is
    begin

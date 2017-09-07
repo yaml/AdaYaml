@@ -32,13 +32,15 @@ package body Yaml.Transformation is
    begin
       Increase_Refcount (Original.Data);
       return (Refcount_Base with
-                Original => Original.Data.all'Unchecked_Access, Transformators => <>);
+              Original => Original.Data.all'Unchecked_Access,
+              Transformators => <>);
    end Transform;
 
    function Transform (Original : Stream_Impl.Reference) return Reference is
       Ptr : constant not null access Instance :=
         new Instance'(Refcount_Base with
-                         Original => Original.Data.all'Unchecked_Access, Transformators => <>);
+                      Original => Original.Data.all'Unchecked_Access,
+                      Transformators => <>);
    begin
       Increase_Refcount (Original.Data);
       return (Ada.Finalization.Controlled with Data => Ptr);

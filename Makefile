@@ -7,7 +7,7 @@ test:
 	gprbuild -p -s -P yaml-tests.gpr
 
 utils:
-	gprbuild -p -s -P yaml_utils.gpr
+	gprbuild -p -s -P yaml-utils.gpr
 
 server:
 	gprbuild -p -s -P yaml-server.gpr

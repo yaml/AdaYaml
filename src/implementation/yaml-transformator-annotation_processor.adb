@@ -19,6 +19,12 @@ package body Yaml.Transformator.Annotation_Processor is
                            return Pointer is
      (new Instance'(Ada.Finalization.Limited_Controlled with Pool => Pool, others => <>));
 
+   procedure Set_Globals (Object : in out Instance;
+                          Value : Events.Store.Instance) is
+   begin
+      Events.Store.Copy (Value, Events.Context.Global (Object.Context).Value);
+   end Set_Globals;
+
    procedure Append (Object : in out Instance; E : Event) is
    begin
       case E.Kind is
@@ -52,9 +58,12 @@ package body Yaml.Transformator.Annotation_Processor is
    end Append;
 
    procedure Put (Object : in out Instance; E : Event) is
+      Locals : Events.Store.Accessor
+        renames Events.Context.Local (Object.Context).Value;
    begin
       case E.Kind is
          when Annotation_Start =>
+            Locals.Memorize (E);
             declare
                use type Annotation.Maps.Cursor;
                Pos : constant Annotation.Maps.Cursor :=
@@ -73,13 +82,19 @@ package body Yaml.Transformator.Annotation_Processor is
                Object.Annotations (Object.Count) :=
                  (Impl => (if Pos = Annotation.Maps.No_Element then
                                 Annotation.Identity.New_Identity else
-                                   Annotation.Maps.Element (Pos).all (Object.Pool)),
+                                   Annotation.Maps.Element (Pos).all (Object.Pool, Object.Context)),
                   Depth => Object.Depth);
                Object.Annotations (Object.Count).Impl.Put (E);
             end;
          when Annotation_End =>
             Object.Annotations (Object.Count).Impl.Put (E);
-         when others => Object.Append (E);
+         when Document_Start =>
+            Locals.Clear;
+            Locals.Memorize (E);
+            Object.Append (E);
+         when others =>
+            Locals.Memorize (E);
+            Object.Append (E);
       end case;
    end Put;
 

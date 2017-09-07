@@ -4,7 +4,7 @@
 package Yaml.Transformator.Canonical is
    type Instance is limited new Transformator.Instance with private;
 
-   procedure Put (Object : in out Instance; E : Event);
+   overriding procedure Put (Object : in out Instance; E : Event);
 
    function Has_Next (Object : Instance) return Boolean;
 

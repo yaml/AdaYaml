@@ -2,13 +2,18 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Text.Pool;
+with Yaml.Events.Store;
+private with Yaml.Events.Context;
 
 package Yaml.Transformator.Annotation_Processor is
    type Instance (<>) is limited new Transformator.Instance with private;
 
    function New_Processor (Pool : Text.Pool.Reference) return Pointer;
 
-   procedure Put (Object : in out Instance; E : Event);
+   procedure Set_Globals (Object : in out Instance;
+                          Value : Events.Store.Instance);
+
+   overriding procedure Put (Object : in out Instance; E : Event);
 
    function Has_Next (Object : Instance) return Boolean;
 
@@ -25,6 +30,7 @@ private
    type Node_Array_Pointer is access Node_Array;
 
    type Instance is limited new Transformator.Instance with record
+      Context : Events.Context.Instance;
       Pool : Text.Pool.Reference;
       Depth, Count : Natural := 0;
       Current : Event;

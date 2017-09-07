@@ -5,7 +5,7 @@ private package Yaml.Lexer.Evaluation is
    procedure Read_Plain_Scalar (L : in out Instance; T : out Token);
 
    procedure Read_Single_Quoted_Scalar (L : in out Instance; T : out Token)
-     with Pre => L.Cur = '"';
+     with Pre => L.Cur = ''';
 
    procedure Read_Double_Quoted_Scalar (L : in out Instance; T : out Token)
      with Pre => L.Cur = '"';

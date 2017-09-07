@@ -5,15 +5,32 @@ private with Ada.Containers.Hashed_Maps;
 
 package Yaml.Events.Store is
    type Instance is limited new Refcount_Base with private;
-   type Reference (Data : not null access Instance) is tagged private;
+   type Reference is tagged private;
+   type Optional_Reference is tagged private;
+
+   type Accessor (Data : not null access Instance) is null record with
+     Implicit_Dereference => Data;
 
    type Anchored_Position is private;
 
+   function New_Store return Reference;
+   function Value (Object : Reference) return Accessor;
+
+   Null_Reference : constant Optional_Reference;
+
+   function Value (Object : Optional_Reference) return Accessor with
+     Pre => Object /= Null_Reference;
+
+   function Optional (Object : Reference'Class) return Optional_Reference;
+
    procedure Memorize (Object : in out Instance; Item : Event);
-   function Position (Object : Instance; Tag : Text.Reference)
+   function Position (Object : Instance; Alias : Text.Reference)
                       return Anchored_Position;
 
    No_Element : constant Anchored_Position;
+
+   procedure Clear (Object : in out Instance);
+   procedure Copy (Source : in Instance; Target : in out Instance);
 
    type Stream_Instance is limited new Refcount_Base with private;
    type Stream_Reference (Data : not null access Stream_Instance) is
@@ -27,20 +44,31 @@ package Yaml.Events.Store is
         with Pre => Position /= No_Element;
    end Iteration;
 private
-   package Tag_To_Index is new Ada.Containers.Hashed_Maps
+   package Anchor_To_Index is new Ada.Containers.Hashed_Maps
      (Text.Reference, Positive, Text.Hash, Text."=");
 
    type Instance is limited new Event_Holder with record
-      Tag_Map : Tag_To_Index.Map;
+      Anchor_Map : Anchor_To_Index.Map;
       Stream_Count : Natural := 0;
       Depth : Natural := 0;
    end record;
 
-   type Reference (Data : not null access Instance) is new
-     Ada.Finalization.Controlled with null record;
+   type Reference is new Ada.Finalization.Controlled with record
+      Data : not null access Instance;
+   end record;
 
    overriding procedure Adjust (Object : in out Reference);
    overriding procedure Finalize (Object : in out Reference);
+
+   type Optional_Reference is new Ada.Finalization.Controlled with record
+      Data : access Instance;
+   end record;
+
+   overriding procedure Adjust (Object : in out Optional_Reference);
+   overriding procedure Finalize (Object : in out Optional_Reference);
+
+   Null_Reference : constant Optional_Reference :=
+     (Ada.Finalization.Controlled with Data => null);
 
    type Anchored_Position is new Natural;
 

@@ -4,10 +4,12 @@
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Strings.Hash;
 with Text.Pool;
+with Yaml.Events.Context;
 
 package Yaml.Transformator.Annotation is
    type Constructor is not null access
-     function (Pool : Text.Pool.Reference) return not null Pointer;
+     function (Pool : Text.Pool.Reference;
+               Context : Events.Context.Instance) return not null Pointer;
 
    package Maps is new Ada.Containers.Indefinite_Hashed_Maps
      (String, Constructor, Ada.Strings.Hash, Standard."=");
