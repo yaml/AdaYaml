@@ -5,7 +5,7 @@
 generic
    type Instance is limited new Refcount_Base with private;
    type Reference is tagged private;
-   type Accessor (Data : not null access Instance) is private;
+   type Accessor (Data : not null access Instance) is limited private;
    with function Value (Object : Reference) return Accessor;
    with function Next (Object : in out Instance) return Event;
 package Yaml.Stream_Concept is

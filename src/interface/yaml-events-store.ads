@@ -8,7 +8,7 @@ package Yaml.Events.Store is
    type Reference is tagged private;
    type Optional_Reference is tagged private;
 
-   type Accessor (Data : not null access Instance) is null record with
+   type Accessor (Data : not null access Instance) is limited null record with
      Implicit_Dereference => Data;
 
    type Anchored_Position is private;
@@ -35,7 +35,7 @@ package Yaml.Events.Store is
 
    type Stream_Instance is limited new Refcount_Base with private;
    type Stream_Reference is tagged private;
-   type Stream_Accessor (Data : not null access Stream_Instance) is
+   type Stream_Accessor (Data : not null access Stream_Instance) is limited
      null record with Implicit_Dereference => Data;
 
    function Value (Object : Stream_Reference) return Stream_Accessor;
