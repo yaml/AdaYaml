@@ -101,7 +101,7 @@ article {
   font-size: 90%;
 }
 
-p code {
+p code, li code {
   background: #ddd;
   border-radius: 5px;
   padding: 0px 3px;
