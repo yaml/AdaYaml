@@ -1,0 +1,14 @@
+$script = <<SCRIPT
+if [ ! -d "/opt/gnat" ]; then
+  [ -d "/tmp/gnat-gpl-2017-x86_64-linux-bin" ] || wget -qO- http://mirrors.cdn.adacore.com/art/591c6d80c7a447af2deed1d7 | tar xvz -C /tmp
+  mkdir -p /opt/gnat
+  mv /tmp/gnat-gpl-2017-x86_64-linux-bin/* /opt/gnat/
+fi
+echo "export PATH=\"/opt/gnat/bin:\$PATH\"" >> /home/vagrant/.bashrc
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "debian/jessie64"
+  config.vm.provision "shell", inline: $script
+  config.vm.synced_folder "../..", "/AdaYaml"
+end
