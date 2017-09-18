@@ -1,7 +1,9 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Containers;
 private with Ada.Containers.Indefinite_Vectors;
+with Ada.Iterator_Interfaces;
 with Text.Pool;
 with Yaml.Tags;
 
@@ -10,8 +12,13 @@ package Yaml.Dom is
 
    type Node_Kind is (Scalar, Sequence, Mapping);
    type Node_Sequence is tagged limited private
-     with Constant_Indexing => Element;
-   type Node_Mapping is tagged limited private with Constant_Indexing => Find;
+     with Default_Iterator => Iterate,
+       Iterator_Element => Node_Reference,
+       Constant_Indexing => Sequence_Value;
+   type Node_Mapping is tagged limited private
+     with Default_Iterator => Iterate,
+     Iterator_Element => Pair,
+     Constant_Indexing => Mapping_Value;
 
    type Node_Instance (Kind : Node_Kind) is record
       Tag : Text.Reference;
@@ -31,8 +38,10 @@ package Yaml.Dom is
       Key, Value : Node_Reference;
    end record;
 
-   --  type Sequence_Cursor is private;
-   --  type Mapping_Cursor is private;
+   type Sequence_Cursor is private;
+   type Mapping_Cursor is private;
+
+   subtype Count_Type is Ada.Containers.Count_Type;
 
    -----------------------------------------------------------------------------
    --                      constructors and comparators                       --
@@ -62,6 +71,7 @@ package Yaml.Dom is
                          return Node_Reference;
 
    --  checks whether the content of two nodes is identical
+   function "=" (Left, Right : Node_Instance) return Boolean;
    function "=" (Left, Right : Node_Reference) return Boolean;
 
    --  checks whether the two references reference the same node
@@ -84,13 +94,35 @@ package Yaml.Dom is
                      return Node_Reference;
    function Item (Object : Node_Mapping; Index : Positive) return Pair;
 
-   function Length (Object : Node_Sequence) return Natural;
-   function Length (Object : Node_Mapping) return Natural;
+   function Length (Object : Node_Sequence) return Count_Type;
+   function Length (Object : Node_Mapping) return Count_Type;
 
    --  convenience method for retrieving values of keys that are scalars.
    --  the key value is given as String. complexity is O(n) since the
    --  implementor was too lazy to use hashed maps.
    function Find (Object : Node_Mapping'Class; Key : String) return Node_Reference;
+
+   --  subprograms used for iteration
+
+   function Has_Element (Position : Sequence_Cursor) return Boolean;
+   function Has_Element (Position : Mapping_Cursor) return Boolean;
+
+   package Sequence_Iterators is new Ada.Iterator_Interfaces
+     (Sequence_Cursor, Has_Element);
+   package Mapping_Iterators is new Ada.Iterator_Interfaces
+     (Mapping_Cursor, Has_Element);
+
+   function Iterate (Container : Node_Sequence)
+                     return Sequence_Iterators.Forward_Iterator'Class;
+   function Iterate (Container : Node_Mapping)
+                     return Mapping_Iterators.Forward_Iterator'Class;
+
+   function Sequence_Value (Container : Node_Sequence'Class;
+                            Position : Sequence_Cursor) return Node_Reference
+     with Pre => Has_Element (Position);
+   function Mapping_Value (Container : Node_Mapping'Class;
+                           Position : Mapping_Cursor) return Pair
+     with Pre => Has_Element (Position);
 
    -----------------------------------------------------------------------------
    --                           data modification                             --
@@ -98,6 +130,8 @@ package Yaml.Dom is
 
 
    Null_Reference : constant Optional_Node_Reference;
+   No_Sequence_Item : constant Sequence_Cursor;
+   No_Mapping_Item : constant Mapping_Cursor;
 private
    type Node_Pointer is not null access Node_Instance;
 
@@ -159,7 +193,22 @@ private
       Data     : Pair_Vectors.Vector;
    end record;
 
+   type Sequence_Cursor is record
+      Container : access constant Node_Sequence;
+      Index : Count_Type;
+   end record;
+
+   type Mapping_Cursor is record
+      Container : access constant Node_Mapping;
+      Index : Count_Type;
+   end record;
+
    Null_Reference : constant Optional_Node_Reference :=
      (Ada.Finalization.Controlled with Data => null, Document => null);
 
+   No_Sequence_Item : constant Sequence_Cursor :=
+     (Container => null, Index => 0);
+
+   No_Mapping_Item : constant Mapping_Cursor :=
+     (Container => null, Index => 0);
 end Yaml.Dom;

@@ -8,6 +8,31 @@ with System.Storage_Elements;
 
 package body Yaml.Dom is
    use type Text.Reference;
+   use type Count_Type;
+
+   type Sequence_Iterator is new Sequence_Iterators.Forward_Iterator with record
+      Container : not null access constant Node_Sequence;
+   end record;
+
+   type Mapping_Iterator is new Mapping_Iterators.Forward_Iterator with record
+      Container : not null access constant Node_Mapping;
+   end record;
+
+   function First (Object : Sequence_Iterator) return Sequence_Cursor is
+     ((Container => Object.Container, Index => 1));
+
+   function Next (Object : Sequence_Iterator; Position : Sequence_Cursor)
+                  return Sequence_Cursor is
+     ((Container => Object.Container,
+       Index => Count_Type'Min (Position.Index + 1, Object.Container.Data.Length + 1)));
+
+   function First (Object : Mapping_Iterator) return Mapping_Cursor is
+     ((Container => Object.Container, Index => 1));
+
+   function Next (Object : Mapping_Iterator; Position : Mapping_Cursor)
+                  return Mapping_Cursor is
+     ((Container => Object.Container,
+       Index => Count_Type'Min (Position.Index + 1, Object.Container.Data.Length + 1)));
 
    function Hash (Value : System.Address) return Ada.Containers.Hash_Type is
      (Ada.Containers.Hash_Type'Mod (System.Storage_Elements.To_Integer (Value)));
@@ -157,22 +182,56 @@ package body Yaml.Dom is
      ((Ada.Finalization.Controlled with Document => Parent.Data, Data =>
             New_Mapping (Parent.Data, Tag)));
 
+   function "=" (Left, Right : Node_Instance) return Boolean is
+     (Left.Kind = Right.Kind and then
+      Left.Tag = Right.Tag and then
+        (case Left.Kind is
+            when Scalar => Left.Content = Right.Content,
+            when Sequence => Left.Items = Right.Items,
+            when Mapping => Left.Pairs = Right.Pairs));
+
    function "=" (Left, Right : Node_Reference) return Boolean is
-     (Same_Node (Left, Right) or else
-          (Left.Data.Kind = Right.Data.Kind and then
-               (case Left.Data.Kind is
-                   when Scalar => Left.Data.Content = Right.Data.Content,
-                   when Sequence => Left.Data.Items = Right.Data.Items,
-                   when Mapping => Left.Data.Pairs = Right.Data.Pairs)));
+     (Same_Node (Left, Right) or else Left.Data.all = Right.Data.all);
 
    --  checks whether the two references reference the same node
    function Same_Node (Left, Right : Node_Reference) return Boolean is
      (Left.Data = Right.Data);
 
    function "=" (Left, Right : Node_Sequence) return Boolean is
-      (False); --  TODO
+   begin
+      if Left.Data.Length /= Right.Data.Length then
+         return False;
+      else
+         for Index in 1 .. Left.Data.Length loop
+            if Left.Data (Positive (Index)) /= Right.Data (Positive (Index)) then
+               return False;
+            end if;
+         end loop;
+         return True;
+      end if;
+   end "=";
+
    function "=" (Left, Right : Node_Mapping) return Boolean is
-      (False); --  TODO
+   begin
+      if Left.Data.Length /= Right.Data.Length then
+         return False;
+      else
+         for Left_Pair of Left loop
+            for Right_Pair of Right loop
+               if Left_Pair.Key = Right_Pair.Key then
+                  if Left_Pair.Value = Right_Pair.Value then
+                     goto Found_Match;
+                  else
+                     return False;
+                  end if;
+               end if;
+            end loop;
+            return False;
+            <<Found_Match>>
+         end loop;
+         return True;
+      end if;
+   end "=";
 
    function Value (Object : Node_Reference) return Accessor is
      ((Data => Object.Data));
@@ -215,11 +274,11 @@ package body Yaml.Dom is
                           Document => Object.Document));
    end Item;
 
-   function Length (Object : Node_Sequence) return Natural is
-     (Natural (Object.Data.Length));
+   function Length (Object : Node_Sequence) return Count_Type is
+     (Object.Data.Length);
 
-   function Length (Object : Node_Mapping) return Natural is
-     (Natural (Object.Data.Length));
+   function Length (Object : Node_Mapping) return Count_Type is
+     (Object.Data.Length);
 
    function Find (Object : Node_Mapping'Class; Key : String)
                   return Node_Reference is
@@ -235,4 +294,27 @@ package body Yaml.Dom is
       end loop;
       raise Constraint_Error with "Mapping contains no key """ & Key & """";
    end Find;
+
+   function Has_Element (Position : Sequence_Cursor) return Boolean is
+     (Position.Container /= null and then Position.Index > 0 and then
+      Position.Index <= Position.Container.Data.Length);
+   function Has_Element (Position : Mapping_Cursor) return Boolean is
+     (Position.Container /= null and then Position.Index > 0 and then
+      Position.Index <= Position.Container.Data.Length);
+
+   function Iterate (Container : Node_Sequence)
+                     return Sequence_Iterators.Forward_Iterator'Class is
+     (Sequence_Iterator'(Container => Container'Unrestricted_Access));
+
+   function Iterate (Container : Node_Mapping)
+                     return Mapping_Iterators.Forward_Iterator'Class is
+     (Mapping_Iterator'(Container => Container'Unrestricted_Access));
+
+   function Sequence_Value (Container : Node_Sequence'Class;
+                            Position : Sequence_Cursor) return Node_Reference is
+     (Container.Element (Positive (Position.Index)));
+
+   function Mapping_Value (Container : Node_Mapping'Class;
+                           Position : Mapping_Cursor) return Pair is
+     (Container.Item (Positive (Position.Index)));
 end Yaml.Dom;
