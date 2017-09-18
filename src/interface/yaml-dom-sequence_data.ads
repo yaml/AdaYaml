@@ -14,13 +14,23 @@ package Yaml.Dom.Sequence_Data is
 
    function "=" (Left, Right : Instance) return Boolean;
 
+   function Capacity (Container : Instance) return Count_Type;
+
+   procedure Reserve_Capacity (Container : in out Instance;
+                               Capacity  : in     Count_Type);
+
    function Length (Object : Instance) return Count_Type;
 
+   function Is_Empty (Container : Instance) return Boolean;
+
+   procedure Clear (Container : in out Instance);
+
+   function To_Cursor (Container : Instance;
+                       Index     : Natural) return Cursor;
+
+   function To_Index (Position  : Cursor) return Natural;
+
    function Has_Element (Position : Cursor) return Boolean;
-
-   function First (Object : Instance) return Cursor;
-
-   function Next (Position : Cursor) return Cursor;
 
    package Iterators is new Ada.Iterator_Interfaces (Cursor, Has_Element);
 
@@ -35,6 +45,75 @@ package Yaml.Dom.Sequence_Data is
    function Element (Object : Instance; Position : Cursor) return Node_Reference
      with Pre => Has_Element (Position);
 
+   procedure Replace_Element (Container : in out Instance;
+                              Index     : in     Positive;
+                              New_Item  : in     Node_Reference);
+
+   procedure Replace_Element (Container : in out Instance;
+                              Position  : in     Cursor;
+                              New_Item  : in     Node_Reference);
+
+   procedure Insert (Container : in out Instance;
+                     Before    : in     Positive;
+                     New_Item  : in     Node_Reference);
+
+   procedure Insert (Container : in out Instance;
+                     Before    : in     Cursor;
+                     New_Item  : in     Node_Reference);
+
+   procedure Insert (Container : in out Instance;
+                     Before    : in     Cursor;
+                     New_Item  : in     Node_Reference;
+                     Position  :    out Cursor);
+
+   procedure Prepend (Container : in out Instance;
+                      New_Item  : in     Node_Reference);
+
+   procedure Append (Container : in out Instance;
+                     New_Item  : in     Node_Reference);
+
+   procedure Delete (Container : in out Instance;
+                     Index     : in     Positive;
+                     Count     : in     Count_Type := 1);
+
+   procedure Delete (Container : in out Instance;
+                     Position  : in out Cursor;
+                     Count     : in     Count_Type := 1);
+
+   procedure Delete_First (Container : in out Instance;
+                           Count     : in     Count_Type := 1);
+
+   procedure Delete_Last (Container : in out Instance;
+                          Count     : in     Count_Type := 1);
+
+   procedure Reverse_Elements (Container : in out Instance);
+
+   procedure Swap (Container : in out Instance;
+                   I, J      : in     Positive);
+
+   procedure Swap (Container : in out Instance;
+                   I, J      : in     Cursor);
+
+   function First_Index (Container : Instance) return Positive;
+
+   function First (Container : Instance) return Cursor;
+
+   function First_Element (Container : Instance) return Node_Reference;
+
+   function Last_Index (Container : Instance) return Natural;
+
+   function Last (Container : Instance) return Cursor;
+
+   function Last_Element (Container : Instance) return Node_Reference;
+
+   function Next (Position : Cursor) return Cursor;
+
+   procedure Next (Position : in out Cursor);
+
+   function Previous (Position : Cursor) return Cursor;
+
+   procedure Previous (Position : in out Cursor);
+
    No_Element : constant Cursor;
 private
    package Node_Vectors is new Ada.Containers.Indefinite_Vectors
@@ -48,7 +127,7 @@ private
 
    type Cursor is record
       Container : access constant Instance;
-      Index : Count_Type;
+      Index : Natural;
    end record;
 
    No_Element : constant Cursor := (Container => null, Index => 0);

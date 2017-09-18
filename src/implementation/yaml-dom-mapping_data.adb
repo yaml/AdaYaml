@@ -7,6 +7,14 @@ package body Yaml.Dom.Mapping_Data is
    function Length (Object : Instance) return Count_Type is
      (Object.Data.Length);
 
+   function Is_Empty (Container : Instance) return Boolean is
+     (Container.Data.Is_Empty);
+
+   procedure Clear (Container : in out Instance) is
+   begin
+      Container.Data.Clear;
+   end Clear;
+
    function Has_Element (Position : Cursor) return Boolean is
      (Position.Container /= null and then
       Node_Maps.Has_Element (Position.Position));
@@ -76,4 +84,54 @@ package body Yaml.Dom.Mapping_Data is
                                Data => As_Node'Unrestricted_Access,
                              Document => Object.Document));
    end Element;
+
+   procedure Insert (Container : in out Instance;
+                     Key       : in     Node_Reference;
+                     New_Item  : in     Node_Reference;
+                     Position  :    out Cursor;
+                     Inserted  :    out Boolean) is
+   begin
+      Position.Container := Container'Unrestricted_Access;
+      Container.Data.Insert (Key.Data, New_Item.Data, Position.Position,
+                             Inserted);
+   end Insert;
+
+   procedure Insert (Container : in out Instance;
+                     Key       : in     Node_Reference;
+                     New_Item  : in     Node_Reference) is
+   begin
+      Container.Data.Insert (Key.Data, New_Item.Data);
+   end Insert;
+
+   procedure Include (Container : in out Instance;
+                      Key       : in     Node_Reference;
+                      New_Item  : in     Node_Reference) is
+   begin
+      Container.Data.Include (Key.Data, New_Item.Data);
+   end Include;
+
+   procedure Replace (Container : in out Instance;
+                      Key       : in     Node_Reference;
+                      New_Item  : in     Node_Reference) is
+   begin
+      Container.Data.Replace (Key.Data, New_Item.Data);
+   end Replace;
+
+   procedure Exclude (Container : in out Instance;
+                      Key       : in     Node_Reference) is
+   begin
+      Container.Data.Exclude (Key.Data);
+   end Exclude;
+
+   procedure Delete (Container : in out Instance;
+                     Key       : in     Node_Reference) is
+   begin
+      Container.Data.Delete (Key.Data);
+   end Delete;
+
+   procedure Delete (Container : in out Instance;
+                     Position  : in out Cursor) is
+   begin
+      Container.Data.Delete (Position.Position);
+   end Delete;
 end Yaml.Dom.Mapping_Data;

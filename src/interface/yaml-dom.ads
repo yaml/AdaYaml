@@ -62,10 +62,6 @@ package Yaml.Dom is
    function Required (Object : Optional_Node_Reference'Class) return Node_Reference;
    function Optional (Object : Node_Reference'Class) return Optional_Node_Reference;
 
-   -----------------------------------------------------------------------------
-   --                           data modification                             --
-   -----------------------------------------------------------------------------
-
    Null_Reference : constant Optional_Node_Reference;
 private
    type Node_Pointer is not null access all Node.Instance;

@@ -11,6 +11,10 @@ package Yaml.Dom.Mapping_Data is
 
    function Length (Object : Instance) return Count_Type;
 
+   function Is_Empty (Container : Instance) return Boolean;
+
+   procedure Clear (Container : in out Instance);
+
    function Has_Element (Position : Cursor) return Boolean;
 
    function First (Object : Instance) return Cursor;
@@ -32,9 +36,36 @@ package Yaml.Dom.Mapping_Data is
    function Element (Object : Instance; Key : Node_Reference)
                      return Node_Reference;
 
-   --  convenience method for retrieving values of keys that are scalars.
+   --  convenience method for retrieving values of keys that are !!str scalars.
    --  the key value is given as String.
    function Element (Object : Instance; Key : String) return Node_Reference;
+
+   procedure Insert (Container : in out Instance;
+                     Key       : in     Node_Reference;
+                     New_Item  : in     Node_Reference;
+                     Position  :    out Cursor;
+                     Inserted  :    out Boolean);
+
+   procedure Insert (Container : in out Instance;
+                     Key       : in     Node_Reference;
+                     New_Item  : in     Node_Reference);
+
+   procedure Include (Container : in out Instance;
+                      Key       : in     Node_Reference;
+                      New_Item  : in     Node_Reference);
+
+   procedure Replace (Container : in out Instance;
+                      Key       : in     Node_Reference;
+                      New_Item  : in     Node_Reference);
+
+   procedure Exclude (Container : in out Instance;
+                      Key       : in     Node_Reference);
+
+   procedure Delete (Container : in out Instance;
+                     Key       : in     Node_Reference);
+
+   procedure Delete (Container : in out Instance;
+                     Position  : in out Cursor);
 
    No_Element : constant Cursor;
 private
