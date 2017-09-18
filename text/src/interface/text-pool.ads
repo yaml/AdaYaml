@@ -23,7 +23,8 @@ package Text.Pool is
 private
    type Reference is new Ada.Finalization.Controlled with record
       Data : Pool_Data_Access;
-   end record with Type_Invariant => Reference.Data.Pos mod Header_Size = 1;
+   end record with Type_Invariant =>
+     (Reference.Data = null or else Reference.Data.Pos mod Header_Size = 1);
 
    overriding procedure Adjust (Object : in out Reference);
    overriding procedure Finalize (Object : in out Reference);
