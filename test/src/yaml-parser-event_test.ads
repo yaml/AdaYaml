@@ -3,11 +3,11 @@
 
 with AUnit; use AUnit;
 with AUnit.Test_Cases; use AUnit.Test_Cases;
-with Ada.Containers.Vectors;
+with Ada.Containers.Indefinite_Vectors;
 
 package Yaml.Parser.Event_Test is
    subtype Test_Case_Name is String (1 .. 4);
-   package Test_Case_Vectors is new Ada.Containers.Vectors (Positive, Test_Case_Name);
+   package Test_Case_Vectors is new Ada.Containers.Indefinite_Vectors (Positive, Test_Case_Name);
 
    type TC is new Test_Cases.Test_Case with record
       Test_Cases : Test_Case_Vectors.Vector;

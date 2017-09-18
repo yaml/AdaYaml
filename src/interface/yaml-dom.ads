@@ -1,7 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-private with Ada.Containers.Vectors;
+private with Ada.Containers.Indefinite_Vectors;
 with Text.Pool;
 with Yaml.Tags;
 
@@ -101,7 +101,7 @@ package Yaml.Dom is
 private
    type Node_Pointer is not null access Node_Instance;
 
-   package Node_Vectors is new Ada.Containers.Vectors
+   package Node_Vectors is new Ada.Containers.Indefinite_Vectors
      (Index_Type   => Positive,
       Element_Type => Node_Pointer);
 
@@ -147,7 +147,7 @@ private
       Key, Value : not null access Node_Instance;
    end record;
 
-   package Pair_Vectors is new Ada.Containers.Vectors
+   package Pair_Vectors is new Ada.Containers.Indefinite_Vectors
      (Index_Type   => Positive,
       Element_Type => Raw_Pair);
 
