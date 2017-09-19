@@ -183,6 +183,8 @@ package body Text is
            (Pool_Offset (1) .. Pool_Offset'Max (
             P.Chunks (P.Cur)'Length * 2,
             Necessary + Header_Size));
+         P.Usage (P.Cur) := P.Usage (P.Cur) - 1;
+         P.Usage (Next) := 1;
          P.Cur := Next;
          P.Pos := 1;
       end Allocate_Next_Chunk;
