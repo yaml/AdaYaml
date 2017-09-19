@@ -1,6 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Containers.Indefinite_Vectors;
 with Ada.Unchecked_Deallocation;
 with Yaml.Dom.Node;
 with Yaml.Dom.Sequence_Data;
@@ -12,6 +13,9 @@ package body Yaml.Dom is
    use type Count_Type;
    use type Node.Instance;
    use type System.Address;
+
+   package Node_Pointer_Vectors is new Ada.Containers.Indefinite_Vectors
+     (Positive, Node_Pointer);
 
    function For_Document (Document : not null access Document_Instance)
                           return Sequence_Data.Instance with Import,
@@ -25,19 +29,17 @@ package body Yaml.Dom is
 
    procedure Free is new Ada.Unchecked_Deallocation
      (Node.Instance, Nullable_Node_Pointer);
-   pragma Unreferenced (Free);
 
    procedure Decrease_Refcount (Object : not null access Document_Instance) is
    begin
       if Object.Refcount = 1 then
          declare
-            Memory : Node_Memory.Instance;
+            Memory    : Node_Memory.Instance;
+            To_Delete : Node_Pointer_Vectors.Vector;
 
             procedure Visit_Pair (Key, Value : not null access Node.Instance);
 
             procedure Visit (Cur : not null access Node.Instance) is
-               Ptr : Nullable_Node_Pointer := Nullable_Node_Pointer (Cur);
-               pragma Unreferenced (Ptr);
                Visited : Boolean;
             begin
                Memory.Visit (Cur, Visited);
@@ -49,7 +51,7 @@ package body Yaml.Dom is
                   when Sequence => Cur.Items.Iterate (Visit'Access);
                   when Mapping => Cur.Pairs.Iterate (Visit_Pair'Access);
                end case;
-               --  Free (Ptr);
+               To_Delete.Append (Cur);
             end Visit;
 
             procedure Visit_Pair (Key, Value : not null access Node.Instance) is
@@ -59,6 +61,13 @@ package body Yaml.Dom is
             end Visit_Pair;
          begin
             Visit (Object.Root_Node);
+            for Cur of To_Delete loop
+               declare
+                  Ptr : Nullable_Node_Pointer := Nullable_Node_Pointer (Cur);
+               begin
+                  Free (Ptr);
+               end;
+            end loop;
          end;
       end if;
       Yaml.Decrease_Refcount (Object);
