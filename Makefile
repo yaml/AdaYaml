@@ -6,6 +6,22 @@ adayaml:
 test:
 	gprbuild -p -s -P yaml-tests.gpr
 
+test-coverage:
+	gprbuild -p -s -P yaml-tests.gpr --subdirs=cvg \
+		-cargs -g -fdump-scos -fpreserve-control-flow
+test-coverage-run: test-coverage
+	rm -rf cvg
+	mkdir cvg
+	gnatcov run -o cvg/yaml-lexer-harness.trace \
+		test/bin/cvg/yaml-lexer-harness
+	gnatcov run -o cvg/yaml-parser-harness.trace \
+		test/bin/cvg/yaml-parser-harness
+	gnatcov coverage -P yaml-tests.gpr --projects yaml --subdirs=cvg \
+		--annotate dhtml --level stmt+decision \
+		--output-dir=cvg cvg/*.trace
+	@echo "==="
+	@echo "HTML coverage report generated at $$PWD/cvg/index.html"
+
 utils:
 	gprbuild -p -s -P yaml-utils.gpr
 
