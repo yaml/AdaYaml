@@ -25,7 +25,7 @@ begin
    declare
       Document : constant Dom.Document_Reference :=
         Dom.Loading.From_Source (Input);
-      Root_Node : not null access Dom.Node.Instance renames
+      Root_Node : constant not null access Dom.Node.Instance :=
         Document.Root.Value.Data;
 
       procedure Visit_Pair (Key, Value : not null access Dom.Node.Instance) is

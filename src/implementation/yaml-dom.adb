@@ -11,7 +11,6 @@ package body Yaml.Dom is
    use type Text.Reference;
    use type Count_Type;
    use type Node.Instance;
-   use type System.Address;
 
    function For_Document (Document : not null access Document_Instance)
                           return Sequence_Data.Instance with Import,
@@ -28,7 +27,7 @@ package body Yaml.Dom is
 
    procedure Decrease_Refcount (Object : not null access Document_Instance) is
    begin
-      if Object.Refcount = 1 then
+      if Object.Refcount = 1 and then Object.Root_Node /= null then
          declare
             Memory    : Node_Memory.Instance;
 
@@ -102,11 +101,6 @@ package body Yaml.Dom is
       end if;
    end Finalize;
 
-   function New_Scalar (Tag : Text.Reference;
-                        Content : Text.Reference := Text.Empty)
-                        return Node_Pointer is
-      (new Node.Instance'(Kind => Scalar, Tag => Tag, Content => Content));
-
    function New_Sequence (Document : not null access Document_Instance;
                           Tag : Text.Reference)
                           return Node_Pointer is
@@ -119,28 +113,14 @@ package body Yaml.Dom is
      (new Node.Instance'(Kind => Mapping, Tag => Tag,
                          Pairs => For_Document (Document)));
 
-   function New_Document (Root_Kind : Node_Kind;
-                          Pool : Text.Pool.Reference :=
+   function New_Document (Pool : Text.Pool.Reference :=
                             Text.Pool.With_Capacity (Text.Pool.Default_Size))
                           return Document_Reference
    is
    begin
-      return Ret : constant Document_Reference :=
-        (Ada.Finalization.Controlled with Data =>
-            new Document_Instance'(Ada.Finalization.Limited_Controlled with
-               Pool => Pool, Root_Node => Dummy, Refcount => 1)) do
-         case Root_Kind is
-         when Scalar =>
-            Ret.Data.Root_Node := New_Scalar (Yaml.Tags.Question_Mark);
-            when Sequence =>
-               Ret.Data.Root_Node :=
-                 New_Sequence (Ret.Data, Yaml.Tags.Question_Mark);
-            when Mapping =>
-               Ret.Data.Root_Node :=
-                 New_Mapping (Ret.Data, Yaml.Tags.Question_Mark);
-         end case;
-
-      end return;
+      return (Ada.Finalization.Controlled with Data =>
+                 new Document_Instance'(Refcount_Base with
+                  Pool => Pool, Root_Node => null));
    end New_Document;
 
    function New_Scalar (Parent : Document_Reference'Class;
@@ -168,22 +148,41 @@ package body Yaml.Dom is
      ((Ada.Finalization.Controlled with Document => Parent.Data, Data =>
             New_Mapping (Parent.Data, Tag)));
 
-   function "=" (Left, Right : Node_Pointer) return Boolean is
-     (Left.all'Address = Right.all'Address or else Left.all = Right.all);
+   function Nodes_Equal (Left, Right : access Node.Instance) return Boolean is
+     (Left = Right or else (Left /= null and then Right /= null and then
+                            Left.all = Right.all));
+
+   function "=" (Left, Right : Document_Reference) return Boolean is
+     (Nodes_Equal (Left.Data.Root_Node, Right.Data.Root_Node));
 
    function "=" (Left, Right : Node_Reference) return Boolean is
      (Same_Node (Left, Right) or else Left.Data.all = Right.Data.all);
 
    --  checks whether the two references reference the same node
    function Same_Node (Left, Right : Node_Reference) return Boolean is
-     (Left.Data.all'Address = Right.Data.all'Address);
+     (Left.Data = Right.Data);
+
+   function Is_Empty (Object : Document_Reference) return Boolean is
+     (Object.Data.Root_Node = null);
 
    function Root (Object : Document_Reference'Class) return Node_Reference is
    begin
       Increase_Refcount (Object.Data);
       return (Ada.Finalization.Controlled with Document => Object.Data,
-              Data => Object.Data.Root_Node);
+              Data => Node_Pointer (Object.Data.Root_Node));
    end Root;
+
+   procedure Set_Root (Object : in out Document_Reference;
+                       Value : Node_Reference'Class) is
+   begin
+      Object.Data.Root_Node := Value.Data;
+   end Set_Root;
+
+   procedure Set_Root (Object : in out Document_Reference;
+                       Value : Optional_Node_Reference'Class) is
+   begin
+      Object.Data.Root_Node := Value.Data;
+   end Set_Root;
 
    function Value (Object : Node_Reference) return Accessor is
      ((Data => Object.Data));

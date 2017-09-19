@@ -2,8 +2,6 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Ada.Containers;
-private with Ada.Unchecked_Conversion;
-private with System.Storage_Elements;
 with Text.Pool;
 with Yaml.Tags;
 
@@ -21,13 +19,15 @@ package Yaml.Dom is
 
    subtype Count_Type is Ada.Containers.Count_Type;
 
+   No_Document : constant Document_Reference;
+   No_Node     : constant Optional_Node_Reference;
+
    -----------------------------------------------------------------------------
    --                      constructors and comparators                       --
    -----------------------------------------------------------------------------
 
    --  uses the given pool for all text content
-   function New_Document (Root_Kind : Node_Kind;
-                          Pool : Text.Pool.Reference :=
+   function New_Document (Pool : Text.Pool.Reference :=
                             Text.Pool.With_Capacity (Text.Pool.Default_Size))
                           return Document_Reference;
 
@@ -47,6 +47,8 @@ package Yaml.Dom is
                          Tag : Text.Reference := Yaml.Tags.Question_Mark)
                          return Node_Reference;
 
+   function "=" (Left, Right : Document_Reference) return Boolean;
+
    --  checks whether the content of two nodes is identical
    function "=" (Left, Right : Node_Reference) return Boolean;
 
@@ -57,7 +59,13 @@ package Yaml.Dom is
    --                              data access                                --
    -----------------------------------------------------------------------------
 
-   function Root (Object : Document_Reference'Class) return Node_Reference;
+   function Is_Empty (Object : Document_Reference) return Boolean;
+   function Root (Object : Document_Reference'Class) return Node_Reference
+     with Pre => not Is_Empty (Object);
+   procedure Set_Root (Object : in out Document_Reference;
+                       Value : Node_Reference'Class);
+   procedure Set_Root (Object : in out Document_Reference;
+                       Value : Optional_Node_Reference'Class);
 
    function Value (Object : Node_Reference) return Accessor;
    function Value (Object : Optional_Node_Reference) return Accessor;
@@ -65,14 +73,13 @@ package Yaml.Dom is
    function Required (Object : Optional_Node_Reference'Class) return Node_Reference;
    function Optional (Object : Node_Reference'Class) return Optional_Node_Reference;
 
-   Null_Reference : constant Optional_Node_Reference;
 private
    type Node_Pointer is not null access all Node.Instance;
 
-   function "=" (Left, Right : Node_Pointer) return Boolean;
+   function Nodes_Equal (Left, Right : access Node.Instance) return Boolean;
 
    type Document_Instance is new Refcount_Base with record
-      Root_Node : Node_Pointer;
+      Root_Node : access Node.Instance;
       Pool      : Text.Pool.Reference;
    end record;
 
@@ -101,13 +108,11 @@ private
 
    type Accessor (Data : not null access Node.Instance) is limited null record;
 
-   Null_Reference : constant Optional_Node_Reference :=
+   No_Document : constant Document_Reference :=
+     (Ada.Finalization.Controlled with Data =>
+         new Document_Instance'(Refcount_Base with
+        Root_Node =>  null, Pool => <>));
+
+   No_Node : constant Optional_Node_Reference :=
      (Ada.Finalization.Controlled with Data => null, Document => null);
-
-   --  necessary for creating an initial document because of circular `not null`
-   --  dependency between document and mapping / sequence nodes
-
-   function Convert is new Ada.Unchecked_Conversion
-        (System.Storage_Elements.Integer_Address, Node_Pointer);
-   Dummy : constant Node_Pointer := Convert (1);
 end Yaml.Dom;

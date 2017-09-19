@@ -1,12 +1,16 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Containers.Indefinite_Hashed_Maps;
 with Yaml.Dom.Node;
 with Yaml.Dom.Mapping_Data;
 with Yaml.Dom.Sequence_Data;
 with Yaml.Parser.Stream;
 
 package body Yaml.Dom.Loading is
+   package Anchor_Maps is new Ada.Containers.Indefinite_Hashed_Maps
+     (Text.Reference, Node_Pointer, Text.Hash, Text."=");
+
    procedure Raw_Append (Container : in out Sequence_Data.Instance;
                          New_Item  : not null access Node.Instance)
      with Import, Convention => Ada,
@@ -27,14 +31,20 @@ package body Yaml.Dom.Loading is
 
    package body Stream_Loading is
       function Node_From (Target_Document : not null access Document_Instance;
-                          Head : Event; Tail : in out Stream.Instance)
+                          Head : Event; Tail : in out Stream.Instance;
+                          Anchors : in out Anchor_Maps.Map)
                           return Node_Pointer is
       begin
          case Head.Kind is
          when Scalar =>
-            return new Node.Instance'(Kind => Scalar,
-                                      Tag => Head.Scalar_Properties.Tag,
-                                      Content => Head.Content);
+            return Ret : constant Node_Pointer :=
+              new Node.Instance'(Kind => Scalar,
+                                 Tag => Head.Scalar_Properties.Tag,
+                                 Content => Head.Content) do
+               if Head.Scalar_Properties.Anchor.Length /= 0 then
+                  Anchors.Include (Head.Scalar_Properties.Anchor, Ret);
+               end if;
+            end return;
          when Sequence_Start =>
             return Ret : constant Node_Pointer :=
               new Node.Instance'(Kind => Sequence,
@@ -45,10 +55,14 @@ package body Yaml.Dom.Loading is
                begin
                   while New_Head.Kind /= Sequence_End loop
                      Raw_Append (Ret.Items,
-                                 Node_From (Target_Document, New_Head, Tail));
+                                 Node_From (Target_Document, New_Head, Tail,
+                                   Anchors));
                      New_Head := Stream.Next (Tail);
                   end loop;
                end;
+               if Head.Collection_Properties.Anchor.Length /= 0 then
+                  Anchors.Include (Head.Collection_Properties.Anchor, Ret);
+               end if;
             end return;
          when Mapping_Start =>
             return Ret : constant Node_Pointer :=
@@ -61,16 +75,33 @@ package body Yaml.Dom.Loading is
                   while New_Head.Kind /= Mapping_End loop
                      declare
                         Key : constant not null access Node.Instance :=
-                          Node_From (Target_Document, New_Head, Tail);
+                          Node_From (Target_Document, New_Head, Tail, Anchors);
                         Value : constant not null access Node.Instance :=
-                          Node_From (Target_Document, Stream.Next (Tail), Tail);
+                          Node_From (Target_Document, Stream.Next (Tail), Tail,
+                                     Anchors);
                      begin
                         Raw_Insert (Ret.Pairs, Key, Value);
                      end;
                      New_Head := Stream.Next (Tail);
                   end loop;
                end;
+               if Head.Collection_Properties.Anchor.Length /= 0 then
+                  Anchors.Include (Head.Collection_Properties.Anchor, Ret);
+               end if;
             end return;
+         when Alias =>
+            declare
+               Pos : constant Anchor_Maps.Cursor := Anchors.Find (Head.Target);
+            begin
+               if Anchor_Maps.Has_Element (Pos) then
+                  return Anchor_Maps.Element (Pos);
+               else
+                  raise Composer_Error with "Unresolvable alias: " &
+                    Head.Target.Value.Data.all;
+               end if;
+            end;
+         when Annotation_Start =>
+            raise Composer_Error with "Annotations not implemented for DOM";
          when others =>
             raise Stream_Error with "Cannot start a node from event: " &
               Head.Kind'Img;
@@ -82,6 +113,7 @@ package body Yaml.Dom.Loading is
                            Text.Pool.With_Capacity (Text.Pool.Default_Size))
                              return Document_Reference is
          Head : Event := Stream.Next (Input);
+         Anchors : Anchor_Maps.Map;
       begin
          if Head.Kind /= Stream_Start then
             raise Stream_Error with "Unexpected event (expected stream start): " &
@@ -95,9 +127,9 @@ package body Yaml.Dom.Loading is
          return Ret : constant Document_Reference :=
            (Ada.Finalization.Controlled with
               Data => new Document_Instance'(Refcount_Base with
-                    Root_Node => Dummy, Pool => Pool)) do
+                    Root_Node => null, Pool => Pool)) do
             Ret.Data.Root_Node :=
-              Node_From (Ret.Data, Stream.Next (Input), Input);
+              Node_From (Ret.Data, Stream.Next (Input), Input, Anchors);
             Head := Stream.Next (Input);
             if Head.Kind /= Document_End then
                raise Stream_Error with
@@ -120,6 +152,7 @@ package body Yaml.Dom.Loading is
                            Text.Pool.With_Capacity (Text.Pool.Default_Size))
                          return Document_Vectors.Vector is
          Head : Event := Stream.Next (Input);
+         Anchors : Anchor_Maps.Map;
       begin
          if Head.Kind /= Stream_Start then
             raise Stream_Error with "Unexpected event (expected stream start): " &
@@ -136,10 +169,10 @@ package body Yaml.Dom.Loading is
                   Doc : constant Document_Reference :=
                     (Document_Reference'(Ada.Finalization.Controlled with
                      Data => new Document_Instance'(Refcount_Base with
-                       Root_Node => Dummy, Pool => Pool)));
+                       Root_Node => null, Pool => Pool)));
                begin
                   Doc.Data.Root_Node :=
-                    Node_From (Doc.Data, Stream.Next (Input), Input);
+                    Node_From (Doc.Data, Stream.Next (Input), Input, Anchors);
                   Ret.Append (Doc);
                end;
                Head := Stream.Next (Input);
@@ -149,6 +182,7 @@ package body Yaml.Dom.Loading is
                end if;
                Head := Stream.Next (Input);
                exit when Head.Kind /= Document_Start;
+               Anchors.Clear;
             end loop;
 
             if Head.Kind /= Stream_End then
