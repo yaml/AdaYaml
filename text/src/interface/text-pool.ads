@@ -10,6 +10,9 @@ package Text.Pool is
    --  old memory is reclaimed once all string references to it vanish.
    procedure Create (P : in out Reference'Class; Initial_Size : Pool_Offset);
 
+   --  constructor that calls Create with the given Size parameter
+   function With_Capacity (Size : Pool_Offset) return Reference;
+
    --  create a new string from the given data. the string will be allocated
    --  within the pool.
    function From_String (P : in out Reference'Class; Data : String)
@@ -20,6 +23,8 @@ package Text.Pool is
 
    --  for debugging
    function Current_Chunk_As_String (P : Reference) return String;
+
+   Default_Size : constant Pool_Offset;
 private
    type Reference is new Ada.Finalization.Controlled with record
       Data : Pool_Data_Access;
@@ -28,4 +33,6 @@ private
 
    overriding procedure Adjust (Object : in out Reference);
    overriding procedure Finalize (Object : in out Reference);
+
+   Default_Size : constant Pool_Offset := 8092;
 end Text.Pool;

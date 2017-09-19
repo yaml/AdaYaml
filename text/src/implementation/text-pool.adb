@@ -22,6 +22,13 @@ package body Text.Pool is
       end;
    end Create;
 
+   function With_Capacity (Size : Pool_Offset) return Reference is
+   begin
+      return Ret : Reference do
+         Create (Ret, Size);
+      end return;
+   end With_Capacity;
+
    function From_String (P : in out Reference'Class; Data : String)
                          return Text.Reference is
       New_String_Address : constant System.Address :=

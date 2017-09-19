@@ -31,7 +31,7 @@ package body Yaml.Parser is
    begin
       P.Levels := Level_Stacks.New_Stack (32);
       P.Levels.Push ((State => At_Stream_Start'Access, Indentation => -2));
-      P.Pool.Create (8092);
+      P.Pool.Create (Text.Pool.Default_Size);
       Tag_Handle_Sets.Init (P.Tag_Handles, P.Pool, 16);
    end Init;
 

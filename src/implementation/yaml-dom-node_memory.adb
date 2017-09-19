@@ -6,10 +6,10 @@ package body Yaml.Dom.Node_Memory is
                     Value : not null access constant Node.Instance;
                     Previously_Visited : out Boolean) is
    begin
-      if Object.Data.Contains (Value.all'Address) then
+      if Object.Data.Contains (Value) then
          Previously_Visited := True;
       else
-         Object.Data.Include (Value.all'Address);
+         Object.Data.Include (Value);
          Previously_Visited := False;
       end if;
    end Visit;
@@ -17,14 +17,26 @@ package body Yaml.Dom.Node_Memory is
    procedure Forget (Object : in out Instance;
                      Value  : not null access constant Node.Instance) is
    begin
-      Object.Data.Exclude (Value.all'Address);
+      Object.Data.Exclude (Value);
    end Forget;
 
+   function Pop_First (Object : in out Instance)
+                       return not null access Node.Instance is
+      First : Pointer_Sets.Cursor := Object.Data.First;
+   begin
+      return Ptr : constant not null access Node.Instance :=
+        Pointer_Sets.Element (First) do
+         Object.Data.Delete (First);
+      end return;
+   end Pop_First;
+
+   function Is_Empty (Object : Instance) return Boolean is
+     (Object.Data.Is_Empty);
+
    procedure Visit (Object : in out Pair_Instance;
-                    Left, Right : not null access constant Node.Instance;
+                    Left, Right : not null access Node.Instance;
                     Previously_Visited : out Boolean) is
-      Pair : constant Address_Pair := (Left => Left.all'Address,
-                                       Right => Right.all'Address);
+      Pair : constant Pointer_Pair := (Left => Left, Right => Right);
    begin
       if Object.Data.Contains (Pair) then
          Previously_Visited := True;

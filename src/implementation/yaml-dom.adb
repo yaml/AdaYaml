@@ -1,7 +1,6 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Ada.Containers.Indefinite_Vectors;
 with Ada.Unchecked_Deallocation;
 with Yaml.Dom.Node;
 with Yaml.Dom.Sequence_Data;
@@ -13,9 +12,6 @@ package body Yaml.Dom is
    use type Count_Type;
    use type Node.Instance;
    use type System.Address;
-
-   package Node_Pointer_Vectors is new Ada.Containers.Indefinite_Vectors
-     (Positive, Node_Pointer);
 
    function For_Document (Document : not null access Document_Instance)
                           return Sequence_Data.Instance with Import,
@@ -35,7 +31,6 @@ package body Yaml.Dom is
       if Object.Refcount = 1 then
          declare
             Memory    : Node_Memory.Instance;
-            To_Delete : Node_Pointer_Vectors.Vector;
 
             procedure Visit_Pair (Key, Value : not null access Node.Instance);
 
@@ -51,7 +46,6 @@ package body Yaml.Dom is
                   when Sequence => Cur.Items.Iterate (Visit'Access);
                   when Mapping => Cur.Pairs.Iterate (Visit_Pair'Access);
                end case;
-               To_Delete.Append (Cur);
             end Visit;
 
             procedure Visit_Pair (Key, Value : not null access Node.Instance) is
@@ -61,9 +55,10 @@ package body Yaml.Dom is
             end Visit_Pair;
          begin
             Visit (Object.Root_Node);
-            for Cur of To_Delete loop
+            while not Memory.Is_Empty loop
                declare
-                  Ptr : Nullable_Node_Pointer := Nullable_Node_Pointer (Cur);
+                  Ptr : Nullable_Node_Pointer :=
+                    Nullable_Node_Pointer (Memory.Pop_First);
                begin
                   Free (Ptr);
                end;
@@ -124,15 +119,10 @@ package body Yaml.Dom is
      (new Node.Instance'(Kind => Mapping, Tag => Tag,
                          Pairs => For_Document (Document)));
 
-   function New_Document (Root_Kind : Node_Kind) return Document_Reference is
-      Pool : Text.Pool.Reference;
-   begin
-      Pool.Create (8092);
-      return New_Document (Root_Kind, Pool);
-   end New_Document;
-
    function New_Document (Root_Kind : Node_Kind;
-                          Pool : Text.Pool.Reference) return Document_Reference
+                          Pool : Text.Pool.Reference :=
+                            Text.Pool.With_Capacity (Text.Pool.Default_Size))
+                          return Document_Reference
    is
    begin
       return Ret : constant Document_Reference :=
@@ -152,7 +142,6 @@ package body Yaml.Dom is
 
       end return;
    end New_Document;
-
 
    function New_Scalar (Parent : Document_Reference'Class;
                         Tag : Text.Reference := Yaml.Tags.Question_Mark;

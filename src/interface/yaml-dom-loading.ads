@@ -25,11 +25,15 @@ package Yaml.Dom.Loading is
       --  equivalent to the "Compose" step in the YAML spec. Expects the input
       --  to contain exactly one document, will raise a Compose_Error if the
       --  stream contains multiple documents.
-      function Load_One (Input : in out Stream.Instance)
+      function Load_One (Input : in out Stream.Instance;
+                         Pool  : Text.Pool.Reference :=
+                           Text.Pool.With_Capacity (Text.Pool.Default_Size))
                          return Document_Reference;
 
       --  as above, but allows for multiple documents in a stream
-      function Load_All (Input : in out Stream.Instance)
+      function Load_All (Input : in out Stream.Instance;
+                         Pool  : Text.Pool.Reference :=
+                          Text.Pool.With_Capacity (Text.Pool.Default_Size))
                          return Document_Vectors.Vector
         with Post => Integer (Load_All'Result.Length) > 0;
    end Stream_Loading;

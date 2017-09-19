@@ -25,12 +25,11 @@ package Yaml.Dom is
    --                      constructors and comparators                       --
    -----------------------------------------------------------------------------
 
-   --  initializes a new Text.Pool that is used for all text content
-   function New_Document (Root_Kind : Node_Kind) return Document_Reference;
-
    --  uses the given pool for all text content
    function New_Document (Root_Kind : Node_Kind;
-                          Pool : Text.Pool.Reference) return Document_Reference;
+                          Pool : Text.Pool.Reference :=
+                            Text.Pool.With_Capacity (Text.Pool.Default_Size))
+                          return Document_Reference;
 
    function New_Scalar (Parent : Document_Reference'Class;
                         Tag : Text.Reference := Yaml.Tags.Question_Mark;

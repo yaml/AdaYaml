@@ -77,10 +77,11 @@ package body Yaml.Dom.Loading is
          end case;
       end Node_From;
 
-      function Load_One (Input : in out Stream.Instance)
+      function Load_One (Input : in out Stream.Instance;
+                         Pool  : Text.Pool.Reference :=
+                           Text.Pool.With_Capacity (Text.Pool.Default_Size))
                              return Document_Reference is
          Head : Event := Stream.Next (Input);
-         Pool : Text.Pool.Reference;
       begin
          if Head.Kind /= Stream_Start then
             raise Stream_Error with "Unexpected event (expected stream start): " &
@@ -91,7 +92,6 @@ package body Yaml.Dom.Loading is
             raise Stream_Error with
               "Unexpected event (expected document start): " & Head.Kind'Img;
          end if;
-         Pool.Create (8092);
          return Ret : constant Document_Reference :=
            (Ada.Finalization.Controlled with
               Data => new Document_Instance'(Refcount_Base with
@@ -115,9 +115,10 @@ package body Yaml.Dom.Loading is
          end return;
       end Load_One;
 
-      function Load_All (Input : in out Stream.Instance)
+      function Load_All (Input : in out Stream.Instance;
+                         Pool  : Text.Pool.Reference :=
+                           Text.Pool.With_Capacity (Text.Pool.Default_Size))
                          return Document_Vectors.Vector is
-         Pool : Text.Pool.Reference;
          Head : Event := Stream.Next (Input);
       begin
          if Head.Kind /= Stream_Start then
@@ -129,7 +130,6 @@ package body Yaml.Dom.Loading is
             raise Stream_Error with
               "Unexpected event (expected document start): " & Head.Kind'Img;
          end if;
-         Pool.Create (8092);
          return Ret : Document_Vectors.Vector do
             loop
                declare
@@ -165,7 +165,7 @@ package body Yaml.Dom.Loading is
       P : Yaml.Parser.Instance;
    begin
       P.Set_Input (Input);
-      return Parser_Loading.Load_One (P);
+      return Parser_Loading.Load_One (P, P.Pool);
    end From_Source;
 
    function From_Source (Input : Source.Pointer)
@@ -173,20 +173,20 @@ package body Yaml.Dom.Loading is
       P : Yaml.Parser.Instance;
    begin
       P.Set_Input (Input);
-      return Parser_Loading.Load_All (P);
+      return Parser_Loading.Load_All (P, P.Pool);
    end From_Source;
 
    function From_String (Input : String) return Document_Reference is
       P : Yaml.Parser.Instance;
    begin
       P.Set_Input (Input);
-      return Parser_Loading.Load_One (P);
+      return Parser_Loading.Load_One (P, P.Pool);
    end From_String;
 
    function From_String (Input : String) return Document_Vectors.Vector is
       P : Yaml.Parser.Instance;
    begin
       P.Set_Input (Input);
-      return Parser_Loading.Load_All (P);
+      return Parser_Loading.Load_All (P, P.Pool);
    end From_String;
 end Yaml.Dom.Loading;
