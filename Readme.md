@@ -52,15 +52,6 @@ Status of YAML 1.3 features, taken from [this list][1]:
 
 ## Hacking
 
-After cloning, to fetch the yaml test suite, do:
-
-    git submodule init
-    git submodule update
-
-For updating the test suite, always use
-
-    git submodule update --remote
-
 These commands may be useful for toying around:
 
     make adayaml
