@@ -52,15 +52,6 @@ Status of YAML 1.3 features, taken from [this list][1]:
 
 ## Hacking
 
-After cloning, to fetch the yaml test suite, do:
-
-    git submodule init
-    git submodule update
-
-For updating the test suite, always use
-
-    git submodule update --remote
-
 These commands may be useful for toying around:
 
     make adayaml
@@ -73,12 +64,20 @@ This builds the unit tests. The executables will be located in the
 `test/bin` directory (be sure that the root folder is the working directory when
 executing).
 
+If you have [GNAT GPL](http://libre.adacore.com/download/configurations) and
+[GNATcoverage](https://github.com/AdaCore/gnatcoverage), you can also compute
+code coverage from the testsuite:
+
+    make test-coverage-run
+
+The following builds a small utility that reads a YAML files and outputs a
+stream of events to the command line:
+
     make utils
 
-This builds a small utility that reads a YAML files and outputs a stream of
-events to the command line. It is located in `util/bin` afterwards. The tool
-reads either the file specified as first command line parameter, or, in absense
-of that parameter, from stdin.
+It is located in `util/bin` afterwards. The tool reads either the file
+specified as first command line parameter, or, in absense of that parameter,
+from stdin.
 
 To edit the code, you can use GNAT Programming Studio to open the `*.gpr` files.
 
