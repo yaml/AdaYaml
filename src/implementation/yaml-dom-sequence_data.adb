@@ -225,4 +225,16 @@ package body Yaml.Dom.Sequence_Data is
    begin
       Position.Index := Position.Index - 1;
    end Previous;
+
+   package body Friend_Interface is
+      function For_Document (Document : not null access Document_Instance)
+                             return Instance is
+        (Document => Document, Data => <>);
+
+      procedure Raw_Append (Container : in out Instance;
+                            New_Item  : not null access Node.Instance) is
+      begin
+         Container.Data.Append (New_Item);
+      end Raw_Append;
+   end Friend_Interface;
 end Yaml.Dom.Sequence_Data;

@@ -1,9 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Ada.Unchecked_Conversion;
 with Ada.Unchecked_Deallocation;
-with System.Storage_Elements;
 with Yaml.Dom.Node;
 with Yaml.Dom.Sequence_Data;
 with Yaml.Dom.Mapping_Data;
@@ -13,6 +11,7 @@ package body Yaml.Dom is
    use type Text.Reference;
    use type Count_Type;
    use type Node.Instance;
+   use type System.Address;
 
    function For_Document (Document : not null access Document_Instance)
                           return Sequence_Data.Instance with Import,
@@ -26,6 +25,7 @@ package body Yaml.Dom is
 
    procedure Free is new Ada.Unchecked_Deallocation
      (Node.Instance, Nullable_Node_Pointer);
+   pragma Unreferenced (Free);
 
    procedure Decrease_Refcount (Object : not null access Document_Instance) is
    begin
@@ -37,6 +37,7 @@ package body Yaml.Dom is
 
             procedure Visit (Cur : not null access Node.Instance) is
                Ptr : Nullable_Node_Pointer := Nullable_Node_Pointer (Cur);
+               pragma Unreferenced (Ptr);
                Visited : Boolean;
             begin
                Memory.Visit (Cur, Visited);
@@ -48,7 +49,7 @@ package body Yaml.Dom is
                   when Sequence => Cur.Items.Iterate (Visit'Access);
                   when Mapping => Cur.Pairs.Iterate (Visit_Pair'Access);
                end case;
-               Free (Ptr);
+               --  Free (Ptr);
             end Visit;
 
             procedure Visit_Pair (Key, Value : not null access Node.Instance) is
@@ -57,7 +58,7 @@ package body Yaml.Dom is
                Visit (Value);
             end Visit_Pair;
          begin
-            Visit (Object.Root);
+            Visit (Object.Root_Node);
          end;
       end if;
       Yaml.Decrease_Refcount (Object);
@@ -85,12 +86,16 @@ package body Yaml.Dom is
 
    procedure Adjust (Object : in out Optional_Node_Reference) is
    begin
-      Increase_Refcount (Object.Document);
+      if Object.Document /= null then
+         Increase_Refcount (Object.Document);
+      end if;
    end Adjust;
 
    procedure Finalize (Object : in out Optional_Node_Reference) is
    begin
-      Dom.Decrease_Refcount (Object.Document);
+      if Object.Document /= null then
+         Dom.Decrease_Refcount (Object.Document);
+      end if;
    end Finalize;
 
    function New_Scalar (Tag : Text.Reference;
@@ -120,21 +125,20 @@ package body Yaml.Dom is
    function New_Document (Root_Kind : Node_Kind;
                           Pool : Text.Pool.Reference) return Document_Reference
    is
-      function Convert is new Ada.Unchecked_Conversion
-        (System.Storage_Elements.Integer_Address, Node_Pointer);
-      Dummy : constant Node_Pointer := Convert (1);
    begin
       return Ret : constant Document_Reference :=
         (Ada.Finalization.Controlled with Data =>
             new Document_Instance'(Ada.Finalization.Limited_Controlled with
-               Pool => Pool, Root => Dummy, Refcount => 1)) do
+               Pool => Pool, Root_Node => Dummy, Refcount => 1)) do
          case Root_Kind is
          when Scalar =>
-            Ret.Data.Root := New_Scalar (Yaml.Tags.Question_Mark);
+            Ret.Data.Root_Node := New_Scalar (Yaml.Tags.Question_Mark);
             when Sequence =>
-               Ret.Data.Root := New_Sequence (Ret.Data, Yaml.Tags.Question_Mark);
+               Ret.Data.Root_Node :=
+                 New_Sequence (Ret.Data, Yaml.Tags.Question_Mark);
             when Mapping =>
-               Ret.Data.Root := New_Mapping (Ret.Data, Yaml.Tags.Question_Mark);
+               Ret.Data.Root_Node :=
+                 New_Mapping (Ret.Data, Yaml.Tags.Question_Mark);
          end case;
 
       end return;
@@ -167,14 +171,21 @@ package body Yaml.Dom is
             New_Mapping (Parent.Data, Tag)));
 
    function "=" (Left, Right : Node_Pointer) return Boolean is
-     (Left = Right or else Left.all = Right.all);
+     (Left.all'Address = Right.all'Address or else Left.all = Right.all);
 
    function "=" (Left, Right : Node_Reference) return Boolean is
      (Same_Node (Left, Right) or else Left.Data.all = Right.Data.all);
 
    --  checks whether the two references reference the same node
    function Same_Node (Left, Right : Node_Reference) return Boolean is
-     (Left.Data = Right.Data);
+     (Left.Data.all'Address = Right.Data.all'Address);
+
+   function Root (Object : Document_Reference'Class) return Node_Reference is
+   begin
+      Increase_Refcount (Object.Data);
+      return (Ada.Finalization.Controlled with Document => Object.Data,
+              Data => Object.Data.Root_Node);
+   end Root;
 
    function Value (Object : Node_Reference) return Accessor is
      ((Data => Object.Data));

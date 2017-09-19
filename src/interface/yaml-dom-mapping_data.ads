@@ -87,9 +87,14 @@ private
    No_Element : constant Cursor := (Container => null,
                                     Position => Node_Maps.No_Element);
 
-   package Constructors is
+   package Friend_Interface is
       function For_Document (Document : not null access Document_Instance)
-                             return Instance is (Document => Document, Data => <>)
-        with Export, Link_Name => "AdaYaml__Mapping_Data__For_Document";
-   end Constructors;
+                             return Instance with Export, Convention => Ada,
+      Link_Name => "AdaYaml__Mapping_Data__For_Document";
+
+      procedure Raw_Insert (Container  : in out Instance;
+                            Key, Value : not null access Node.Instance)
+        with Export, Convention => Ada,
+        Link_Name => "AdaYaml__Mapping_Data__Raw_Insert";
+   end Friend_Interface;
 end Yaml.Dom.Mapping_Data;

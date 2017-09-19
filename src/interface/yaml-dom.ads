@@ -2,6 +2,8 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Ada.Containers;
+private with Ada.Unchecked_Conversion;
+private with System.Storage_Elements;
 with Text.Pool;
 with Yaml.Tags;
 
@@ -56,6 +58,8 @@ package Yaml.Dom is
    --                              data access                                --
    -----------------------------------------------------------------------------
 
+   function Root (Object : Document_Reference'Class) return Node_Reference;
+
    function Value (Object : Node_Reference) return Accessor;
    function Value (Object : Optional_Node_Reference) return Accessor;
 
@@ -69,8 +73,8 @@ private
    function "=" (Left, Right : Node_Pointer) return Boolean;
 
    type Document_Instance is new Refcount_Base with record
-      Root : Node_Pointer;
-      Pool : Text.Pool.Reference;
+      Root_Node : Node_Pointer;
+      Pool      : Text.Pool.Reference;
    end record;
 
    type Document_Reference is new Ada.Finalization.Controlled with record
@@ -100,4 +104,11 @@ private
 
    Null_Reference : constant Optional_Node_Reference :=
      (Ada.Finalization.Controlled with Data => null, Document => null);
+
+   --  necessary for creating an initial document because of circular `not null`
+   --  dependency between document and mapping / sequence nodes
+
+   function Convert is new Ada.Unchecked_Conversion
+        (System.Storage_Elements.Integer_Address, Node_Pointer);
+   Dummy : constant Node_Pointer := Convert (1);
 end Yaml.Dom;

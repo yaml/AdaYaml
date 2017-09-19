@@ -13,6 +13,9 @@ package Yaml is
    --  ill-formed input.
    Parser_Error : exception;
 
+   --  occurs when a DOM cannot be composed from a given event stream.
+   Composer_Error : exception;
+
    --  occurs when an ill-formed event stream is tried to be presented.
    Presenter_Error : exception;
 

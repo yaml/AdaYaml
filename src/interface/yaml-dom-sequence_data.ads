@@ -132,9 +132,18 @@ private
 
    No_Element : constant Cursor := (Container => null, Index => 0);
 
-   package Constructors is
+   package Friend_Interface is
+      --  these subprograms are used by other child packages of Yaml.Dom. Since
+      --  they are not memory safe, they are hidden here from the library user,
+      --  but made available via importing.
+
       function For_Document (Document : not null access Document_Instance)
-                             return Instance is (Document => Document, Data => <>)
-        with Export, Link_Name => "AdaYaml__Sequence_Data__For_Document";
-   end Constructors;
+                             return Instance with Export, Convention => Ada,
+        Link_Name => "AdaYaml__Sequence_Data__For_Document";
+
+      procedure Raw_Append (Container : in out Instance;
+                            New_Item  : not null access Node.Instance)
+        with Export, Convention => Ada,
+        Link_Name => "AdaYaml__Sequence_Data__Raw_Append";
+   end Friend_Interface;
 end Yaml.Dom.Sequence_Data;

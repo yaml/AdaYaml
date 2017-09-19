@@ -134,4 +134,16 @@ package body Yaml.Dom.Mapping_Data is
    begin
       Container.Data.Delete (Position.Position);
    end Delete;
+
+   package body Friend_Interface is
+      function For_Document (Document : not null access Document_Instance)
+                             return Instance is
+        (Document => Document, Data => <>);
+
+      procedure Raw_Insert (Container  : in out Instance;
+                            Key, Value : not null access Node.Instance) is
+      begin
+         Container.Data.Insert (Key, Value);
+      end Raw_Insert;
+   end Friend_Interface;
 end Yaml.Dom.Mapping_Data;
