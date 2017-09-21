@@ -1,4 +1,4 @@
-with "text/parser_tools";
+with "Parser_Tools/parser_tools";
 
 library project Yaml is
    for Languages use ("ada");

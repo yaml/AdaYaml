@@ -4,7 +4,7 @@
 ; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
 ;
 [subrepo]
-	remote = git@github.com:flyx/ParserText.git
+	remote = git@github.com:flyx/ParserTools.git
 	branch = master
 	commit = c6dc6bab7cdade061828f8bca67918a8d4e2fc76
 	parent = 10a62cd7724d677f7cce9a01afefcf7f0787abfa
