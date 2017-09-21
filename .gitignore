@@ -6,3 +6,4 @@ gnatinspect.db
 *.ali
 *.cswi
 *-loc.xml
+cvg
