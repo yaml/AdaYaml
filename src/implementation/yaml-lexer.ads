@@ -1,9 +1,10 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Yaml.Source;
 with Ada.Strings.UTF_Encoding;
+private with Lexer.Base;
 with Text.Pool;
+with Yaml.Source;
 
 private package Yaml.Lexer is
    use Ada.Strings.UTF_Encoding;
@@ -18,8 +19,6 @@ private package Yaml.Lexer is
       Initial_Buffer_Size : Positive := Default_Initial_Buffer_Size);
    procedure Init (L : in out Instance; Input : UTF_String;
                    Pool : Text.Pool.Reference);
-
-   procedure Finish (L : in out Instance);
 
    type Token_Kind is
      (Yaml_Directive,    --  `%YAML`
@@ -92,13 +91,10 @@ private package Yaml.Lexer is
    function Cur_Mark (L : Instance; Offset : Integer := -1) return Mark
      with Inline;
 private
-   type Buffer_Type is access all UTF_8_String;
-
    type State_Type is access function
      (L : in out Instance; T : out Token) return Boolean;
 
-   type Instance is limited record
-      Cur_Line    : Positive;  --  index of the line at the current position
+   type Instance is limited new Standard.Lexer.Base.Instance with record
       Token_Start : Positive;
         --  index of the character that started the current token PLUS ONE.
         --  this index is one behind the actual first token for implementation
@@ -106,17 +102,6 @@ private
       Token_Start_Mark : Mark;
         --  mark at the current token's start. necessary for inspection in the
         --  case of a Lexer_Error.
-      Line_Start  : Positive;
-        --  the buffer index where the current line started
-      Prev_Lines_Chars : Natural;
-        --  number of characters in all previous lines,
-        --  used for calculating index.
-      Input       : Source.Pointer;  --  input provider
-      Sentinel    : Positive;
-        --  the position at which, when reached, the buffer must be refilled
-      Pos         : Positive;
-        --  position of the next character to be read from the buffer
-      Buffer      : Buffer_Type;  --  input buffer. filled from the source.
       Indentation : Indentation_Type;
         --  number of indentation spaces of the recently yielded content token.
         --  this is important for internal processing of multiline tokens, as
@@ -146,14 +131,6 @@ private
    end record;
 
    --  The following stuff is declared here so that it can be unit-tested.
-
-   -----------------------------------------------------------------------------
-   --  buffer handling
-   -----------------------------------------------------------------------------
-
-   function Next (Object : in out Instance) return Character with Inline;
-   procedure Handle_CR (L : in out Instance);
-   procedure Handle_LF (L : in out Instance);
 
    -----------------------------------------------------------------------------
    --  special characters and character classes

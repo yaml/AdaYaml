@@ -64,10 +64,7 @@ package body Yaml.Parser is
 
    function Pool (P : Instance) return Text.Pool.Reference is (P.Pool);
 
-   procedure Finalize (P : in out Instance) is
-   begin
-      Lexer.Finish (P.L);
-   end Finalize;
+   procedure Finalize (P : in out Instance) is null;
 
 
    function Current_Lexer_Token_Start (P : Instance) return Mark is

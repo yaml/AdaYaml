@@ -3,11 +3,12 @@
 
 with Ada.Finalization;
 with Text;
+with Lexer;
 
 package Yaml is
    --  occurs when the lexical analysis of a YAML character streams discovers
    --  ill-formed input.
-   Lexer_Error : exception;
+   Lexer_Error : exception renames Lexer.Lexer_Error;
 
    --  occurs when the syntactic analysis of a YAML token stream discovers an
    --  ill-formed input.

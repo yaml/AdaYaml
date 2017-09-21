@@ -1,7 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-package body Yaml.Source.File is
+package body Lexer.Source.File is
 
    overriding procedure Read_Data (S : in out Instance; Buffer : out String;
                                    Length : out Natural) is
@@ -32,4 +32,4 @@ package body Yaml.Source.File is
       Ret.Stream := Ada.Streams.Stream_IO.Stream (Ret.File);
       return Pointer (Ret);
    end As_Source;
-end Yaml.Source.File;
+end Lexer.Source.File;

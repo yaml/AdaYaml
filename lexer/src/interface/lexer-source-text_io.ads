@@ -3,7 +3,7 @@
 
 with Ada.Text_IO;
 
-package Yaml.Source.Text_IO is
+package Lexer.Source.Text_IO is
    --  this package provides a source type that is backed by Ada.Text_IO's file
    --  type. the primary use-case is to read from stdin. use Yaml.Sources.Files
    --  for standard files, it is more efficient.
@@ -20,4 +20,4 @@ private
    type Instance is new Source.Instance with record
       File_Pointer : Ada.Text_IO.File_Access;
    end record;
-end Yaml.Source.Text_IO;
+end Lexer.Source.Text_IO;

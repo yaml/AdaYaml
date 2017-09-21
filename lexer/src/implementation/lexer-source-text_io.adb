@@ -1,7 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-package body Yaml.Source.Text_IO is
+package body Lexer.Source.Text_IO is
    procedure Read_Data (S : in out Instance; Buffer : out String;
                         Length : out Natural) is
    begin
@@ -22,4 +22,4 @@ package body Yaml.Source.Text_IO is
 
    function As_Source (File : Ada.Text_IO.File_Access) return Pointer is
      (Pointer'(new Instance'(Source.Instance with File_Pointer => File)));
-end Yaml.Source.Text_IO;
+end Lexer.Source.Text_IO;

@@ -4,7 +4,7 @@
 private with Ada.Streams.Stream_IO;
 private with Ada.Directories;
 
-package Yaml.Source.File is
+package Lexer.Source.File is
    --  this provides streams which are backed by files on the file system.
 
    type Instance is new Source.Instance with private;
@@ -22,4 +22,4 @@ private
       Stream : Ada.Streams.Stream_IO.Stream_Access;
       Input_At, Input_Length : Ada.Directories.File_Size;
    end record;
-end Yaml.Source.File;
+end Lexer.Source.File;
