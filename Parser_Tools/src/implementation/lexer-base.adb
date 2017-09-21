@@ -1,12 +1,11 @@
+--  part of ParserTools, (c) 2017 Felix Krause
+--  released under the terms of the MIT license, see the file "copying.txt"
+
 with Ada.Unchecked_Deallocation;
 
 package body Lexer.Base is
    procedure Free is new Ada.Unchecked_Deallocation
      (String, Buffer_Type);
-
-   End_Of_Input    : constant Character := Character'Val (4);
-   Line_Feed       : constant Character := Character'Val (10);
-   Carriage_Return : constant Character := Character'Val (13);
 
    subtype Line_End is Character with Static_Predicate =>
      Line_End in Line_Feed | Carriage_Return | End_Of_Input;

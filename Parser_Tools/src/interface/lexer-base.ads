@@ -33,10 +33,13 @@ package Lexer.Base is
    subtype Rune is Wide_Wide_Character;
 
    function Next (Object : in out Instance) return Character with Inline;
-   --  function Next (Object : in out Instance) return Rune with Inline;
 
    procedure Handle_CR (L : in out Instance);
    procedure Handle_LF (L : in out Instance);
+
+   End_Of_Input    : constant Character := Character'Val (4);
+   Line_Feed       : constant Character := Character'Val (10);
+   Carriage_Return : constant Character := Character'Val (13);
 private
    type Private_Values is limited record
       Input       : Source.Pointer;  --  input provider

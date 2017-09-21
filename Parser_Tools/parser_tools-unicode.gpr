@@ -1,0 +1,19 @@
+with "parser_tools";
+with "strings_edit";
+
+library project Parser_Tools.Unicode is
+   for Languages use ("ada");
+
+   for Object_Dir use "obj";
+   for Library_Dir use "lib";
+
+   for Library_Name use "parsertools-unicode";
+
+   package Builder renames Parser_Tools.Builder;
+   package Compiler renames Parser_Tools.Compiler;
+   package Ide renames Parser_Tools.Ide;
+
+   for Source_Dirs use ("src/unicode/interface",
+                        "src/unicode/implementation");
+end Parser_Tools.Unicode;
+
