@@ -150,7 +150,7 @@ package body Yaml.Dom.Loading is
       function Load_All (Input : in out Stream.Instance;
                          Pool  : Text.Pool.Reference :=
                            Text.Pool.With_Capacity (Text.Pool.Default_Size))
-                         return Document_Vectors.Vector is
+                         return Vectors.Vector is
          Head : Event := Stream.Next (Input);
          Anchors : Anchor_Maps.Map;
       begin
@@ -163,7 +163,7 @@ package body Yaml.Dom.Loading is
             raise Stream_Error with
               "Unexpected event (expected document start): " & Head.Kind'Img;
          end if;
-         return Ret : Document_Vectors.Vector do
+         return Ret : Vectors.Vector do
             loop
                declare
                   Doc : constant Document_Reference :=
@@ -203,7 +203,7 @@ package body Yaml.Dom.Loading is
    end From_Source;
 
    function From_Source (Input : Source.Pointer)
-                         return Document_Vectors.Vector is
+                         return Vectors.Vector is
       P : Yaml.Parser.Instance;
    begin
       P.Set_Input (Input);
@@ -217,7 +217,7 @@ package body Yaml.Dom.Loading is
       return Parser_Loading.Load_One (P, P.Pool);
    end From_String;
 
-   function From_String (Input : String) return Document_Vectors.Vector is
+   function From_String (Input : String) return Vectors.Vector is
       P : Yaml.Parser.Instance;
    begin
       P.Set_Input (Input);
