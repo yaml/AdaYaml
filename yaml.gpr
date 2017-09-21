@@ -1,5 +1,4 @@
-with "text/parser_text";
-with "lexer/lexer_base";
+with "text/parser_tools";
 
 library project Yaml is
    for Languages use ("ada");

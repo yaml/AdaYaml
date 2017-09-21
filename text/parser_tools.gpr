@@ -1,10 +1,9 @@
-library project Lexer_Base is
+library project Parser_Tools is
    for Languages use ("ada");
 
-   for Library_Name use "LexerBase";
+   for Library_Name use "parsertools";
 
-   for Source_Dirs use ("src/interface",
-                        "src/implementation");
+   for Source_Dirs use ("src/interface", "src/implementation");
    for Object_Dir use "obj";
    for Library_Dir use "lib";
 
@@ -18,9 +17,9 @@ library project Lexer_Base is
    package Builder is
       case Mode is
       when "debug" =>
-         for Default_Switches ("ada") use ("-p", "-s", "-g");
+         for Default_Switches ("ada") use ("-s", "-g");
       when "release" =>
-         for Default_Switches ("ada") use ("-p", "-s");
+         for Default_Switches ("ada") use ("-s");
       end case;
    end Builder;
 
@@ -34,4 +33,4 @@ library project Lexer_Base is
             ("-gnat12", "-gnatwa", "-gnatwl", "-O3", "-gnaty3abcefhiklmNprt", "-fstack-check");
       end case;
    end Compiler;
-end Lexer_Base;
+end Parser_Tools;
