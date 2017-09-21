@@ -46,8 +46,9 @@ package body Yaml.Lexer.Buffering_Test is
          case L.Cur is
             when Line_Feed => Handle_LF (L);
             when Carriage_Return => Handle_CR (L);
-            when others => L.Cur := Next (L);
+            when others => null;
          end case;
+         L.Cur := Next (L);
       end loop;
    end Test_File_Without_Refill;
 
@@ -68,8 +69,9 @@ package body Yaml.Lexer.Buffering_Test is
          case L.Cur is
             when Line_Feed => Handle_LF (L);
             when Carriage_Return => Handle_CR (L);
-            when others => L.Cur := Next (L);
+            when others => null;
          end case;
+         L.Cur := Next (L);
       end loop;
    end Test_File_With_Single_Refill;
 end Yaml.Lexer.Buffering_Test;

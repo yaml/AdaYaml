@@ -25,6 +25,7 @@ package body Lexer.Base is
    begin
       Object.Internal.Input := null;
       Object.Buffer := new String (1 .. Input'Length + 1);
+      Object.Internal.Sentinel := Input'Length + 2;
       Object.Buffer.all := Input & End_Of_Input;
    end Init;
 

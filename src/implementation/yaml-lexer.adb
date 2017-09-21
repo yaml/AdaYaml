@@ -387,10 +387,12 @@ package body Yaml.Lexer is
          case L.Cur is
             when Line_Feed =>
                Handle_LF (L);
+               L.Cur := L.Next;
                L.State := L.Line_Start_State;
                exit;
             when Carriage_Return =>
                Handle_CR (L);
+               L.Cur := L.Next;
                L.State := L.Line_Start_State;
                exit;
             when End_Of_Input =>

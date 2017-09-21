@@ -201,9 +201,11 @@ package body Yaml.Lexer.Evaluation is
                Add (Result, ' ');
             when Line_Feed =>
                Handle_LF (L);
+               L.Cur := L.Next;
                exit;
             when Carriage_Return =>
                Handle_CR (L);
+               L.Cur := L.Next;
                exit;
             when others =>
                return;
