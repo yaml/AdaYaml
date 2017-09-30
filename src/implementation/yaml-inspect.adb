@@ -110,7 +110,7 @@ begin
       when None =>
          declare
             Iterator : constant Events.Queue.Stream_Reference :=
-              Events.Queue.Iteration.As_Stream (Read_Events);
+              Events.Queue.As_Stream (Read_Events);
          begin
             loop
                Cur_Event := Iterator.Value.Next;

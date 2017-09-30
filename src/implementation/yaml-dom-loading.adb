@@ -40,6 +40,7 @@ package body Yaml.Dom.Loading is
             return Ret : constant Node_Pointer :=
               new Node.Instance'(Kind => Scalar,
                                  Tag => Head.Scalar_Properties.Tag,
+                                 Scalar_Style => Head.Scalar_Style,
                                  Content => Head.Content) do
                if Head.Scalar_Properties.Anchor.Length /= 0 then
                   Anchors.Include (Head.Scalar_Properties.Anchor, Ret);
@@ -49,6 +50,7 @@ package body Yaml.Dom.Loading is
             return Ret : constant Node_Pointer :=
               new Node.Instance'(Kind => Sequence,
                                  Tag => Head.Collection_Properties.Tag,
+                                 Sequence_Style => Head.Collection_Style,
                                  Items => For_Document (Target_Document)) do
                declare
                   New_Head : Event := Stream.Next (Tail);
@@ -68,6 +70,7 @@ package body Yaml.Dom.Loading is
             return Ret : constant Node_Pointer :=
               new Node.Instance'(Kind => Mapping,
                                  Tag => Head.Collection_Properties.Tag,
+                                 Mapping_Style => Head.Collection_Style,
                                  Pairs => For_Document (Target_Document)) do
                declare
                   New_Head : Event := Stream.Next (Tail);

@@ -21,8 +21,8 @@ package body Yaml.Events is
    end Copy_Data;
 
    procedure Grow (Object : in out Event_Holder'Class) is
-      New_Data : constant not null Event_Array_Access :=
-        new Event_Array (1 .. Object.Data.all'Last * 2);
+      New_Data : constant not null Event_Array_Access := new Event_Array
+        (1 .. Object.Data.all'Length * 2);
       Old_Data : Event_Array_Access := Object.Data;
    begin
       Object.Copy_Data (New_Data); --  dispatches

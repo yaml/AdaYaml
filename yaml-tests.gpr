@@ -8,7 +8,8 @@ project Yaml.Tests is
    for Library_Dir use "test/lib";
    for Exec_Dir use "test/bin";
 
-   for Main use ("yaml-loading_tests-harness.adb");
+   for Main use ("yaml-loading_tests-harness.adb",
+                "yaml-dumping_tests-harness.adb");
 
    package Builder renames Yaml.Builder;
    package Compiler renames Yaml.Compiler;

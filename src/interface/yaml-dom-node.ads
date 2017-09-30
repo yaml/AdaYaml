@@ -8,9 +8,15 @@ package Yaml.Dom.Node is
    type Instance (Kind : Node_Kind) is record
       Tag : Text.Reference;
       case Kind is
-         when Scalar => Content : Text.Reference;
-         when Sequence => Items : Sequence_Data.Instance;
-         when Mapping => Pairs : Mapping_Data.Instance;
+         when Scalar =>
+            Scalar_Style : Scalar_Style_Type;
+            Content : Text.Reference;
+         when Sequence =>
+            Sequence_Style : Collection_Style_Type;
+            Items : Sequence_Data.Instance;
+         when Mapping =>
+            Mapping_Style : Collection_Style_Type;
+            Pairs : Mapping_Data.Instance;
       end case;
    end record;
 

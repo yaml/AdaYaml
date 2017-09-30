@@ -70,11 +70,11 @@ package Yaml is
       case Kind is
          when Document_Start =>
             Version : Text.Reference;
-            Implicit_Start : Boolean;
+            Implicit_Start : Boolean := True;
          when Document_End =>
             Implicit_End : Boolean;
          when Mapping_Start | Sequence_Start =>
-            Collection_Style : Collection_Style_Type;
+            Collection_Style : Collection_Style_Type := Any;
             Collection_Properties : Properties;
          when Annotation_Start =>
             Annotation_Properties : Properties;
@@ -82,7 +82,7 @@ package Yaml is
          when Scalar =>
             Scalar_Properties : Properties;
             Content : Text.Reference;
-            Scalar_Style : Scalar_Style_Type;
+            Scalar_Style : Scalar_Style_Type := Any;
          when Alias =>
             Target : Text.Reference;
          when Mapping_End | Sequence_End | Annotation_End | Stream_Start |

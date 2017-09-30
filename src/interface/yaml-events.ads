@@ -8,7 +8,7 @@ package Yaml.Events is
    --  Stream_Instance based on that object exists.
    State_Error : exception;
 private
-   type Event_Array is array (Positive range <>) of Event;
+   type Event_Array is array (Positive range <>) of aliased Event;
    type Event_Array_Access is access Event_Array;
 
    type Event_Holder is abstract limited new Refcount_Base with record

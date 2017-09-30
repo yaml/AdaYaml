@@ -32,19 +32,23 @@ package Yaml.Dom is
                           return Document_Reference;
 
    function New_Scalar (Parent : Document_Reference'Class;
+                        Content : String := "";
                         Tag : Text.Reference := Yaml.Tags.Question_Mark;
-                        Content : String := "") return Node_Reference;
+                        Style : Scalar_Style_Type := Any) return Node_Reference;
 
    function New_Scalar (Parent : Document_Reference'Class;
+                        Content : Text.Reference;
                         Tag : Text.Reference := Yaml.Tags.Question_Mark;
-                        Content : Text.Reference) return Node_Reference;
+                        Style : Scalar_Style_Type := Any) return Node_Reference;
 
    function New_Sequence (Parent : Document_Reference'Class;
-                          Tag : Text.Reference := Yaml.Tags.Question_Mark)
+                          Tag : Text.Reference := Yaml.Tags.Question_Mark;
+                          Style : Collection_Style_Type := Any)
                           return Node_Reference;
 
    function New_Mapping (Parent : Document_Reference'Class;
-                         Tag : Text.Reference := Yaml.Tags.Question_Mark)
+                         Tag : Text.Reference := Yaml.Tags.Question_Mark;
+                         Style : Collection_Style_Type := Any)
                          return Node_Reference;
 
    function "=" (Left, Right : Document_Reference) return Boolean;

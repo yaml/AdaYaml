@@ -77,7 +77,8 @@ package body Yaml.Dom.Mapping_Data is
    function Element (Object : Instance; Key : String) return Node_Reference is
       Holder : constant Text.Constant_Instance := Text.Hold (Key);
       As_Node : aliased Node.Instance := (Kind => Scalar, Tag => Tags.String,
-                                          Content => Text.Held (Holder));
+                                          Content => Text.Held (Holder),
+                                          Scalar_Style => Any);
    begin
       Increase_Refcount (Object.Document);
       return Object.Element (Node_Reference'(Ada.Finalization.Controlled with

@@ -8,14 +8,22 @@ package Yaml.Events.Queue is
    type Reference is tagged private;
    type Accessor (Data : not null access Instance) is limited null record with
      Implicit_Dereference => Data;
+   type Element_Accessor (Data : not null access Event) is limited null record
+     with Implicit_Dereference => Data;
+
+   type Mark is private;
 
    procedure Append (Object : in out Instance; E : Event);
+   procedure Append (Object : in out Instance; E : Event; Position : out Mark);
    function Length (Object : in Instance) return Natural;
    function First (Object : in Instance) return Event;
    procedure Dequeue (Object : in out Instance);
 
    function Value (Object : Reference) return Accessor;
    function New_Queue return Reference;
+
+   function Element (Object : Instance; Position : Mark)
+                     return Element_Accessor;
 
    type Stream_Instance is new Refcount_Base with private;
    type Stream_Reference is tagged private;
@@ -25,10 +33,7 @@ package Yaml.Events.Queue is
    function Value (Object : Stream_Reference) return Stream_Accessor;
    function Next (Object : in out Stream_Instance) return Event;
 
-   package Iteration is
-      --  must be in child package so that it is not a dispatching operation
-      function As_Stream (Object : Reference) return Stream_Reference;
-   end Iteration;
+   function As_Stream (Object : Reference'Class) return Stream_Reference;
 private
    type Reference is new Ada.Finalization.Controlled with record
       Data : not null access Instance;
@@ -45,6 +50,8 @@ private
    overriding procedure Copy_Data (Source : Instance;
                                    Target : not null Event_Array_Access)
      with Pre => Target.all'Length >= Source.Data.all'Length;
+
+   type Mark is new Positive;
 
    type Instance_Pointer is access all Instance;
 

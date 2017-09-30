@@ -102,15 +102,17 @@ package body Yaml.Dom is
    end Finalize;
 
    function New_Sequence (Document : not null access Document_Instance;
-                          Tag : Text.Reference)
+                          Tag : Text.Reference;
+                          Style : Collection_Style_Type)
                           return Node_Pointer is
-     (new Node.Instance'(Kind => Sequence, Tag => Tag,
+     (new Node.Instance'(Kind => Sequence, Tag => Tag, Sequence_Style =>  Style,
                          Items => For_Document (Document)));
 
    function New_Mapping (Document : not null access Document_Instance;
-                         Tag : Text.Reference)
+                         Tag : Text.Reference;
+                         Style : Collection_Style_Type)
                          return Node_Pointer is
-     (new Node.Instance'(Kind => Mapping, Tag => Tag,
+     (new Node.Instance'(Kind => Mapping, Tag => Tag, Mapping_Style => Style,
                          Pairs => For_Document (Document)));
 
    function New_Document (Pool : Text.Pool.Reference :=
@@ -124,29 +126,49 @@ package body Yaml.Dom is
    end New_Document;
 
    function New_Scalar (Parent : Document_Reference'Class;
+                        Content : String := "";
                         Tag : Text.Reference := Yaml.Tags.Question_Mark;
-                        Content : String := "") return Node_Reference is
-     ((Ada.Finalization.Controlled with Document => Parent.Data, Data =>
-                 new Node.Instance'(Tag => Tag, Kind => Scalar,
-                                    Content => Parent.Data.Pool.From_String (Content))));
+                        Style : Scalar_Style_Type := Any)
+                        return Node_Reference is
+   begin
+      Increase_Refcount (Parent.Data);
+      return ((Ada.Finalization.Controlled with Document => Parent.Data, Data =>
+                  new Node.Instance'(Tag => Tag, Kind => Scalar,
+                                     Scalar_Style => Style,
+                                     Content => Parent.Data.Pool.From_String (Content))));
+   end New_Scalar;
 
    function New_Scalar (Parent : Document_Reference'Class;
+                        Content : Text.Reference;
                         Tag : Text.Reference := Yaml.Tags.Question_Mark;
-                        Content : Text.Reference) return Node_Reference is
-     ((Ada.Finalization.Controlled with Document => Parent.Data, Data =>
-            new Node.Instance'(Tag => Tag, Kind => Scalar, Content => Content)));
+                        Style : Scalar_Style_Type := Any)
+                        return Node_Reference is
+   begin
+      Increase_Refcount (Parent.Data);
+      return ((Ada.Finalization.Controlled with Document => Parent.Data, Data =>
+                  new Node.Instance'(Tag => Tag, Kind => Scalar,
+                                     Scalar_Style => Style, Content => Content)));
+   end New_Scalar;
 
    function New_Sequence (Parent : Document_Reference'Class;
-                          Tag : Text.Reference := Yaml.Tags.Question_Mark)
+                          Tag : Text.Reference := Yaml.Tags.Question_Mark;
+                          Style : Collection_Style_Type := Any)
                           return Node_Reference is
-     ((Ada.Finalization.Controlled with Document => Parent.Data, Data =>
-            New_Sequence (Parent.Data, Tag)));
+   begin
+      Increase_Refcount (Parent.Data);
+      return ((Ada.Finalization.Controlled with Document => Parent.Data, Data =>
+                 New_Sequence (Parent.Data, Tag, Style)));
+   end New_Sequence;
 
    function New_Mapping (Parent : Document_Reference'Class;
-                         Tag : Text.Reference := Yaml.Tags.Question_Mark)
+                         Tag : Text.Reference := Yaml.Tags.Question_Mark;
+                         Style : Collection_Style_Type := Any)
                          return Node_Reference is
-     ((Ada.Finalization.Controlled with Document => Parent.Data, Data =>
-            New_Mapping (Parent.Data, Tag)));
+   begin
+      Increase_Refcount (Parent.Data);
+      return ((Ada.Finalization.Controlled with Document => Parent.Data, Data =>
+                 New_Mapping (Parent.Data, Tag, Style)));
+   end New_Mapping;
 
    function Nodes_Equal (Left, Right : access Node.Instance) return Boolean is
      (Left = Right or else (Left /= null and then Right /= null and then

@@ -23,7 +23,17 @@ package body Yaml.Events.Queue is
    end Copy_Data;
 
    procedure Append (Object : in out Instance; E : Event) is
+      Position : Mark;
    begin
+      Append (Object, E, Position);
+   end Append;
+
+   function Next_Index (Object : Instance) return Positive is
+      (((Object.First_Pos + Object.Length - 1) mod
+                 Object.Data.all'Length) + 1);
+
+   procedure Append (Object : in out Instance; E : Event; Position : out Mark)
+   is begin
       if Object.Stream_Count > 0 then
          raise State_Error with
            "cannot manipulate event queue while a Stream_Instance exists";
@@ -32,7 +42,8 @@ package body Yaml.Events.Queue is
          Object.Grow;
          Object.First_Pos := 1;
       end if;
-      Object.Data (((Object.First_Pos + Object.Length - 1) mod Object.Data.all'Length) + 1) := E;
+      Position := Mark (Next_Index (Object));
+      Object.Data (Positive (Position)) := E;
       Object.Length := Object.Length + 1;
    end Append;
 
@@ -71,17 +82,25 @@ package body Yaml.Events.Queue is
       return Reference'(Ada.Finalization.Controlled with Data => Ptr);
    end New_Queue;
 
-   package body Iteration is
-      function As_Stream (Object : Reference) return Stream_Reference is
-         Ptr : constant not null access Stream_Instance :=
-           new Stream_Instance'(Refcount_Base with Buffer => Object,
-                                Offset => 0);
-      begin
-         Ptr.Buffer.Data.Stream_Count := Ptr.Buffer.Data.Stream_Count + 1;
-         return Stream_Reference'(Ada.Finalization.Controlled with
-                                    Data => Ptr);
-      end As_Stream;
-   end Iteration;
+   function Element (Object : Instance; Position : Mark)
+                     return Element_Accessor is
+      Index : constant Positive := Positive (Position);
+   begin
+      if Index < Object.First_Pos and then Index >= Next_Index (Object) then
+         raise State_Error with "no element at this index";
+      end if;
+      return (Data => Object.Data (Index)'Unrestricted_Access);
+   end Element;
+
+   function As_Stream (Object : Reference'Class) return Stream_Reference is
+      Ptr : constant not null access Stream_Instance :=
+        new Stream_Instance'(Refcount_Base with Buffer => Reference (Object),
+                             Offset => 0);
+   begin
+      Ptr.Buffer.Data.Stream_Count := Ptr.Buffer.Data.Stream_Count + 1;
+      return Stream_Reference'(Ada.Finalization.Controlled with
+                                 Data => Ptr);
+   end As_Stream;
 
    function Value (Object : Stream_Reference) return Stream_Accessor is
      ((Data => Object.Data));
