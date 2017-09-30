@@ -1,14 +1,14 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Yaml.Parser.Suite;
+with Yaml.Loading_Tests.Suite;
 with AUnit.Run;
 with AUnit.Reporter.Text;
 
-procedure Yaml.Parser.Harness is
+procedure Yaml.Loading_Tests.Harness is
    procedure Run is new AUnit.Run.Test_Runner (Suite.Suite);
    Reporter : AUnit.Reporter.Text.Text_Reporter;
 begin
    Reporter.Set_Use_ANSI_Colors (True);
    Run (Reporter);
-end Yaml.Parser.Harness;
+end Yaml.Loading_Tests.Harness;

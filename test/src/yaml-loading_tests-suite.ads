@@ -2,6 +2,6 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with AUnit.Test_Suites;
-package Yaml.Parser.Suite is
+package Yaml.Loading_Tests.Suite is
    function Suite return AUnit.Test_Suites.Access_Test_Suite;
-end Yaml.Parser.Suite;
+end Yaml.Loading_Tests.Suite;
