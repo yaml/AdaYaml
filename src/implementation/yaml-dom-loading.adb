@@ -130,7 +130,8 @@ package body Yaml.Dom.Loading is
          return Ret : constant Document_Reference :=
            (Ada.Finalization.Controlled with
               Data => new Document_Instance'(Refcount_Base with
-                    Root_Node => null, Pool => Pool)) do
+                    Root_Node => null, Pool => Pool,
+                Implicit_Start => Head.Implicit_Start, Implicit_End => <>)) do
             Ret.Data.Root_Node :=
               Node_From (Ret.Data, Stream.Next (Input), Input, Anchors);
             Head := Stream.Next (Input);
@@ -138,6 +139,7 @@ package body Yaml.Dom.Loading is
                raise Stream_Error with
                  "Unexpected event (expected document end): " & Head.Kind'Img;
             end if;
+            Ret.Data.Implicit_End := Head.Implicit_End;
             Head := Stream.Next (Input);
             case Head.Kind is
             when Stream_End => null;
@@ -172,17 +174,20 @@ package body Yaml.Dom.Loading is
                   Doc : constant Document_Reference :=
                     (Document_Reference'(Ada.Finalization.Controlled with
                      Data => new Document_Instance'(Refcount_Base with
-                       Root_Node => null, Pool => Pool)));
+                       Root_Node => null, Pool => Pool,
+                       Implicit_Start => Head.Implicit_Start,
+                       Implicit_End => <>)));
                begin
                   Doc.Data.Root_Node :=
                     Node_From (Doc.Data, Stream.Next (Input), Input, Anchors);
+                  Head := Stream.Next (Input);
+                  if Head.Kind /= Document_End then
+                     raise Stream_Error with
+                       "Unexpected event (expected document end): " & Head.Kind'Img;
+                  end if;
+                  Doc.Data.Implicit_End := Head.Implicit_End;
                   Ret.Append (Doc);
                end;
-               Head := Stream.Next (Input);
-               if Head.Kind /= Document_End then
-                  raise Stream_Error with
-                    "Unexpected event (expected document end): " & Head.Kind'Img;
-               end if;
                Head := Stream.Next (Input);
                exit when Head.Kind /= Document_Start;
                Anchors.Clear;

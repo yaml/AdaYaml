@@ -106,7 +106,7 @@ package body Yaml.Dom.Dumping.Test is
    end Assert_Equals;
 
    procedure Plain_Scalar_Document (T : in out Test_Cases.Test_Case'Class) is
-      Doc : Document_Reference := New_Document (TC (T).Pool);
+      Doc : constant Document_Reference := New_Document (TC (T).Pool);
    begin
       Doc.Set_Root (Doc.New_Scalar ("scalar"));
       Assert_Equals (Doc, (1 => (Kind => Scalar, Content => TC (T).Pool.From_String ("scalar"),
@@ -115,7 +115,7 @@ package body Yaml.Dom.Dumping.Test is
    end Plain_Scalar_Document;
 
    procedure Quoted_Scalar_Document (T : in out Test_Cases.Test_Case'Class) is
-      Doc : Document_Reference := New_Document (TC (T).Pool);
+      Doc : constant Document_Reference := New_Document (TC (T).Pool);
    begin
       Doc.Set_Root (Doc.New_Scalar ("quoted scalar",
                     Style => Double_Quoted));

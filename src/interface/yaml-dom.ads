@@ -28,7 +28,8 @@ package Yaml.Dom is
 
    --  uses the given pool for all text content
    function New_Document (Pool : Text.Pool.Reference :=
-                            Text.Pool.With_Capacity (Text.Pool.Default_Size))
+                            Text.Pool.With_Capacity (Text.Pool.Default_Size);
+                          Implicit_Start, Implicit_End : Boolean := True)
                           return Document_Reference;
 
    function New_Scalar (Parent : Document_Reference'Class;
@@ -66,10 +67,15 @@ package Yaml.Dom is
    function Is_Empty (Object : Document_Reference) return Boolean;
    function Root (Object : Document_Reference'Class) return Node_Reference
      with Pre => not Is_Empty (Object);
-   procedure Set_Root (Object : in out Document_Reference;
+   procedure Set_Root (Object : Document_Reference;
                        Value : Node_Reference'Class);
-   procedure Set_Root (Object : in out Document_Reference;
+   procedure Set_Root (Object : Document_Reference;
                        Value : Optional_Node_Reference'Class);
+
+   function Starts_Implicitly (Object : Document_Reference) return Boolean;
+   function Ends_Implicitly (Object : Document_Reference) return Boolean;
+   procedure Set_Representation_Hints (Object : Document_Reference;
+                                       Implicit_Start, Implicit_End : Boolean);
 
    function Value (Object : Node_Reference) return Accessor;
    function Value (Object : Optional_Node_Reference) return Accessor;
@@ -85,6 +91,7 @@ private
    type Document_Instance is new Refcount_Base with record
       Root_Node : access Node.Instance;
       Pool      : Text.Pool.Reference;
+      Implicit_Start, Implicit_End : Boolean;
    end record;
 
    type Document_Reference is new Ada.Finalization.Controlled with record
@@ -115,7 +122,8 @@ private
    No_Document : constant Document_Reference :=
      (Ada.Finalization.Controlled with Data =>
          new Document_Instance'(Refcount_Base with
-        Root_Node =>  null, Pool => <>));
+        Root_Node =>  null, Pool => <>, Implicit_Start => True,
+        Implicit_End => True));
 
    No_Node : constant Optional_Node_Reference :=
      (Ada.Finalization.Controlled with Data => null, Document => null);

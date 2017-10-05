@@ -12,10 +12,10 @@ test-coverage:
 test-coverage-run: test-coverage
 	rm -rf cvg
 	mkdir cvg
-	gnatcov run -o cvg/yaml-lexer-harness.trace \
-		test/bin/cvg/yaml-lexer-harness
-	gnatcov run -o cvg/yaml-parser-harness.trace \
-		test/bin/cvg/yaml-parser-harness
+	gnatcov run -o cvg/yaml-loading_tests-harness.trace \
+		test/bin/cvg/yaml-loading_tests-harness
+	gnatcov run -o cvg/yaml-dumping_tests-harness.trace \
+		test/bin/cvg/yaml-dumping_tests-harness
 	gnatcov coverage -P yaml-tests.gpr --projects yaml --subdirs=cvg \
 		--annotate dhtml --level stmt+decision \
 		--output-dir=cvg cvg/*.trace

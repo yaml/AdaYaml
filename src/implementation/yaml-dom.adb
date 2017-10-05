@@ -116,13 +116,16 @@ package body Yaml.Dom is
                          Pairs => For_Document (Document)));
 
    function New_Document (Pool : Text.Pool.Reference :=
-                            Text.Pool.With_Capacity (Text.Pool.Default_Size))
+                            Text.Pool.With_Capacity (Text.Pool.Default_Size);
+                          Implicit_Start, Implicit_End : Boolean := True)
                           return Document_Reference
    is
    begin
       return (Ada.Finalization.Controlled with Data =>
                  new Document_Instance'(Refcount_Base with
-                  Pool => Pool, Root_Node => null));
+                  Pool => Pool, Root_Node => null,
+                Implicit_Start => Implicit_Start,
+                Implicit_End => Implicit_End));
    end New_Document;
 
    function New_Scalar (Parent : Document_Reference'Class;
@@ -194,17 +197,30 @@ package body Yaml.Dom is
               Data => Node_Pointer (Object.Data.Root_Node));
    end Root;
 
-   procedure Set_Root (Object : in out Document_Reference;
+   procedure Set_Root (Object : Document_Reference;
                        Value : Node_Reference'Class) is
    begin
       Object.Data.Root_Node := Value.Data;
    end Set_Root;
 
-   procedure Set_Root (Object : in out Document_Reference;
+   procedure Set_Root (Object : Document_Reference;
                        Value : Optional_Node_Reference'Class) is
    begin
       Object.Data.Root_Node := Value.Data;
    end Set_Root;
+
+   function Starts_Implicitly (Object : Document_Reference) return Boolean is
+     (Object.Data.Implicit_Start);
+
+   function Ends_Implicitly (Object : Document_Reference) return Boolean is
+     (Object.Data.Implicit_End);
+
+   procedure Set_Representation_Hints (Object : Document_Reference;
+                                       Implicit_Start, Implicit_End : Boolean)
+   is begin
+      Object.Data.Implicit_Start := Implicit_Start;
+      Object.Data.Implicit_End := Implicit_End;
+   end Set_Representation_Hints;
 
    function Value (Object : Node_Reference) return Accessor is
      ((Data => Object.Data));

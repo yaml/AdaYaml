@@ -115,9 +115,13 @@ package body Yaml.Dom.Dumping is
             end Visit_Pairs;
          begin
             Queue.Append ((Kind => Stream_Start, others => <>));
-            Queue.Append ((Kind => Document_Start, others => <>));
+            Queue.Append ((Kind => Document_Start,
+                           Implicit_Start => Document.Data.Implicit_Start,
+                           others => <>));
             Visit (Document.Data.Root_Node);
-            Queue.Append ((Kind => Document_End, others => <>));
+            Queue.Append ((Kind => Document_End,
+                           Implicit_End => Document.Data.Implicit_End,
+                           others => <>));
             Queue.Append ((Kind => Stream_End, others => <>));
          end;
       end return;
