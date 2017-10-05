@@ -4,6 +4,7 @@
 with Ada.Strings.Fixed;
 with Ada.Unchecked_Deallocation;
 with Yaml.Presenter.Analysis;
+with Yaml.Tags;
 
 package body Yaml.Presenter is
    use type Text.Reference;
@@ -207,7 +208,7 @@ package body Yaml.Presenter is
                Write (" &" & Props.Anchor);
                Wrote_Anything := True;
             end if;
-            if Props.Tag /= Text.Empty then
+            if Props.Tag /= Tags.Question_Mark then
                Write (' ');
                Render_Tag (Props.Tag);
                Wrote_Anything := True;
@@ -223,7 +224,7 @@ package body Yaml.Presenter is
                Write ('&' & Props.Anchor & ' ');
                Wrote_Anything := True;
             end if;
-            if Props.Tag /= Text.Empty then
+            if Props.Tag /= Tags.Question_Mark then
                Render_Tag (Props.Tag);
                Write (' ');
                Wrote_Anything := True;

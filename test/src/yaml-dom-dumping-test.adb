@@ -11,6 +11,7 @@ package body Yaml.Dom.Dumping.Test is
    begin
       Register_Routine (T, Plain_Scalar_Document'Access, "Plain scalar document");
       Register_Routine (T, Quoted_Scalar_Document'Access, "Quoted scalar document");
+      Register_Routine (T, Explicit_Document'Access, "Explicit document");
    end Register_Tests;
 
    procedure Set_Up (T : in out TC) is
@@ -34,8 +35,18 @@ package body Yaml.Dom.Dumping.Test is
       Assert (Expected.Kind = Actual.Kind, "Event kinds differ (expected: " &
                 Expected.Kind'Img & ", actual: " & Actual.Kind'Img & ")");
       case Expected.Kind is
-         when Stream_Start | Stream_End | Document_Start | Document_End |
-              Annotation_End | Sequence_End | Mapping_End => null;
+         when Document_Start =>
+            Assert (Expected.Implicit_Start = Actual.Implicit_Start,
+                    "implicit start differs (expected: " &
+                      Expected.Implicit_Start'Img & ", actual: " &
+                      Actual.Implicit_Start'Img);
+         when Document_End =>
+            Assert (Expected.Implicit_End = Actual.Implicit_End,
+                    "implicit end differs (expected: " &
+                      Expected.Implicit_End'Img & ", actual: " &
+                      Actual.Implicit_End'Img);
+         when Stream_Start | Stream_End | Annotation_End | Sequence_End |
+              Mapping_End => null;
          when Mapping_Start | Sequence_Start =>
             Assert (Expected.Collection_Style = Actual.Collection_Style,
                     "styles differ (expected: " & Expected.Collection_Style'Img &
@@ -70,7 +81,8 @@ package body Yaml.Dom.Dumping.Test is
       end case;
    end Assert_Equal;
 
-   procedure Assert_Equals (Doc : Document_Reference; Expected : Event_Array) is
+   procedure Assert_Equals (Doc : Document_Reference; Expected : Event_Array;
+                            Implicit_Start, Implicit_End : Boolean := True) is
       Actual : constant Events.Queue.Reference := To_Event_Queue (Doc);
       Expected_Index : Positive := Expected'First;
       Cur : Event;
@@ -81,7 +93,8 @@ package body Yaml.Dom.Dumping.Test is
       Assert_Equal ((Kind => Stream_Start, others => <>), Cur);
       Actual.Value.Dequeue;
       Cur := Actual.Value.First;
-      Assert_Equal ((Kind => Document_Start, others => <>), Cur);
+      Assert_Equal ((Kind => Document_Start, Implicit_Start => Implicit_Start,
+                     others => <>), Cur);
       Actual.Value.Dequeue;
       while Expected_Index <= Expected'Last loop
          declare
@@ -98,7 +111,8 @@ package body Yaml.Dom.Dumping.Test is
       Assert (Actual.Value.Length = 2,
               "actual event sequence does not contain expected document end / stream end events");
       Cur := Actual.Value.First;
-      Assert_Equal ((Kind => Document_End, others => <>), Cur);
+      Assert_Equal ((Kind => Document_End, Implicit_End => Implicit_End,
+                     others => <>), Cur);
       Actual.Value.Dequeue;
       Cur := Actual.Value.First;
       Assert_Equal ((Kind => Stream_End, others => <>), Cur);
@@ -125,4 +139,15 @@ package body Yaml.Dom.Dumping.Test is
                                  others => <>)));
    end Quoted_Scalar_Document;
 
+   procedure Explicit_Document (T : in out Test_Cases.Test_Case'Class) is
+      Doc : constant Document_Reference := New_Document (TC (T).Pool,
+                                                         False, False);
+   begin
+      Doc.Set_Root (Doc.New_Scalar ("explicit document",
+                    Style => Single_Quoted));
+      Assert_Equals (Doc, (1 => (Kind => Scalar, Content => TC (T).Pool.From_String ("explicit document"),
+                                 Scalar_Style => Single_Quoted,
+                                 Scalar_Properties => (Tag => Tags.Question_Mark, Anchor => <>),
+                                 others => <>)), False, False);
+   end Explicit_Document;
 end Yaml.Dom.Dumping.Test;

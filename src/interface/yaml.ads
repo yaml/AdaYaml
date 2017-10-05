@@ -58,8 +58,10 @@ package Yaml is
    subtype Flow_Scalar_Style_Type is Scalar_Style_Type range Literal .. Folded;
 
    type Properties is record
-      Anchor, Tag : Text.Reference := Text.Empty;
+      Anchor, Tag : Text.Reference;
    end record;
+
+   function Default_Properties return Properties;
 
    function Is_Empty (Props : Properties) return Boolean with Inline;
 

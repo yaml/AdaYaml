@@ -2,6 +2,7 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 with Ada.Unchecked_Deallocation;
+with Yaml.Tags;
 
 package body Yaml is
    function Version_Major return Natural is (1);
@@ -10,13 +11,16 @@ package body Yaml is
 
    use type Text.Reference;
 
+   function Default_Properties return Properties is
+     ((Anchor => Text.Empty, Tag => Tags.Question_Mark));
+
    function Is_Empty (Props : Properties) return Boolean is
-     ((Props.Anchor = Text.Empty and then Props.Tag = Text.Empty));
+     ((Props.Anchor = Text.Empty and then Props.Tag = Tags.Question_Mark));
 
    function To_String (E : Event) return String is
       function Prop_String (A : Properties) return String is
         ((if A.Anchor = Text.Empty then "" else " &" & A.Anchor.Value) &
-         (if A.Tag = Text.Empty then "" else " <" & A.Tag.Value & '>'));
+         (if A.Tag = Tags.Question_Mark then "" else " <" & A.Tag.Value & '>'));
 
       function Scalar_Indicator (S : Scalar_Style_Type) return String is
         ((case S is

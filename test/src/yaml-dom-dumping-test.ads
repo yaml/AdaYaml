@@ -16,4 +16,5 @@ package Yaml.Dom.Dumping.Test is
 
    procedure Plain_Scalar_Document (T : in out Test_Cases.Test_Case'Class);
    procedure Quoted_Scalar_Document (T : in out Test_Cases.Test_Case'Class);
+   procedure Explicit_Document (T : in out Test_Cases.Test_Case'Class);
 end Yaml.Dom.Dumping.Test;
