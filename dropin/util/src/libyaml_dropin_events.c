@@ -6,7 +6,9 @@ void put_properties(yaml_char_t* anchor, yaml_char_t* tag) {
     printf(" &%s", anchor);
   }
   if (*tag != 0) {
-    printf(" <%s>", tag);
+    if (strcmp((const char*)tag, "?") != 0) {
+      printf(" <%s>", tag);
+    }
   }
 }
 
@@ -70,6 +72,15 @@ int main(int argc, char* argv[]) {
 	    break;
 	}
 	puts((char*)event.data.scalar.value);
+	break;
+      case YAML_ANNOTATION_START_EVENT:
+	printf("+ANN");
+	put_properties(event.data.annotation_start.anchor,
+		       event.data.annotation_start.tag);
+	printf(" @%s\n", event.data.annotation_start.name);
+	break;
+      case YAML_ANNOTATION_END_EVENT:
+	puts("-ANN");
 	break;
       case YAML_NO_EVENT:
 	puts(":NIL");
