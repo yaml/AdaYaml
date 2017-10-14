@@ -2,13 +2,11 @@
 #include <stdio.h>
 
 void put_properties(yaml_char_t* anchor, yaml_char_t* tag) {
-  if (*anchor != 0) {
+  if (anchor) {
     printf(" &%s", anchor);
   }
-  if (*tag != 0) {
-    if (strcmp((const char*)tag, "?") != 0) {
-      printf(" <%s>", tag);
-    }
+  if (tag) {
+     printf(" <%s>", tag);
   }
 }
 

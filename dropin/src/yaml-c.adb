@@ -4,9 +4,14 @@
 with Ada.Strings.Fixed;
 with Ada.Unchecked_Deallocation;
 with Yaml.Destination.C_String;
+with Yaml.Tags;
 with Text.Pool;
 
 package body Yaml.C is
+   use type System.Address;
+   use type Interfaces.C.Strings.chars_ptr;
+   use type Text.Reference;
+
    Creation_Pool : Text.Pool.Reference;
 
    Version_String : constant Interfaces.C.Strings.chars_ptr :=
@@ -69,6 +74,12 @@ package body Yaml.C is
       return True;
    end Alias_Event_Initialize;
 
+   function Ada_Value_For (C_Value : Interfaces.C.Strings.chars_ptr;
+                           Default : Text.Reference := Text.Empty)
+                           return Text.Reference is
+     ((if C_Value = Interfaces.C.Strings.Null_Ptr then Default else
+            Creation_Pool.From_String (Interfaces.C.Strings.Value (C_Value))));
+
    function Scalar_Event_Initialize
      (E : out Event; Anchor, Tag, Value : Interfaces.C.Strings.chars_ptr;
       Plain_Implicit, Quoted_Implicit : Bool; Style : Scalar_Style_Type)
@@ -77,12 +88,10 @@ package body Yaml.C is
         Interfaces.C.Strings.Value (Value);
    begin
       E := (Kind => Scalar, Data => (T => Scalar,
-                                     Scalar_Tag => Text.Export
-                                       (Creation_Pool.From_String (
-                                        Interfaces.C.Strings.Value (Tag))),
+                                     Scalar_Tag => Text.Export (Ada_Value_For
+                                       (Tag, Tags.Question_Mark)),
                                      Scalar_Anchor => Text.Export
-                                       (Creation_Pool.From_String (
-                                        Interfaces.C.Strings.Value (Anchor))),
+                                       (Ada_Value_For (Anchor)),
                                      Value => Text.Export
                                        (Creation_Pool.From_String (
                                         Converted_Value)),
@@ -99,9 +108,8 @@ package body Yaml.C is
    begin
       E := (Kind => Sequence_Start, Data =>
               (T => Sequence_Start, Seq_Anchor => Text.Export
-               (Creation_Pool.From_String (Interfaces.C.Strings.Value (Anchor))),
-               Seq_Tag => Text.Export (Creation_Pool.From_String (
-                 Interfaces.C.Strings.Value (Tag))),
+               (Ada_Value_For (Anchor)),
+               Seq_Tag => Text.Export (Ada_Value_For (Tag, Tags.Question_Mark)),
                Seq_Implicit => Implicit, Seq_Style => Style), others => <>);
       return True;
    end Sequence_Start_Event_Initialize;
@@ -118,10 +126,8 @@ package body Yaml.C is
    begin
       E := (Kind => Mapping_Start, Data =>
               (T => Mapping_Start, Map_Anchor => Text.Export
-               (Creation_Pool.From_String (
-                  Interfaces.C.Strings.Value (Anchor))),
-               Map_Tag => Text.Export (Creation_Pool.From_String (
-                 Interfaces.C.Strings.Value (Tag))),
+               (Ada_Value_For (Anchor)),
+               Map_Tag => Text.Export (Ada_Value_For (Tag, Tags.Question_Mark)),
                Map_Implicit => Implicit, Map_Style => Style), others => <>);
       return True;
    end Mapping_Start_Event_Initialize;
@@ -134,18 +140,25 @@ package body Yaml.C is
 
    procedure Event_Delete (E : in out Event) is
       pragma Unmodified (E);
+
+      procedure Delete_If_Exists (Value : Text.Exported) is
+      begin
+         if Value /= System.Null_Address then
+            Text.Delete_Exported (Value);
+         end if;
+      end Delete_If_Exists;
    begin
       case E.Kind is
          when Scalar =>
-            Text.Delete_Exported (E.Data.Scalar_Anchor);
-            Text.Delete_Exported (E.Data.Scalar_Tag);
+            Delete_If_Exists (E.Data.Scalar_Anchor);
+            Delete_If_Exists (E.Data.Scalar_Tag);
             Text.Delete_Exported (E.Data.Value);
          when Mapping_Start =>
-            Text.Delete_Exported (E.Data.Map_Anchor);
-            Text.Delete_Exported (E.Data.Map_Tag);
+            Delete_If_Exists (E.Data.Map_Anchor);
+            Delete_If_Exists (E.Data.Map_Tag);
          when Sequence_Start =>
-            Text.Delete_Exported (E.Data.Seq_Anchor);
-            Text.Delete_Exported (E.Data.Seq_Tag);
+            Delete_If_Exists (E.Data.Seq_Anchor);
+            Delete_If_Exists (E.Data.Seq_Tag);
          when Alias =>
             Text.Delete_Exported (E.Data.Ali_Anchor);
          when others => null;
@@ -198,42 +211,54 @@ package body Yaml.C is
             when Alias => Alias,
             when Annotation_Start => Annotation_Start,
             when Annotation_End => Annotation_End);
+
+      generic
+         Null_Value : Text.Reference;
+      function Export_Nullable (Value : Text.Reference) return Text.Exported;
+
+      function Export_Nullable (Value : Text.Reference) return Text.Exported is
+        (if Value = Null_Value then System.Null_Address else
+            Text.Export (Value));
+
+      function Export_Tag is new Export_Nullable (Tags.Question_Mark);
+      function Export_Anchor is new Export_Nullable (Text.Empty);
+
       function To_Data return Event_Data is
         (case Raw.Kind is
             when Stream_Start => (T => Stream_Start, Encoding => UTF8),
             when Stream_End => (T => Stream_End),
             when Document_Start => (T => Document_Start,
-                                           Version_Directive => System.Null_Address,
-                                           Start_Dir => System.Null_Address,
-                                           End_Dir => System.Null_Address,
-                                           DS_Implicit => Bool (Raw.Implicit_Start)),
+                                    Version_Directive => System.Null_Address,
+                                    Start_Dir => System.Null_Address,
+                                    End_Dir => System.Null_Address,
+                                    DS_Implicit => Bool (Raw.Implicit_Start)),
             when Document_End => (T => Document_End,
-                                         DE_Implicit => Bool (Raw.Implicit_End)),
+                                  DE_Implicit => Bool (Raw.Implicit_End)),
             when Mapping_Start => (T => Mapping_Start,
-                                          Map_Anchor => Text.Export (Raw.Collection_Properties.Anchor),
-                                          Map_Tag => Text.Export (Raw.Collection_Properties.Tag),
-                                          Map_Implicit => False,
-                                          Map_Style => Raw.Collection_Style),
+                                   Map_Anchor => Export_Anchor (Raw.Collection_Properties.Anchor),
+                                   Map_Tag => Export_Tag (Raw.Collection_Properties.Tag),
+                                   Map_Implicit => False,
+                                   Map_Style => Raw.Collection_Style),
             when Mapping_End => (T => Mapping_End),
             when Sequence_Start => (T => Sequence_Start,
-                                          Seq_Anchor => Text.Export (Raw.Collection_Properties.Anchor),
-                                          Seq_Tag => Text.Export (Raw.Collection_Properties.Tag),
-                                          Seq_Implicit => False,
-                                          Seq_Style => Raw.Collection_Style),
+                                    Seq_Anchor => Export_Anchor (Raw.Collection_Properties.Anchor),
+                                    Seq_Tag => Export_Tag (Raw.Collection_Properties.Tag),
+                                    Seq_Implicit => False,
+                                    Seq_Style => Raw.Collection_Style),
             when Sequence_End => (T => Sequence_End),
             when Scalar => (T => Scalar,
-                                   Scalar_Anchor => Text.Export (Raw.Scalar_Properties.Anchor),
-                                   Scalar_Tag => Text.Export (Raw.Scalar_Properties.Tag),
-                                   Value => Text.Export (Raw.Content),
-                                   Length => Interfaces.C.size_t (Raw.Content.Length),
-                                   Plain_Implicit => False,
-                                   Quoted_Implicit => False,
-                                   Scalar_Style => Raw.Scalar_Style),
+                            Scalar_Anchor => Export_Anchor (Raw.Scalar_Properties.Anchor),
+                            Scalar_Tag => Export_Tag (Raw.Scalar_Properties.Tag),
+                            Value => Text.Export (Raw.Content),
+                            Length => Interfaces.C.size_t (Raw.Content.Length),
+                            Plain_Implicit => False,
+                            Quoted_Implicit => False,
+                            Scalar_Style => Raw.Scalar_Style),
             when Alias => (T => Alias,
                            Ali_Anchor => Text.Export (Raw.Target)),
             when Annotation_Start => (T => Annotation_Start,
                                       Ann_Anchor => Text.Export (Raw.Annotation_Properties.Anchor),
-                                      Ann_Tag    => Text.Export (Raw.Annotation_Properties.Tag),
+                                      Ann_Tag    => Export_Tag (Raw.Annotation_Properties.Tag),
                                       Ann_Name   => Text.Export (Raw.Name)),
             when Annotation_End => (T => Annotation_End));
 
