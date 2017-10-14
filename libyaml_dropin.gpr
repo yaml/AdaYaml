@@ -45,7 +45,7 @@ library project Libyaml_Dropin is
             ("-gnat12", "-gnatwa", "-gnatwl", "-E", "-gnateE", "-gnaty3abcefhiklmNprt", "-g", "-fstack-check");
       when "release" =>
          for Default_Switches ("ada") use
-            ("-gnat12", "-gnatwa", "-gnatwl", "-O3", "-gnaty3abcefhiklmNprt", "-fstack-check");
+            ("-gnat12", "-gnatwa", "-gnatwl", "-O3", "-gnaty3abcefhiklmNprt", "-fstack-check", "-fno-strict-aliasing");
       end case;
    end Compiler;
 end Libyaml_Dropin;

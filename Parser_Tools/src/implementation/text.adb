@@ -134,11 +134,10 @@ package body Text is
    end Export;
 
    function Import (Pointer : Exported) return Reference is
-      function Convert is new Ada.Unchecked_Conversion
-        (Exported, UTF_8_String_Access);
    begin
-      return Value : constant Reference := (Ada.Finalization.Controlled with
-                                            Data => Convert (Pointer)) do
+      return Value : constant Reference :=
+        (Ada.Finalization.Controlled with
+           Data => To_UTF_8_String_Access (Pointer)) do
          declare
             H : constant access Header := Header_Of (Value.Data);
          begin

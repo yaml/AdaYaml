@@ -1,10 +1,13 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Exceptions;
 with Ada.Strings.Fixed;
 with Ada.Unchecked_Deallocation;
 with Yaml.Destination.C_String;
+with Yaml.Source;
 with Yaml.Tags;
+with Lexer.Source.C_Handler;
 with Text.Pool;
 
 package body Yaml.C is
@@ -167,23 +170,73 @@ package body Yaml.C is
 
    function Parser_Initialize (P : in out Parser_Type) return Bool is
    begin
-      P := new Parser_Holder;
+      P.Error := No_Error;
+      P.Problem := Interfaces.C.Strings.Null_Ptr;
+      P.Ptr := new Parser.Instance;
       return True;
+   exception
+      when E : Storage_Error =>
+         P.Error := Memory_Error;
+         P.Problem := Interfaces.C.Strings.New_String (Ada.Exceptions.Exception_Message (E));
+         return False;
+      when E : others =>
+         P.Error := Parser_Error;
+         P.Problem := Interfaces.C.Strings.New_String
+           (Ada.Exceptions.Exception_Name (E) & ": " &
+              Ada.Exceptions.Exception_Message (E));
+         return False;
    end Parser_Initialize;
 
    procedure Parser_Delete (P : in out Parser_Type) is
       procedure Free is new Ada.Unchecked_Deallocation
-        (Parser_Holder, Parser_Type);
+        (Parser.Instance, Parser_Pointer);
    begin
-      Free (P);
+      if P.Problem /= Interfaces.C.Strings.Null_Ptr then
+         Interfaces.C.Strings.Free (P.Problem);
+      end if;
+      Free (P.Ptr);
    end Parser_Delete;
 
    procedure Parser_Set_Input_String (P : in out Parser_Type;
                                       Input : Interfaces.C.Strings.chars_ptr;
                                       Size : Interfaces.C.size_t) is
    begin
-      P.Instance.Set_Input (Interfaces.C.Strings.Value (Input, Size));
+      P.Ptr.Set_Input (Interfaces.C.Strings.Value (Input, Size));
    end Parser_Set_Input_String;
+
+   function fread (Ptr : System.Address; Size, Count : Interfaces.C.size_t;
+                   Stream : System.Address) return Interfaces.C.size_t with
+     Import, Convention => C, External_Name => "fread";
+
+   function ferror (Stream : System.Address) return Interfaces.C.int with
+     Import, Convention => C, External_Name => "ferror";
+
+   function File_Read_Handler (Data, Buffer : System.Address;
+                               Size : Interfaces.C.size_t;
+                               Size_Read : out Interfaces.C.size_t) return Bool
+     with Convention => C;
+
+   function File_Read_Handler (Data, Buffer : System.Address;
+                               Size : Interfaces.C.size_t;
+                               Size_Read : out Interfaces.C.size_t) return Bool
+   is
+      use type Interfaces.C.int;
+   begin
+      Size_Read := fread (Buffer, 1, Size, Data);
+      return Bool (ferror (Data) = 0);
+   end File_Read_Handler;
+
+   procedure Parser_Set_Input_File (P : in out Parser_Type;
+                                    File : System.Address) is
+   begin
+      Parser_Set_Input (P, File_Read_Handler'Access, File);
+   end Parser_Set_Input_File;
+
+   procedure Parser_Set_Input (P : in out Parser_Type;
+                               Handler : Read_Handler; Data : System.Address) is
+   begin
+      P.Ptr.Set_Input (Source.C_Handler.As_Source (Data, Handler));
+   end Parser_Set_Input;
 
    function To_C (M : Mark) return C_Mark is
      ((Index  => Interfaces.C.size_t (M.Index),
@@ -196,77 +249,103 @@ package body Yaml.C is
        Column => Mark_Position (C.Column)));
 
    function Parser_Parse (P : in out Parser_Type; E : out Event) return Bool is
-      Raw : constant Yaml.Event := P.Instance.Next;
-      function To_Type return Event_Type is
-        (case Raw.Kind is
-            when Stream_Start => Stream_Start,
-            when Stream_End => Stream_End,
-            when Document_Start => Document_Start,
-            when Document_End => Document_End,
-            when Mapping_Start => Mapping_Start,
-            when Mapping_End => Mapping_End,
-            when Sequence_Start => Sequence_Start,
-            when Sequence_End => Sequence_End,
-            when Scalar => Scalar,
-            when Alias => Alias,
-            when Annotation_Start => Annotation_Start,
-            when Annotation_End => Annotation_End);
-
-      generic
-         Null_Value : Text.Reference;
-      function Export_Nullable (Value : Text.Reference) return Text.Exported;
-
-      function Export_Nullable (Value : Text.Reference) return Text.Exported is
-        (if Value = Null_Value then System.Null_Address else
-            Text.Export (Value));
-
-      function Export_Tag is new Export_Nullable (Tags.Question_Mark);
-      function Export_Anchor is new Export_Nullable (Text.Empty);
-
-      function To_Data return Event_Data is
-        (case Raw.Kind is
-            when Stream_Start => (T => Stream_Start, Encoding => UTF8),
-            when Stream_End => (T => Stream_End),
-            when Document_Start => (T => Document_Start,
-                                    Version_Directive => System.Null_Address,
-                                    Start_Dir => System.Null_Address,
-                                    End_Dir => System.Null_Address,
-                                    DS_Implicit => Bool (Raw.Implicit_Start)),
-            when Document_End => (T => Document_End,
-                                  DE_Implicit => Bool (Raw.Implicit_End)),
-            when Mapping_Start => (T => Mapping_Start,
-                                   Map_Anchor => Export_Anchor (Raw.Collection_Properties.Anchor),
-                                   Map_Tag => Export_Tag (Raw.Collection_Properties.Tag),
-                                   Map_Implicit => False,
-                                   Map_Style => Raw.Collection_Style),
-            when Mapping_End => (T => Mapping_End),
-            when Sequence_Start => (T => Sequence_Start,
-                                    Seq_Anchor => Export_Anchor (Raw.Collection_Properties.Anchor),
-                                    Seq_Tag => Export_Tag (Raw.Collection_Properties.Tag),
-                                    Seq_Implicit => False,
-                                    Seq_Style => Raw.Collection_Style),
-            when Sequence_End => (T => Sequence_End),
-            when Scalar => (T => Scalar,
-                            Scalar_Anchor => Export_Anchor (Raw.Scalar_Properties.Anchor),
-                            Scalar_Tag => Export_Tag (Raw.Scalar_Properties.Tag),
-                            Value => Text.Export (Raw.Content),
-                            Length => Interfaces.C.size_t (Raw.Content.Length),
-                            Plain_Implicit => False,
-                            Quoted_Implicit => False,
-                            Scalar_Style => Raw.Scalar_Style),
-            when Alias => (T => Alias,
-                           Ali_Anchor => Text.Export (Raw.Target)),
-            when Annotation_Start => (T => Annotation_Start,
-                                      Ann_Anchor => Text.Export (Raw.Annotation_Properties.Anchor),
-                                      Ann_Tag    => Export_Tag (Raw.Annotation_Properties.Tag),
-                                      Ann_Name   => Text.Export (Raw.Name)),
-            when Annotation_End => (T => Annotation_End));
-
    begin
-      E := (Kind => To_Type, Data => To_Data,
-            Start_Mark => To_C (Raw.Start_Position),
-            End_Mark => To_C (Raw.End_Position));
-      return True;
+      --  use internal declare block so that exception handler handles
+      --  all possible exceptions
+      declare
+         Raw : constant Yaml.Event := P.Ptr.Next;
+         function To_Type return Event_Type is
+           (case Raw.Kind is
+               when Stream_Start => Stream_Start,
+               when Stream_End => Stream_End,
+               when Document_Start => Document_Start,
+               when Document_End => Document_End,
+               when Mapping_Start => Mapping_Start,
+               when Mapping_End => Mapping_End,
+               when Sequence_Start => Sequence_Start,
+               when Sequence_End => Sequence_End,
+               when Scalar => Scalar,
+               when Alias => Alias,
+               when Annotation_Start => Annotation_Start,
+               when Annotation_End => Annotation_End);
+
+         generic
+            Null_Value : Text.Reference;
+         function Export_Nullable (Value : Text.Reference) return Text.Exported;
+
+         function Export_Nullable (Value : Text.Reference)
+                                   return Text.Exported is
+           (if Value = Null_Value then System.Null_Address else
+               Text.Export (Value));
+
+         function Export_Tag is new Export_Nullable (Tags.Question_Mark);
+         function Export_Anchor is new Export_Nullable (Text.Empty);
+
+         function To_Data return Event_Data is
+           (case Raw.Kind is
+               when Stream_Start => (T => Stream_Start, Encoding => UTF8),
+               when Stream_End => (T => Stream_End),
+               when Document_Start => (T => Document_Start,
+                                       Version_Directive => System.Null_Address,
+                                       Start_Dir => System.Null_Address,
+                                       End_Dir => System.Null_Address,
+                                       DS_Implicit => Bool (Raw.Implicit_Start)),
+               when Document_End => (T => Document_End,
+                                     DE_Implicit => Bool (Raw.Implicit_End)),
+               when Mapping_Start => (T => Mapping_Start,
+                                      Map_Anchor => Export_Anchor (Raw.Collection_Properties.Anchor),
+                                      Map_Tag => Export_Tag (Raw.Collection_Properties.Tag),
+                                      Map_Implicit => False,
+                                      Map_Style => Raw.Collection_Style),
+               when Mapping_End => (T => Mapping_End),
+               when Sequence_Start => (T => Sequence_Start,
+                                       Seq_Anchor => Export_Anchor (Raw.Collection_Properties.Anchor),
+                                       Seq_Tag => Export_Tag (Raw.Collection_Properties.Tag),
+                                       Seq_Implicit => False,
+                                       Seq_Style => Raw.Collection_Style),
+               when Sequence_End => (T => Sequence_End),
+               when Scalar => (T => Scalar,
+                               Scalar_Anchor => Export_Anchor (Raw.Scalar_Properties.Anchor),
+                               Scalar_Tag => Export_Tag (Raw.Scalar_Properties.Tag),
+                               Value => Text.Export (Raw.Content),
+                               Length => Interfaces.C.size_t (Raw.Content.Length),
+                               Plain_Implicit => False,
+                               Quoted_Implicit => False,
+                               Scalar_Style => Raw.Scalar_Style),
+               when Alias => (T => Alias,
+                              Ali_Anchor => Text.Export (Raw.Target)),
+               when Annotation_Start => (T => Annotation_Start,
+                                         Ann_Anchor => Text.Export (Raw.Annotation_Properties.Anchor),
+                                         Ann_Tag    => Export_Tag (Raw.Annotation_Properties.Tag),
+                                         Ann_Name   => Text.Export (Raw.Name)),
+               when Annotation_End => (T => Annotation_End));
+      begin
+         E := (Kind => To_Type, Data => To_Data,
+               Start_Mark => To_C (Raw.Start_Position),
+               End_Mark => To_C (Raw.End_Position));
+         return True;
+      end;
+   exception
+      when E : Storage_Error =>
+         P.Error := Memory_Error;
+         P.Problem := Interfaces.C.Strings.New_String (Ada.Exceptions.Exception_Message (E));
+         return False;
+      when E : Lexer_Error =>
+         P.Error := Scanner_Error;
+         P.Problem := Interfaces.C.Strings.New_String
+           (Ada.Exceptions.Exception_Message (E));
+         return False;
+      when E : Yaml.Parser_Error =>
+         P.Error := Parser_Error;
+         P.Problem := Interfaces.C.Strings.New_String
+           (Ada.Exceptions.Exception_Message (E));
+         return False;
+      when E : others =>
+         P.Error := Parser_Error;
+         P.Problem := Interfaces.C.Strings.New_String
+           (Ada.Exceptions.Exception_Name (E) & ": " &
+              Ada.Exceptions.Exception_Message (E));
+         return False;
    end Parser_Parse;
 
    function Emitter_Initialize (Em : in out Emitter) return Bool is

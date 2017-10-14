@@ -74,6 +74,11 @@ package Yaml.C is
 
    type Event_Access is access Event with Convention => C;
 
+   type Read_Handler is access function (Data, Buffer : System.Address;
+                                         Size : Interfaces.C.size_t;
+                                         Size_Read : out Interfaces.C.size_t)
+                                         return Bool with Convention => C;
+
    function Stream_Start_Event_Initialize (E : out Event;
                                            Encoding : Encoding_Type) return Bool
       with Export, Convention => C,
@@ -137,8 +142,13 @@ package Yaml.C is
                                       Size : Interfaces.C.size_t) with Export,
      Convention => C, External_Name => "yaml_parser_set_input_string";
 
-   --  yaml_parser_set_input_file must be implemented in C since there is no
-   --  Ada type to map C's FILE type to.
+   procedure Parser_Set_Input_File (P : in out Parser_Type;
+                                    File : System.Address) with Export,
+     Convention => C, External_Name => "yaml_parser_set_input_file";
+
+   procedure Parser_Set_Input (P : in out Parser_Type;
+                               Handler : Read_Handler; Data : System.Address)
+     with Export, Convention => C, External_Name => "yaml_parser_set_input";
 
    function Parser_Parse (P : in out Parser_Type; E : out Event) return Bool
      with Export, Convention => C, External_Name => "yaml_parser_parse";
@@ -159,11 +169,13 @@ package Yaml.C is
    function Emitter_Emit (Em : in out Emitter; E : in out Event) return Bool
      with Export, Convention => C, External_Name => "yaml_emitter_emit";
 private
-   type Parser_Holder is record
-      Instance : Parser.Instance;
-   end record;
+   type Parser_Pointer is access Parser.Instance;
 
-   type Parser_Type is access Parser_Holder;
+   type Parser_Type is record
+      Error : Error_Type;
+      Problem : Interfaces.C.Strings.chars_ptr;
+      Ptr : Parser_Pointer;
+   end record;
 
    type Emitter_Holder is record
       E : Presenter.Instance;

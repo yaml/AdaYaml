@@ -13,11 +13,23 @@ void put_properties(yaml_char_t* anchor, yaml_char_t* tag) {
 int main(int argc, char* argv[]) {
   yaml_parser_t parser;
   yaml_parser_initialize(&parser);
-  yaml_parser_set_input_string
-    (&parser, (unsigned char*) "a: !!map {\n  ? b : c\n }\n!foo bar: *foo", 40);
+  FILE* file = NULL;
+  if (argc == 1) {
+    yaml_parser_set_input_file(&parser, stdin);
+  } else {
+    file = fopen(argv[1], "r");
+    if (!file) {
+      printf("Cannot open file: %s\n", argv[1]);
+      exit(EXIT_FAILURE);
+    }
+    yaml_parser_set_input_file(&parser, file);
+  }
   yaml_event_t event;
   for(;;) {
-    yaml_parser_parse(&parser, &event);
+    if (!yaml_parser_parse(&parser, &event)) {
+       printf("Parser Error:\n  %s\n", parser.problem);
+       exit(EXIT_FAILURE);
+    }
     switch(event.type) {
       case YAML_STREAM_START_EVENT:
 	puts("+STR"); break;
@@ -90,4 +102,7 @@ int main(int argc, char* argv[]) {
   }
   yaml_event_delete(&event);
   yaml_parser_delete(&parser);
+  if (file) {
+    fclose(file);
+  }
 }
