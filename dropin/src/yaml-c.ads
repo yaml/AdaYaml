@@ -25,6 +25,9 @@ package Yaml.C is
      (No_Error, Memory_Error, Reader_Error, Scanner_Error, Parser_Error,
       Composer_Error, Writer_Error, Emitter_Error) with Convention => C;
 
+   procedure Token_Delete (Token : System.Address) with Export,
+     Convention => C, External_Name => "yaml_token_delete";
+
    type Event_Type is
      (No_Event, Stream_Start, Stream_End, Document_Start, Document_End,
       Alias, Scalar, Sequence_Start, Sequence_End, Mapping_Start,
@@ -79,6 +82,10 @@ package Yaml.C is
                                          Size_Read : out Interfaces.C.size_t)
                                          return Bool with Convention => C;
 
+   type Write_Handler is access function (Data, Buffer : System.Address;
+                                          Size : Interfaces.C.size_t)
+                                          return Bool with Convention => C;
+
    function Stream_Start_Event_Initialize (E : out Event;
                                            Encoding : Encoding_Type) return Bool
       with Export, Convention => C,
@@ -129,6 +136,50 @@ package Yaml.C is
    procedure Event_Delete (E : in out Event) with Export, Convention => C,
      External_Name => "yaml_event_delete";
 
+   function Document_Initialize (Document, Version_Directive,
+                                 Tag_Directives_Start, Tag_Directives_End :
+                                 System.Address; Start_Implicit, End_Implicit :
+                                 Bool) return Bool with Export, Convention => C,
+     External_Name => "yaml_document_initialize";
+
+   procedure Document_Delete (Document : System.Address) with Export,
+     Convention => C, External_Name => "yaml_document_delete";
+
+   function Document_Get_Node (Document : System.Address;
+                               Index : Interfaces.C.int) return System.Address
+     with Export, Convention => C, External_Name => "yaml_document_get_node";
+
+   function Document_Get_Root_Node (Document : System.Address)
+                                    return System.Address with Export,
+     Convention => C, External_Name => "yaml_document_get_root_node";
+
+   function Document_Add_Scalar (Document : System.Address;
+                                 Tag, Value : Interfaces.C.Strings.chars_ptr;
+                                 Length : Interfaces.C.int;
+                                 Style : Scalar_Style_Type) return Bool
+     with Export, Convention => C, External_Name => "yaml_document_add_scalar";
+
+   function Document_Add_Sequence (Document : System.Address;
+                                   Tag : Interfaces.C.Strings.chars_ptr;
+                                   Style : Collection_Style_Type) return Bool
+     with Export, Convention => C,
+     External_Name => "yaml_document_add_sequence";
+
+   function Document_Add_Mapping (Document : System.Address;
+                                  Tag : Interfaces.C.Strings.chars_ptr;
+                                  Style : Collection_Style_Type) return Bool
+     with Export, Convention => C, External_Name => "yaml_document_add_mapping";
+
+   function Document_Append_Sequence_Item (Document : System.Address;
+                                           Sequence, Item : Interfaces.C.int)
+                                           return Bool with Export,
+     Convention => C, External_Name => "yaml_document_append_sequence_item";
+
+   function Document_Append_Mapping_Pair
+     (Document : System.Address; Mapping, Key, Value : Interfaces.C.int)
+      return Bool with Export, Convention => C,
+     External_Name => "yaml_document_append_mapping_pair";
+
    type Parser_Type is limited private;
 
    function Parser_Initialize (P : in out Parser_Type) return Bool with Export,
@@ -150,36 +201,62 @@ package Yaml.C is
                                Handler : Read_Handler; Data : System.Address)
      with Export, Convention => C, External_Name => "yaml_parser_set_input";
 
+   procedure Parser_Set_Encoding (P : in out Parser_Type;
+                                  Encoding : Encoding_Type) with Export,
+     Convention => C, External_Name => "yaml_parser_set_encoding";
+
+   function Parser_Scan (P : in out Parser_Type; Token : System.Address)
+                         return Bool with Export, Convention => C,
+     External_Name => "yaml_parser_scan";
+
    function Parser_Parse (P : in out Parser_Type; E : out Event) return Bool
      with Export, Convention => C, External_Name => "yaml_parser_parse";
 
-   type Emitter is limited private;
+   function Parser_Load (P : in out Parser_Type; Document : System.Address)
+                         return Bool with Export, Convention => C,
+     External_Name => "yaml_parser_load";
 
-   function Emitter_Initialize (Em : in out Emitter) return Bool with Export,
-     Convention => C, External_Name => "yaml_emitter_initialize";
+   type Emitter_Type is limited private;
 
-   procedure Emitter_Delete (Em : in out Emitter) with Export, Convention => C,
-     External_Name => "yaml_emitter_delete";
+   function Emitter_Initialize (Emitter : in out Emitter_Type)
+                                return Bool with Export, Convention => C,
+     External_Name => "yaml_emitter_initialize";
 
-   procedure Emitter_Set_Output (Em : in out Emitter; Output : System.Address;
-                                 Size : Interfaces.C.size_t;
-                                 Size_Written : access Interfaces.C.size_t) with
-     Export, Convention => C, External_Name => "yaml_emitter_set_output_string";
+   procedure Emitter_Delete (Emitter : in out Emitter_Type) with Export,
+     Convention => C, External_Name => "yaml_emitter_delete";
 
-   function Emitter_Emit (Em : in out Emitter; E : in out Event) return Bool
-     with Export, Convention => C, External_Name => "yaml_emitter_emit";
+   procedure Emitter_Set_Output_String
+     (Emitter : in out Emitter_Type; Output : System.Address;
+      Size : Interfaces.C.size_t; Size_Written : access Interfaces.C.size_t)
+     with Export, Convention => C,
+     External_Name => "yaml_emitter_set_output_string";
+
+   procedure Emitter_Set_Output_File
+     (Emitter : in out Emitter_Type; File : System.Address) with Export,
+     Convention => C, External_Name => "yaml_emitter_set_output_file";
+
+   procedure Emitter_Set_Output
+     (Emitter : in out Emitter_Type; Handler : Write_Handler;
+      Data : System.Address) with Export, Convention => C,
+     External_Name => "yaml_emitter_set_output";
+
+   function Emitter_Emit (Emitter : in out Emitter_Type; E : in out Event)
+                          return Bool with Export, Convention => C,
+     External_Name => "yaml_emitter_emit";
 private
    type Parser_Pointer is access Parser.Instance;
 
-   type Parser_Type is record
+   type Parser_Type is limited record
       Error : Error_Type;
       Problem : Interfaces.C.Strings.chars_ptr;
       Ptr : Parser_Pointer;
-   end record;
+   end record with Convention => C;
 
-   type Emitter_Holder is record
-      E : Presenter.Instance;
-   end record;
+   type Presenter_Pointer is access Presenter.Instance;
 
-   type Emitter is access Emitter_Holder;
+   type Emitter_Type is limited record
+      Error : Error_Type;
+      Problem : Interfaces.C.Strings.chars_ptr;
+      Ptr : Presenter_Pointer;
+   end record with Convention => C;
 end Yaml.C;

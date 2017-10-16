@@ -43,8 +43,7 @@ package Yaml is
    --  a position in the input stream.
    type Mark is record
       Index, Line, Column : Mark_Position;
-   end record with Convention => C;
-
+   end record;
 
    type Event_Kind is (Stream_Start, Stream_End, Document_Start, Document_End,
                        Alias, Scalar, Sequence_Start, Sequence_End,

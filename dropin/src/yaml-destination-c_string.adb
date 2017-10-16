@@ -7,7 +7,7 @@ package body Yaml.Destination.C_String is
                             Size_Written : access Interfaces.C.size_t)
                             return Pointer is
       Ret : constant access Instance :=
-        new Instance'(Ada.Finalization.Limited_Controlled with
+        new Instance'(Destination.Instance with
                       Raw => Raw, Size => Integer (Size),
                       Size_Written => Size_Written);
    begin

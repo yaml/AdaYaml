@@ -4,6 +4,7 @@
 with Ada.Exceptions;
 with Ada.Strings.Fixed;
 with Ada.Unchecked_Deallocation;
+with Yaml.Destination.C_Handler;
 with Yaml.Destination.C_String;
 with Yaml.Source;
 with Yaml.Tags;
@@ -12,6 +13,7 @@ with Text.Pool;
 
 package body Yaml.C is
    use type System.Address;
+   use type Interfaces.C.size_t;
    use type Interfaces.C.Strings.chars_ptr;
    use type Text.Reference;
 
@@ -33,18 +35,28 @@ package body Yaml.C is
       Patch := Interfaces.C.int (Version_Patch);
    end Get_Version;
 
+   --  token API not implemented.
+   procedure Token_Delete (Token : System.Address) is null;
+
+   procedure Init (E : out Event; Kind : Event_Type) is
+   begin
+      E.Start_Mark := (Index => 1, Line => 1, Column => 1);
+      E.End_Mark := (Index => 1, Line => 1, Column => 1);
+      E.Kind := Kind;
+   end Init;
+
    function Stream_Start_Event_Initialize (E : out Event;
                                            Encoding : Encoding_Type)
                                            return Bool is
    begin
-      E.Kind := Stream_Start;
+      Init (E, Stream_Start);
       E.Data.Encoding := Encoding;
       return True;
    end Stream_Start_Event_Initialize;
 
    function Stream_End_Event_Initialize (E : out Event) return Bool is
    begin
-      E.Kind := Stream_End;
+      Init (E, Stream_End);
       return True;
    end Stream_End_Event_Initialize;
 
@@ -52,28 +64,28 @@ package body Yaml.C is
      (E : out Event; Version_Directive, Tag_Directive_Start, Tag_Directive_End :
       System.Address; Implicit : Bool) return Bool is
    begin
-      E := (Kind => Document_Start, Data =>
-              (T => Document_Start, Version_Directive => Version_Directive,
-               Start_Dir => Tag_Directive_Start, DS_Implicit => Implicit,
-               End_Dir => Tag_Directive_End), others => <>);
+      Init (E, Document_Start);
+      E.Data := (T => Document_Start, Version_Directive => Version_Directive,
+                 Start_Dir => Tag_Directive_Start, DS_Implicit => Implicit,
+                 End_Dir => Tag_Directive_End);
       return True;
    end Document_Start_Event_Initialize;
 
    function Document_End_Event_Initialize
      (E : out Event; Implicit : Bool) return Bool is
    begin
-      E := (Kind => Document_End, Data =>
-              (T => Document_End, DE_Implicit => Implicit), others => <>);
+      Init (E, Document_End);
+      E.Data := (T => Document_End, DE_Implicit => Implicit);
       return True;
    end Document_End_Event_Initialize;
 
    function Alias_Event_Initialize
      (E : out Event; Anchor : Interfaces.C.Strings.chars_ptr) return Bool is
    begin
-      E := (Kind => Alias, Data => (T => Alias, Ali_Anchor => Text.Export
-                                    (Creation_Pool.From_String (
-                                       Interfaces.C.Strings.Value (Anchor)))),
-           others => <>);
+      Init (E, Alias);
+      E.Data := (T => Alias, Ali_Anchor => Text.Export
+                 (Creation_Pool.From_String (
+                    Interfaces.C.Strings.Value (Anchor))));
       return True;
    end Alias_Event_Initialize;
 
@@ -90,18 +102,16 @@ package body Yaml.C is
       Converted_Value : constant Standard.String :=
         Interfaces.C.Strings.Value (Value);
    begin
-      E := (Kind => Scalar, Data => (T => Scalar,
-                                     Scalar_Tag => Text.Export (Ada_Value_For
-                                       (Tag, Tags.Question_Mark)),
-                                     Scalar_Anchor => Text.Export
-                                       (Ada_Value_For (Anchor)),
-                                     Value => Text.Export
-                                       (Creation_Pool.From_String (
-                                        Converted_Value)),
-                                     Length => Converted_Value'Length,
-                                     Plain_Implicit => Plain_Implicit,
-                                     Quoted_Implicit => Quoted_Implicit,
-                                     Scalar_Style => Style), others => <>);
+      Init (E, Scalar);
+      E.Data := (T => Scalar,
+                 Scalar_Tag => Text.Export (Ada_Value_For (Tag, Tags.Question_Mark)),
+                 Scalar_Anchor => Text.Export (Ada_Value_For (Anchor)),
+                 Value => Text.Export (Creation_Pool.From_String (
+                   Converted_Value)),
+                 Length => Converted_Value'Length,
+                 Plain_Implicit => Plain_Implicit,
+                 Quoted_Implicit => Quoted_Implicit,
+                 Scalar_Style => Style);
       return True;
    end Scalar_Event_Initialize;
 
@@ -109,17 +119,17 @@ package body Yaml.C is
      (E : out Event; Anchor, Tag : Interfaces.C.Strings.chars_ptr;
       Implicit : Bool; Style : Collection_Style_Type) return Bool is
    begin
-      E := (Kind => Sequence_Start, Data =>
-              (T => Sequence_Start, Seq_Anchor => Text.Export
-               (Ada_Value_For (Anchor)),
-               Seq_Tag => Text.Export (Ada_Value_For (Tag, Tags.Question_Mark)),
-               Seq_Implicit => Implicit, Seq_Style => Style), others => <>);
+      Init (E, Sequence_Start);
+      E.Data := (T => Sequence_Start, Seq_Anchor => Text.Export
+                 (Ada_Value_For (Anchor)),
+                 Seq_Tag => Text.Export (Ada_Value_For (Tag, Tags.Question_Mark)),
+                 Seq_Implicit => Implicit, Seq_Style => Style);
       return True;
    end Sequence_Start_Event_Initialize;
 
    function Sequence_End_Event_Initialize (E : out Event) return Bool is
    begin
-      E := (Kind => Sequence_End, Data => (T => Sequence_End), others => <>);
+      Init (E, Sequence_End);
       return True;
    end Sequence_End_Event_Initialize;
 
@@ -127,17 +137,17 @@ package body Yaml.C is
      (E : out Event; Anchor, Tag : Interfaces.C.Strings.chars_ptr;
       Implicit : Bool; Style : Collection_Style_Type) return Bool is
    begin
-      E := (Kind => Mapping_Start, Data =>
-              (T => Mapping_Start, Map_Anchor => Text.Export
-               (Ada_Value_For (Anchor)),
-               Map_Tag => Text.Export (Ada_Value_For (Tag, Tags.Question_Mark)),
-               Map_Implicit => Implicit, Map_Style => Style), others => <>);
+      Init (E, Mapping_Start);
+      E.Data := (T => Mapping_Start, Map_Anchor => Text.Export
+                 (Ada_Value_For (Anchor)),
+                 Map_Tag => Text.Export (Ada_Value_For (Tag, Tags.Question_Mark)),
+                 Map_Implicit => Implicit, Map_Style => Style);
       return True;
    end Mapping_Start_Event_Initialize;
 
    function Mapping_End_Event_Initialize (E : out Event) return Bool is
    begin
-      E := (Kind => Mapping_End, Data => (T => Mapping_End), others => <>);
+      Init (E, Mapping_End);
       return True;
    end Mapping_End_Event_Initialize;
 
@@ -167,6 +177,48 @@ package body Yaml.C is
          when others => null;
       end case;
    end Event_Delete;
+
+   function Document_Initialize (Document, Version_Directive,
+                                 Tag_Directives_Start, Tag_Directives_End :
+                                 System.Address; Start_Implicit, End_Implicit :
+                                 Bool) return Bool is (False);
+
+   procedure Document_Delete (Document : System.Address) is null;
+
+   function Document_Get_Node (Document : System.Address;
+                               Index : Interfaces.C.int) return System.Address
+   is (System.Null_Address);
+
+   function Document_Get_Root_Node (Document : System.Address)
+                                    return System.Address is
+     (System.Null_Address);
+
+   function Document_Add_Scalar (Document : System.Address;
+                                 Tag, Value : Interfaces.C.Strings.chars_ptr;
+                                 Length : Interfaces.C.int;
+                                 Style : Scalar_Style_Type) return Bool is
+     (False);
+
+   function Document_Add_Sequence (Document : System.Address;
+                                   Tag : Interfaces.C.Strings.chars_ptr;
+                                   Style : Collection_Style_Type) return Bool is
+     (False);
+
+   function Document_Add_Mapping (Document : System.Address;
+                                  Tag : Interfaces.C.Strings.chars_ptr;
+                                  Style : Collection_Style_Type) return Bool is
+     (False);
+
+   function Document_Append_Sequence_Item (Document : System.Address;
+                                           Sequence, Item : Interfaces.C.int)
+                                           return Bool is (False);
+
+   function Document_Append_Mapping_Pair
+     (Document : System.Address; Mapping, Key, Value : Interfaces.C.int)
+      return Bool is (False);
+
+   procedure Parser_Set_Encoding (P : in out Parser_Type;
+                                  Encoding : Encoding_Type) is null;
 
    function Parser_Initialize (P : in out Parser_Type) return Bool is
    begin
@@ -208,6 +260,10 @@ package body Yaml.C is
                    Stream : System.Address) return Interfaces.C.size_t with
      Import, Convention => C, External_Name => "fread";
 
+   function fwrite (Ptr : System.Address; Size, Count : Interfaces.C.size_t;
+                    Stream : System.Address) return Interfaces.C.size_t with
+     Import, Convention => C, External_Name => "fwrite";
+
    function ferror (Stream : System.Address) return Interfaces.C.int with
      Import, Convention => C, External_Name => "ferror";
 
@@ -237,6 +293,16 @@ package body Yaml.C is
    begin
       P.Ptr.Set_Input (Source.C_Handler.As_Source (Data, Handler));
    end Parser_Set_Input;
+
+   function Parser_Scan (P : in out Parser_Type; Token : System.Address)
+                         return Bool is
+      pragma Unreferenced (Token);
+   begin
+      P.Error := Scanner_Error;
+      P.Problem := Interfaces.C.Strings.New_String
+        ("AdaYaml does not implement the low-level scanner API");
+      return False;
+   end Parser_Scan;
 
    function To_C (M : Mark) return C_Mark is
      ((Index  => Interfaces.C.size_t (M.Index),
@@ -326,9 +392,10 @@ package body Yaml.C is
          return True;
       end;
    exception
-      when E : Storage_Error =>
+      when Storage_Error =>
          P.Error := Memory_Error;
-         P.Problem := Interfaces.C.Strings.New_String (Ada.Exceptions.Exception_Message (E));
+         --  do not set problem because if we're out of memory, that would
+         --  likely raise another exception.
          return False;
       when E : Lexer_Error =>
          P.Error := Scanner_Error;
@@ -348,92 +415,158 @@ package body Yaml.C is
          return False;
    end Parser_Parse;
 
-   function Emitter_Initialize (Em : in out Emitter) return Bool is
+   function Parser_Load (P : in out Parser_Type; Document : System.Address)
+                         return Bool is
+      pragma Unreferenced (Document);
    begin
-      Em := new Emitter_Holder;
+      P.Error := Composer_Error;
+      P.Problem := Interfaces.C.Strings.New_String
+        ("AdaYaml does not implement the composer API");
+      return False;
+   end Parser_Load;
+
+   function Emitter_Initialize (Emitter : in out Emitter_Type) return Bool is
+   begin
+      Emitter.Ptr := new Presenter.Instance;
       return True;
    end Emitter_Initialize;
 
-   procedure Emitter_Delete (Em : in out Emitter) is
-      procedure Free is new Ada.Unchecked_Deallocation (Emitter_Holder, Emitter);
+   procedure Emitter_Delete (Emitter : in out Emitter_Type) is
+      procedure Free is new Ada.Unchecked_Deallocation (Presenter.Instance,
+                                                        Presenter_Pointer);
    begin
-      Free (Em);
+      if Emitter.Problem /= Interfaces.C.Strings.Null_Ptr then
+         Interfaces.C.Strings.Free (Emitter.Problem);
+      end if;
+      Free (Emitter.Ptr);
    end Emitter_Delete;
 
-   procedure Emitter_Set_Output (Em : in out Emitter; Output : System.Address;
-                                 Size : Interfaces.C.size_t;
-                                 Size_Written : access Interfaces.C.size_t) is
+   procedure Emitter_Set_Output_String
+     (Emitter : in out Emitter_Type; Output : System.Address;
+      Size : Interfaces.C.size_t; Size_Written : access Interfaces.C.size_t) is
    begin
-      Em.E.Set_Output (Destination.C_String.As_Destination
-                       (Output, Size, Size_Written));
+      Emitter.Ptr.Set_Output (Destination.C_String.As_Destination
+                              (Output, Size, Size_Written));
+   end Emitter_Set_Output_String;
+
+   function File_Write_Handler (Data, Buffer : System.Address;
+                                Size : Interfaces.C.size_t) return Bool with
+     Convention => C;
+
+   function File_Write_Handler (Data, Buffer : System.Address;
+                                Size : Interfaces.C.size_t) return Bool is
+     (Bool (fwrite (Buffer, 1, Size, Data) = Size));
+
+   procedure Emitter_Set_Output_File
+     (Emitter : in out Emitter_Type; File : System.Address) is
+   begin
+      Emitter.Ptr.Set_Output (Destination.C_Handler.As_Destination
+                              (File_Write_Handler'Access, File));
+   end Emitter_Set_Output_File;
+
+   procedure Emitter_Set_Output (Emitter : in out Emitter_Type;
+                                 Handler : Write_Handler;
+                                 Data : System.Address) is
+   begin
+      Emitter.Ptr.Set_Output (Destination.C_Handler.As_Destination
+                              (Handler, Data));
    end Emitter_Set_Output;
 
-   function Emitter_Emit (Em : in out Emitter; E : in out Event) return Bool is
-      function To_Properties (Tag, Anchor : Text.Exported)
+   function Emitter_Emit (Emitter : in out Emitter_Type; E : in out Event)
+                          return Bool is
+   begin
+      declare
+         function To_Properties (Tag, Anchor : Text.Exported)
                               return Properties is
-        ((Anchor => Text.Import (Anchor), Tag => Text.Import (Tag)));
+           ((Anchor => (if Anchor = System.Null_Address then Text.Empty else
+                           Text.Import (Anchor)),
+             Tag => (if Tag = System.Null_Address then Tags.Question_Mark else
+                        Text.Import (Tag))));
 
-      function To_Event (E : Event) return Yaml.Event is
-        (case E.Kind is
-            when Stream_Start => (Kind => Stream_Start,
-                                  Start_Position => To_Ada (E.Start_Mark),
-                                  End_Position => To_Ada (E.End_Mark)),
-            when Stream_End => (Kind => Stream_End,
-                                Start_Position => To_Ada (E.Start_Mark),
-                                End_Position => To_Ada (E.End_Mark)),
-            when Document_Start => (Kind => Document_Start,
-                                    Start_Position => To_Ada (E.Start_Mark),
-                                    End_Position => To_Ada (E.End_Mark),
-                                    Version => Text.Empty,
-                                    Implicit_Start => Boolean (E.Data.DS_Implicit)),
-            when Document_End => (Kind => Document_End,
-                                  Start_Position => To_Ada (E.Start_Mark),
-                                  End_Position => To_Ada (E.End_Mark),
-                                  Implicit_End => Boolean (E.Data.DE_Implicit)),
-            when Mapping_Start =>
-           (Kind => Mapping_Start,
-            Start_Position => To_Ada (E.Start_Mark),
-            End_Position => To_Ada (E.End_Mark),
-            Collection_Style => E.Data.Map_Style,
-            Collection_Properties => To_Properties (E.Data.Map_Tag, E.Data.Map_Anchor)),
-            when Mapping_End => (Kind => Mapping_End,
-                                 Start_Position => To_Ada (E.Start_Mark),
-                                 End_Position => To_Ada (E.End_Mark)),
-            when Sequence_Start =>
-           (Kind => Sequence_Start,
-            Start_Position => To_Ada (E.Start_Mark),
-            End_Position => To_Ada (E.End_Mark),
-            Collection_Style => E.Data.Seq_Style,
-            Collection_Properties => To_Properties (E.Data.Seq_Tag, E.Data.Seq_Anchor)),
-            when Sequence_End => (Kind => Sequence_End,
-                                  Start_Position => To_Ada (E.Start_Mark),
-                                  End_Position => To_Ada (E.End_Mark)),
-            when Scalar => (Kind => Scalar,
-                            Start_Position => To_Ada (E.Start_Mark),
-                            End_Position => To_Ada (E.End_Mark),
-                            Scalar_Properties => To_Properties (E.Data.Scalar_Tag, E.Data.Scalar_Anchor),
-                            Content => Text.Import (E.Data.Value),
-                            Scalar_Style => E.Data.Scalar_Style),
-            when Alias => (Kind => Alias,
-                           Start_Position => To_Ada (E.Start_Mark),
-                           End_Position => To_Ada (E.End_Mark),
-                           Target => Text.Import (E.Data.Ali_Anchor)),
-            when Annotation_Start => (Kind => Annotation_Start,
-                                      Start_Position => To_Ada (E.Start_Mark),
-                                      End_Position => To_Ada (E.End_Mark),
-                                      Annotation_Properties => To_Properties (E.Data.Ann_Tag, E.Data.Ann_Anchor),
-                                      Name => Text.Import (E.Data.Ann_Name)),
-            when Annotation_End => (Kind => Annotation_End,
+         function To_Event (E : Event) return Yaml.Event is
+           (case E.Kind is
+               when Stream_Start => (Kind => Stream_Start,
+                                     Start_Position => To_Ada (E.Start_Mark),
+                                     End_Position => To_Ada (E.End_Mark)),
+               when Stream_End => (Kind => Stream_End,
+                                   Start_Position => To_Ada (E.Start_Mark),
+                                   End_Position => To_Ada (E.End_Mark)),
+               when Document_Start => (Kind => Document_Start,
+                                       Start_Position => To_Ada (E.Start_Mark),
+                                       End_Position => To_Ada (E.End_Mark),
+                                       Version => Text.Empty,
+                                       Implicit_Start => Boolean (E.Data.DS_Implicit)),
+               when Document_End => (Kind => Document_End,
+                                     Start_Position => To_Ada (E.Start_Mark),
+                                     End_Position => To_Ada (E.End_Mark),
+                                     Implicit_End => Boolean (E.Data.DE_Implicit)),
+               when Mapping_Start =>
+              (Kind => Mapping_Start,
+               Start_Position => To_Ada (E.Start_Mark),
+               End_Position => To_Ada (E.End_Mark),
+               Collection_Style => E.Data.Map_Style,
+               Collection_Properties => To_Properties (E.Data.Map_Tag, E.Data.Map_Anchor)),
+               when Mapping_End => (Kind => Mapping_End,
                                     Start_Position => To_Ada (E.Start_Mark),
                                     End_Position => To_Ada (E.End_Mark)),
-            when No_Event => (others => <>));
-   begin
-      if E.Kind /= No_Event then
-         Em.E.Put (To_Event (E));
-      end if;
-      Event_Delete (E);
-      return True;
+               when Sequence_Start =>
+              (Kind => Sequence_Start,
+               Start_Position => To_Ada (E.Start_Mark),
+               End_Position => To_Ada (E.End_Mark),
+               Collection_Style => E.Data.Seq_Style,
+               Collection_Properties => To_Properties (E.Data.Seq_Tag, E.Data.Seq_Anchor)),
+               when Sequence_End => (Kind => Sequence_End,
+                                     Start_Position => To_Ada (E.Start_Mark),
+                                     End_Position => To_Ada (E.End_Mark)),
+               when Scalar => (Kind => Scalar,
+                               Start_Position => To_Ada (E.Start_Mark),
+                               End_Position => To_Ada (E.End_Mark),
+                               Scalar_Properties => To_Properties (E.Data.Scalar_Tag, E.Data.Scalar_Anchor),
+                               Content => Text.Import (E.Data.Value),
+                               Scalar_Style => E.Data.Scalar_Style),
+               when Alias => (Kind => Alias,
+                              Start_Position => To_Ada (E.Start_Mark),
+                              End_Position => To_Ada (E.End_Mark),
+                              Target => Text.Import (E.Data.Ali_Anchor)),
+               when Annotation_Start => (Kind => Annotation_Start,
+                                         Start_Position => To_Ada (E.Start_Mark),
+                                         End_Position => To_Ada (E.End_Mark),
+                                         Annotation_Properties => To_Properties (E.Data.Ann_Tag, E.Data.Ann_Anchor),
+                                         Name => Text.Import (E.Data.Ann_Name)),
+               when Annotation_End => (Kind => Annotation_End,
+                                       Start_Position => To_Ada (E.Start_Mark),
+                                       End_Position => To_Ada (E.End_Mark)),
+               when No_Event => (others => <>));
+      begin
+         if E.Kind /= No_Event then
+            Emitter.Ptr.Put (To_Event (E));
+         end if;
+         Event_Delete (E);
+         return True;
+      end;
+   exception
+      when Storage_Error =>
+         Emitter.Error := Memory_Error;
+         --  do not set problem because if we're out of memory, that would
+         --  likely raise another exception.
+         return False;
+      when E : Constraint_Error =>
+         Emitter.Error := Emitter_Error;
+         Emitter.Problem := Interfaces.C.Strings.New_String
+           (Ada.Exceptions.Exception_Message (E));
+         return False;
+      when E : Yaml.Presenter_Error =>
+         Emitter.Error := Emitter_Error;
+         Emitter.Problem := Interfaces.C.Strings.New_String
+           (Ada.Exceptions.Exception_Message (E));
+         return False;
+      when E : others =>
+         Emitter.Error := Emitter_Error;
+         Emitter.Problem := Interfaces.C.Strings.New_String
+           (Ada.Exceptions.Exception_Name (E) & ": " &
+              Ada.Exceptions.Exception_Message (E));
+         return False;
    end Emitter_Emit;
 begin
-   Creation_Pool.Create (8192);
+   Creation_Pool.Create (Text.Pool.Default_Size);
 end Yaml.C;
