@@ -5,6 +5,12 @@ package body Text.Builder is
    H_Size : constant System.Storage_Elements.Storage_Offset :=
      System.Storage_Elements.Storage_Offset (Header_Size);
 
+   procedure Init (Object : in out Reference; Pool : in out Text.Pool.Reference;
+                   Initial_Size : Positive := 255) is
+   begin
+      Object := Create (Pool, Initial_Size);
+   end Init;
+
    function Create (Pool : in out Text.Pool.Reference;
                     Initial_Size : Positive := 255) return Reference is
       Base : constant Text.Reference := Pool.With_Length (Initial_Size);
@@ -12,8 +18,11 @@ package body Text.Builder is
    begin
       H.Refcount := H.Refcount + 1;
       return (Ada.Finalization.Controlled with Buffer => Base.Data,
-              Length => 0, Pool => Pool);
+              Next => 1, Pool => Pool);
    end Create;
+
+   function Initialized (Object : Reference) return Boolean is
+     (Object.Buffer /= null);
 
    procedure Grow (Object : in out Reference;
                    Size : System.Storage_Elements.Storage_Offset) is
@@ -23,44 +32,44 @@ package body Text.Builder is
                                         Data => Object.Buffer);
       New_Buffer : constant Text.Reference :=
         Object.Pool.With_Length
-          (Positive (((Object.Length + Size + H.Last + 1) /
+          (Positive (((Object.Next + Size + H.Last) /
            (H.Last + 1)) * (H.Last + 1) - 1));
       New_H : constant not null access Header := Header_Of (New_Buffer.Data);
    begin
       New_H.Refcount := New_H.Refcount + 1;
-      New_Buffer.Data (1 .. Positive (Object.Length)) :=
-        Old.Data.all;
+      New_Buffer.Data (1 .. Natural (Object.Next - 1)) :=
+        Old.Data (1 .. Natural (Object.Next - 1));
       Object.Buffer := New_Buffer.Data;
    end Grow;
 
    procedure Append (Object : in out Reference; Value : String) is
 
    begin
-      if Object.Length + Value'Length >
+      if Object.Next + Value'Length - 1 >
         System.Storage_Elements.Storage_Offset (Object.Buffer.all'Last) then
          Grow (Object, Value'Length);
       end if;
-      Object.Buffer (Positive (Object.Length + 1) .. Natural (Object.Length +
-                     Value'Length)) := Value;
-      Object.Length := Object.Length + Value'Length;
+      Object.Buffer (Positive (Object.Next) .. Natural (Object.Next +
+                     Value'Length - 1)) := Value;
+      Object.Next := Object.Next + Value'Length;
    end Append;
 
    procedure Append (Object : in out Reference; Value : Character) is
       H : Header with Import;
       for H'Address use Object.Buffer.all'Address - H_Size;
    begin
-      if Object.Length = H.Last then
+      if Object.Next = H.Last - 1 then
          Grow (Object, 1);
       end if;
-      Object.Buffer (Positive (Object.Length) + 1) := Value;
-      Object.Length := Object.Length + 1;
+      Object.Buffer (Positive (Object.Next)) := Value;
+      Object.Next := Object.Next + 1;
    end Append;
 
    function Lock (Object : in out Reference) return Text.Reference is
       H : Header with Import;
       for H'Address use Object.Buffer.all'Address - H_Size;
    begin
-      H.Last := Object.Length;
+      H.Last := Object.Next - 1;
       H.Refcount := H.Refcount + 1;
       return (Ada.Finalization.Controlled with Data => Object.Buffer);
    end Lock;

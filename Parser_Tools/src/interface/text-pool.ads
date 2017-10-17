@@ -4,11 +4,14 @@
 package Text.Pool is
    type Reference is new Ada.Finalization.Controlled with private;
 
+   Default_Size : constant Pool_Offset;
+
    --  must be called once before the string pool can be used. if called again,
    --  the string pool re-initializes itself with new memory, and the old memory
    --  lives on only in References that have already been generated. the
    --  old memory is reclaimed once all string references to it vanish.
-   procedure Create (P : in out Reference'Class; Initial_Size : Pool_Offset);
+   procedure Create (P : in out Reference'Class;
+                     Initial_Size : Pool_Offset := Default_Size);
 
    --  constructor that calls Create with the given Size parameter
    function With_Capacity (Size : Pool_Offset) return Reference;
@@ -23,8 +26,6 @@ package Text.Pool is
 
    --  for debugging
    function Current_Chunk_As_String (P : Reference) return String;
-
-   Default_Size : constant Pool_Offset;
 private
    type Reference is new Ada.Finalization.Controlled with record
       Data : Pool_Data_Access;
@@ -34,5 +35,5 @@ private
    overriding procedure Adjust (Object : in out Reference);
    overriding procedure Finalize (Object : in out Reference);
 
-   Default_Size : constant Pool_Offset := 8092;
+   Default_Size : constant Pool_Offset := 8192;
 end Text.Pool;

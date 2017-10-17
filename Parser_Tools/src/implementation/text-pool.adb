@@ -2,7 +2,8 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 package body Text.Pool is
-   procedure Create (P : in out Reference'Class; Initial_Size : Pool_Offset)
+   procedure Create (P : in out Reference'Class;
+                     Initial_Size : Pool_Offset := Default_Size)
    is
      Initial_Chunk : constant Chunk := new Pool_Array
           (Pool_Offset (1) .. Round_To_Header_Size (Initial_Size));

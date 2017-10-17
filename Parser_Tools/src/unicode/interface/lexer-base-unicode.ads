@@ -8,7 +8,7 @@ package Lexer.Base.Unicode is
 
    subtype Rune is Strings_Edit.UTF8.UTF8_Code_Point;
 
-   function Next (Object : in out Instance) return Rune with Inline;
+   function Next (Object : in out Instance'Class) return Rune with Inline;
 
    End_Of_Input    : constant Rune := 4;
    Line_Feed       : constant Rune := 10;
