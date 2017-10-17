@@ -1,0 +1,2 @@
+- &a [three, four]
+- @concat [ [one, two], *a]

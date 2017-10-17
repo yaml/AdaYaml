@@ -35,11 +35,23 @@ package Yaml.Events.Store is
 
    type Stream_Instance is limited new Refcount_Base with private;
    type Stream_Reference is tagged private;
+   type Optional_Stream_Reference is tagged private;
    type Stream_Accessor (Data : not null access Stream_Instance) is limited
      null record with Implicit_Dereference => Data;
 
    function Value (Object : Stream_Reference) return Stream_Accessor;
    function Next (Object : in out Stream_Instance) return Event;
+
+   function Exists (Object : Optional_Stream_Reference) return Boolean;
+   function Value (Object : Optional_Stream_Reference) return Stream_Accessor
+     with Pre => Object.Exists;
+
+   function Optional (Object : Stream_Reference'Class)
+                      return Optional_Stream_Reference with
+     Post => Optional'Result.Exists;
+
+   procedure Clear (Object : in out Optional_Stream_Reference) with
+     Post => not Object.Exists;
 
    package Iteration is
       function Retrieve (Object : Reference;
@@ -91,4 +103,11 @@ private
 
    overriding procedure Adjust (Object : in out Stream_Reference);
    overriding procedure Finalize (Object : in out Stream_Reference);
+
+   type Optional_Stream_Reference is new Ada.Finalization.Controlled with record
+      Data : access Stream_Instance;
+   end record;
+
+   overriding procedure Adjust (Object : in out Optional_Stream_Reference);
+   overriding procedure Finalize (Object : in out Optional_Stream_Reference);
 end Yaml.Events.Store;

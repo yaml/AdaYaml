@@ -1,0 +1,3 @@
+- &a spam egg sausage
+- @concat [*a, " and spam"]
+

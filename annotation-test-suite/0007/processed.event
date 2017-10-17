@@ -1,0 +1,21 @@
++STR
++DOC
++SEQ
++SEQ &front
+=VAL :Nants
+=VAL :ingonyama
+-SEQ
++SEQ &back
+=VAL :bagithi
+=VAL :Baba
+-SEQ
++SEQ
+=VAL :Nants
+=VAL :ingonyama
+=VAL :bagithi
+=VAL :Baba
+-SEQ
+-SEQ
+-DOC
+-STR
+

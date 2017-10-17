@@ -1,0 +1,4 @@
+- &a LoremIpsum
+- &b DolorSitAmet 
+- @concat [*a, *b]
+

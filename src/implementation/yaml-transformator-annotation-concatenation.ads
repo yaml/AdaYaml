@@ -2,6 +2,7 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 private with Text.Builder;
+private with Yaml.Events.Store;
 
 package Yaml.Transformator.Annotation.Concatenation is
    type Instance is limited new Transformator.Instance with private;
@@ -38,5 +39,6 @@ private
       State : State_Type := Initial'Access;
       Current_Exists : Boolean := False;
       Current : Event;
+      Current_Aliased : Events.Store.Optional_Stream_Reference;
    end record;
 end Yaml.Transformator.Annotation.Concatenation;

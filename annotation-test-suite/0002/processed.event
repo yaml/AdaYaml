@@ -1,0 +1,9 @@
++STR
++DOC
++SEQ
+=VAL &a :LoremIpsum
+=VAL &b :DolorSitAmet
+=VAL :LoremIpsumDolorSitAmet
+-SEQ
+-DOC
+-STR

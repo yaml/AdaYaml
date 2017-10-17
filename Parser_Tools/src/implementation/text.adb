@@ -1,6 +1,8 @@
 --  part of ParserTools, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+pragma No_Strict_Aliasing;
+
 with Ada.Strings.Hash;
 with Ada.Strings.Unbounded;
 with Ada.Unchecked_Deallocation;

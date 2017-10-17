@@ -1,0 +1,16 @@
++STR
++DOC
++SEQ
++SEQ &a
+=VAL :three
+=VAL :four
+-SEQ
++SEQ
+=VAL :one
+=VAL :two
+=VAL :three
+=VAL :four
+-SEQ
+-SEQ
+-DOC
+-STR

@@ -37,14 +37,14 @@ package body Yaml.Events.Store is
          when Scalar =>
             if Item.Scalar_Properties.Anchor /= Text.Empty then
                Object.Anchor_Map.Include (Item.Scalar_Properties.Anchor,
-                                          Object.Length);
+                                          Object.Length + 1);
             elsif Object.Depth = 0 then
                return;
             end if;
          when Mapping_Start =>
             if Item.Collection_Properties.Anchor /= Text.Empty then
                Object.Anchor_Map.Include (Item.Collection_Properties.Anchor,
-                                          Object.Length);
+                                          Object.Length + 1);
             elsif Object.Depth = 0 then
                return;
             end if;
@@ -52,7 +52,7 @@ package body Yaml.Events.Store is
          when Sequence_Start =>
             if Item.Collection_Properties.Anchor /= Text.Empty then
                Object.Anchor_Map.Include (Item.Collection_Properties.Anchor,
-                                          Object.Length);
+                                          Object.Length + 1);
             elsif Object.Depth = 0 then
                return;
             end if;
@@ -139,8 +139,30 @@ package body Yaml.Events.Store is
                Object.Depth := Natural'Max (2, Object.Depth + 1);
             when others => null;
          end case;
+         Object.Current := Object.Current + 1;
       end return;
    end Next;
+
+   function Exists (Object : Optional_Stream_Reference) return Boolean is
+     (Object.Data /= null);
+
+   function Value (Object : Optional_Stream_Reference) return Stream_Accessor is
+     ((Data => Object.Data));
+
+   function Optional (Object : Stream_Reference'Class)
+                      return Optional_Stream_Reference is
+   begin
+      Object.Data.Refcount := Object.Data.Refcount + 1;
+      return (Ada.Finalization.Controlled with Data => Object.Data);
+   end Optional;
+
+   procedure Clear (Object : in out Optional_Stream_Reference) is
+   begin
+      if Object.Data /= null then
+         Decrease_Refcount (Object.Data);
+         Object.Data := null;
+      end if;
+   end Clear;
 
    procedure Adjust (Object : in out Reference) is
    begin
@@ -179,5 +201,19 @@ package body Yaml.Events.Store is
    procedure Finalize (Object : in out Stream_Reference) is
    begin
       Decrease_Refcount (Object.Data);
+   end Finalize;
+
+   procedure Adjust (Object : in out Optional_Stream_Reference) is
+   begin
+      if Object.Data /= null then
+         Increase_Refcount (Object.Data);
+      end if;
+   end Adjust;
+
+   procedure Finalize (Object : in out Optional_Stream_Reference) is
+   begin
+      if Object.Data /= null then
+         Decrease_Refcount (Object.Data);
+      end if;
    end Finalize;
 end Yaml.Events.Store;

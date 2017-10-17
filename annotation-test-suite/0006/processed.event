@@ -1,0 +1,24 @@
++STR
++DOC
++SEQ
++SEQ &foo
+=VAL :if
+=VAL :you
+=VAL :can
+=VAL :read
+=VAL :this
+-SEQ
++SEQ
+=VAL :if
+=VAL :you
+=VAL :can
+=VAL :read
+=VAL :this
+=VAL :you
+=VAL :dont
+=VAL :need
+=VAL :glasses
+-SEQ
+-SEQ
+-DOC
+-STR

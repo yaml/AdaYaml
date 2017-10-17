@@ -1,0 +1,8 @@
++STR
++DOC
++SEQ
+=VAL &a :yaml.io
+=VAL :http://yaml.io
+-SEQ
+-DOC
+-STR

@@ -1,0 +1,2 @@
+- &foo [if, you, can, read, this]
+- @concat [*foo, [you, dont, need, glasses]]
