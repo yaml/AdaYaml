@@ -166,7 +166,7 @@ package body Text is
         Round_To_Header_Size (Length + 1);
       Cur : Pool_Offset := P.Pos;
 
-      procedure Allocate_Next_Chunk is
+      procedure Allocate_Next_Chunk (Size : Pool_Offset) is
          Next : Chunk_Index_Type;
       begin
          for I in Chunk_Index_Type loop
@@ -180,10 +180,7 @@ package body Text is
 
          <<Found>>
 
-         P.Chunks (Next) := new Pool_Array
-           (Pool_Offset (1) .. Pool_Offset'Max (
-            P.Chunks (P.Cur)'Length * 2,
-            Necessary + Header_Size));
+         P.Chunks (Next) := new Pool_Array (Pool_Offset (1) .. Size);
          P.Usage (P.Cur) := P.Usage (P.Cur) - 1;
          P.Usage (Next) := 1;
          P.Cur := Next;
@@ -217,7 +214,7 @@ package body Text is
                         P.Pos := 1;
                      end if;
                      if P.Pos = Cur then
-                        Allocate_Next_Chunk;
+                        Allocate_Next_Chunk (C'Length * 2);
                         exit;
                      end if;
                      declare
@@ -262,7 +259,17 @@ package body Text is
                   Cur := 1;
                end if;
                if Cur = P.Pos then
-                  Allocate_Next_Chunk;
+                  Allocate_Next_Chunk
+                    (Pool_Offset'Max (C'Length * 2,
+                     (Necessary + Header_Size) * 2));
+                  Cur := 1;
+                  declare
+                     Next : Header with Import;
+                     for Next'Address use P.Chunks (P.Cur) (Cur)'Address;
+                  begin
+                     Next.Refcount := 0;
+                     Next.Last := P.Chunks (P.Cur)'Last - Header_Size;
+                  end;
                   exit;
                end if;
                declare
