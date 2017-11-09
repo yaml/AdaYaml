@@ -121,7 +121,14 @@ package body Yaml.Dom.Loading is
                         if Parent.Key = null then
                            Parent.Key := Level.Cur.all'Unchecked_Access;
                         else
-                           Raw_Insert (Parent.Cur.Pairs, Parent.Key, Level.Cur);
+                           begin
+                              Raw_Insert (Parent.Cur.Pairs, Parent.Key,
+                                          Level.Cur);
+                           exception
+                              when Constraint_Error =>
+                                 raise Composer_Error with
+                                   "Duplicate key in mapping";
+                           end;
                            Parent.Key := null;
                         end if;
                      when Scalar =>
