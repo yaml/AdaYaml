@@ -45,6 +45,13 @@ private
    function Hash (Value : Pointer_Pair) return Ada.Containers.Hash_Type is
      (Hash (Value.Left) xor Hash (Value.Right));
 
+   function Equal_Nodes (Left, Right : Node_Pointer) return Boolean is
+     (Left = Right or else Node."=" (Left.all, Right.all));
+
+   function "=" (Left, Right : Pointer_Pair) return Boolean is
+     (Equal_Nodes (Left.Left, Right.Left) and then
+      Equal_Nodes (Left.Right, Right.Right));
+
    package Pair_Sets is new Ada.Containers.Indefinite_Hashed_Sets
      (Pointer_Pair, Hash, Node_Memory."=", Node_Memory."=");
 

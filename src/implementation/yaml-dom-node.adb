@@ -1,6 +1,7 @@
 --  part of AdaYaml, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Strings.Hash;
 with System;
 with Yaml.Dom.Node_Memory;
 
@@ -78,44 +79,46 @@ package body Yaml.Dom.Node is
    end "=";
 
    function Hash (Object : Instance) return Ada.Containers.Hash_Type is
+      --  for efficiency reasons, the hash of a collection node is not
+      --  calculated recursively. Instead, only the content of the node and the
+      --  types and number of its children (and their content for scalars) is
+      --  taken into account. this suffices as hash function as long as the
+      --  objects used as keys do not get too large.
    begin
       if Object.Kind = Scalar then
          return Object.Content.Hash;
       else
          declare
-            Ret    : Ada.Containers.Hash_Type := 0;
-            Memory : Node_Memory.Instance;
+            Ret : Ada.Containers.Hash_Type :=
+              Ada.Strings.Hash (Object.Kind'Img);
 
-            procedure Visit (Cur : not null access Node.Instance);
-            procedure Visit_Pair (Key, Value : not null access Node.Instance);
-
-            procedure Visit (Cur : not null access Node.Instance) is
-               Visited : Boolean;
+            procedure Visit (Prefix : String;
+                             Cur : not null access Node.Instance) is
             begin
-               Memory.Visit (Cur, Visited);
-               if Visited then
-                  return;
-               end if;
                case Cur.Kind is
-                  when Scalar => Ret := Ret xor Cur.Content.Hash;
+                  when Scalar => Ret := Ret * Cur.Content.Hash;
                   when Sequence =>
-                     Ret := Ret xor Ada.Containers.Hash_Type (Cur.Items.Length);
-                     Cur.Items.Iterate (Visit'Access);
+                     Ret := Ret * Ada.Strings.Hash
+                       (Prefix & "Sequence" & Cur.Items.Length'Img);
                   when Mapping =>
-                     Ret := Ret xor Ada.Containers.Hash_Type (Cur.Pairs.Length);
-                     Cur.Pairs.Iterate (Visit_Pair'Access);
+                     Ret := Ret * Ada.Strings.Hash
+                       (Prefix & "Mapping" & Cur.Pairs.Length'Img);
                end case;
-               Memory.Forget (Cur);
             end Visit;
+
+            procedure Visit_Item (Cur : not null access Node.Instance) is
+            begin
+               Visit ("Item:", Cur);
+            end Visit_Item;
 
             procedure Visit_Pair (Key, Value : not null access Node.Instance) is
             begin
-               Visit (Key);
-               Visit (Value);
+               Visit ("Key:", Key);
+               Visit ("Value:", Value);
             end Visit_Pair;
          begin
             if Object.Kind = Sequence then
-               Object.Items.Iterate (Visit'Access);
+               Object.Items.Iterate (Visit_Item'Access);
             else
                Object.Pairs.Iterate (Visit_Pair'Access);
             end if;
