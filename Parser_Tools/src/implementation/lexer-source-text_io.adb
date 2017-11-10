@@ -8,8 +8,7 @@ package body Lexer.Source.Text_IO is
       Length := Buffer'First;
       loop
          Ada.Text_IO.Get_Line (S.File_Pointer.all,
-                               Buffer (Length .. Buffer'Last), Length);
-         exit when Length = Buffer'Last;
+                               Buffer (Length .. Buffer'Last - 1), Length);
          if Ada.Text_IO.End_Of_File (S.File_Pointer.all) then
             Length := Length + 1;
             Buffer (Length) := Character'Val (4);
@@ -17,6 +16,7 @@ package body Lexer.Source.Text_IO is
          end if;
          Buffer (Length + 1) := Character'Val (10);
          Length := Length + 2;
+         exit when Length > Buffer'Last;
       end loop;
    end Read_Data;
 
