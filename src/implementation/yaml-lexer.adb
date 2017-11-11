@@ -357,7 +357,7 @@ package body Yaml.Lexer is
       end if;
       Evaluation.Read_URI (L, False);
       T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
-            Kind => Tag_Uri);
+            Kind => Suffix);
       L.State := Expect_Line_End'Access;
       return True;
    end At_Tag_Uri;
@@ -541,50 +541,48 @@ package body Yaml.Lexer is
             Kind => Kind);
    end Leave_Flow_Collection;
 
-   procedure Read_Tag_Handle (L : in out Instance; T : out Token) with
-     Pre => L.Cur = '!' is
+   procedure Read_Namespace (L : in out Instance; T : out Token;
+                             NS_Char : Character; Kind : Token_Kind) with
+     Pre => L.Cur = NS_Char is
    begin
       Start_Token (L);
       L.Cur := Next (L);
       if L.Cur = '<' then
-         Evaluation.Read_URI (L, False);
-         T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
-               Kind => Verbatim_Tag);
-         L.State := After_Token'Access;
+         raise Lexer_Error with "Verbatim URIs not supported in YAML 1.3";
       else
-         --  we need to scan for a possible second '!' in case this is not a
+         --  we need to scan for a possible second NS_Char in case this is not a
          --  primary tag handle. We must lookahead here because there may be
          --  URI characters in the suffix that are not allowed in the handle.
          declare
             Handle_End : Positive := L.Token_Start;
          begin
             loop
-               case L.Buffer (Handle_End) is
-                  when Space_Or_Line_End | Flow_Indicator =>
-                     Handle_End := L.Token_Start;
-                     L.Pos := L.Pos - 1;
-                     exit;
-                  when '!' =>
-                     Handle_End := Handle_End + 1;
-                     exit;
-                  when others =>
-                     Handle_End := Handle_End + 1;
-               end case;
+               if L.Buffer (Handle_End) in Space_Or_Line_End | Flow_Indicator
+               then
+                  Handle_End := L.Token_Start;
+                  L.Pos := L.Pos - 1;
+                  exit;
+               elsif L.Buffer (Handle_End) = NS_Char then
+                  Handle_End := Handle_End + 1;
+                  exit;
+               else
+                  Handle_End := Handle_End + 1;
+               end if;
             end loop;
             while L.Pos < Handle_End loop
                L.Cur := Next (L);
-               if not (L.Cur in Tag_Shorthand_Char | '!') then
+               if not (L.Cur in Tag_Shorthand_Char | NS_Char) then
                   raise Lexer_Error with "Illegal character in tag handle: " &
                     Escaped (L.Cur);
                end if;
             end loop;
             L.Cur := Next (L);
             T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
-                  Kind => Tag_Handle);
+                  Kind => Kind);
             L.State := At_Tag_Suffix'Access;
          end;
       end if;
-   end Read_Tag_Handle;
+   end Read_Namespace;
 
    procedure Read_Anchor_Name (L : in out Instance) is
    begin
@@ -674,7 +672,7 @@ package body Yaml.Lexer is
             L.State := After_Token'Access;
             return True;
          when '!' =>
-            Read_Tag_Handle (L, T);
+            Read_Namespace (L, T, '!', Tag_Handle);
             return True;
          when '&' =>
             Read_Anchor_Name (L);
@@ -687,20 +685,7 @@ package body Yaml.Lexer is
                   Kind => Alias);
             return True;
          when '@' =>
-            Start_Token (L);
-            loop
-               L.Cur := Next (L);
-               exit when not (L.Cur in Ascii_Char | Digit | '-' | '_');
-            end loop;
-            if not (L.Cur in Space_Or_Line_End | '(') then
-               raise Lexer_Error with "Illegal character in annotation: " &
-                 Escaped (L.Cur);
-            elsif L.Pos = L.Token_Start + 1 then
-               raise Lexer_Error with "Annotation name must not be empty";
-            end if;
-            T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
-                  Kind => Annotation);
-            L.State := After_Annotation'Access;
+            Read_Namespace (L, T, '@', Annotation_Handle);
             return True;
          when '`' =>
             raise Lexer_Error with
@@ -820,10 +805,21 @@ package body Yaml.Lexer is
       Start_Token (L);
       Evaluation.Read_URI (L, True);
       T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
-            Kind => Tag_Uri);
+            Kind => Suffix);
       L.State := After_Token'Access;
       return True;
    end At_Tag_Suffix;
+
+   function At_Annotation_Suffix (L : in out Instance; T : out Token)
+                                  return Boolean is
+   begin
+      Start_Token (L);
+      Evaluation.Read_URI (L, True);
+      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
+            Kind => Suffix);
+      L.State := After_Annotation'Access;
+      return True;
+   end At_Annotation_Suffix;
 
    function After_Annotation (L : in out Instance; T : out Token)
                               return Boolean is

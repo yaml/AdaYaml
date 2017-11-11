@@ -44,13 +44,15 @@ private package Yaml.Lexer is
       Flow_Seq_Start,    --  `[`
       Flow_Seq_End,      --  `]`
       Flow_Separator,    --  `,`
-      Tag_Handle,        --  a handle of a tag shorthand, e.g. `!!` of `!!str`
-      Tag_Uri,           --  suffix of a tag shorthand, e.g. `str` of `!!str`
-                         --  also used for the URI of the %TAG directive
+      Tag_Handle,        --  a handle of a tag, e.g. `!!` of `!!str`
+      Suffix,            --  suffix of a tag shorthand, e.g. `str` of `!!str`
+                         --  also used for the URI of the %TAG directive and
+                         --  annotations.
       Verbatim_Tag,      --  a verbatim tag, e.g. `!<tag:yaml.org,2002:str>`
+                         --  TODO: remove (unsupported in YAML 1.3)
       Anchor,            --  an anchor property of a node, e.g. `&anchor`
       Alias,             --  an alias property of a node, e.g. `*alias`
-      Annotation,        --  an annotation property of a node, e.g. `@ann`
+      Annotation_Handle, --  handle of an annotation, e.g. '@@' of '@@concat'
       Params_Start,      --  start of annotation parameters `(`
       Params_End         --  end of annotation parameters `)`
      );
@@ -58,7 +60,7 @@ private package Yaml.Lexer is
    subtype Flow_Scalar_Token_Kind is
      Token_Kind range Plain_Scalar .. Double_Quoted_Scalar;
    subtype Node_Property_Kind is Token_Kind with Static_Predicate =>
-     Node_Property_Kind in Tag_Handle | Verbatim_Tag | Anchor | Annotation;
+     Node_Property_Kind in Tag_Handle | Verbatim_Tag | Anchor | Annotation_Handle;
 
    type Token is record
       Kind : Token_Kind;
@@ -271,6 +273,11 @@ private
    --  state after having read a tag handle. this will always yield the
    --  corresponding tag suffix.
    function At_Tag_Suffix (L : in out Instance; T : out Token) return Boolean;
+
+   --  state after having read an annotation handle. this will always yield the
+   --  corresponding annotation suffix.
+   function At_Annotation_Suffix (L : in out Instance; T : out Token)
+                                  return Boolean;
 
    --  state after having read an annotation. checks whether the annotation
    --  has parameters.

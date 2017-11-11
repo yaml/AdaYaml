@@ -1,3 +1,3 @@
 - &a yaml.io
-- @concat [http://, *a]
+- @@concat [http://, *a]
 

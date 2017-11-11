@@ -83,8 +83,8 @@ package body Yaml is
          when Alias =>
             return "=ALI *" & E.Target.Value;
          when Annotation_Start =>
-            return "+ANN" & Prop_String (E.Annotation_Properties) & " @" &
-              E.Name;
+            return "+ANN" & Prop_String (E.Annotation_Properties) & ' ' &
+              E.Namespace & E.Name;
          when Annotation_End =>
             return "-ANN";
       end case;

@@ -79,6 +79,7 @@ package Yaml is
             Collection_Properties : Properties;
          when Annotation_Start =>
             Annotation_Properties : Properties;
+            Namespace : Text.Reference;
             Name : Text.Reference;
          when Scalar =>
             Scalar_Properties : Properties;
@@ -92,6 +93,8 @@ package Yaml is
    end record;
 
    function To_String (E : Event) return String;
+
+   Standard_Annotation_Namespace : constant Text.Reference;
 
    --  base type for refcounted types (mainly event streams). all streams and
    --  some other objects can be used with reference-counting smart pointers, so
@@ -117,6 +120,12 @@ package Yaml is
    --  useless and dangerous to use afterwards!
    procedure Decrease_Refcount (Object : not null access Refcount_Base'Class);
 private
+   Standard_Annotation_Namespace_Holder : constant Text.Constant_Instance :=
+     Text.Hold ("@@");
+
+   Standard_Annotation_Namespace : constant Text.Reference := Text.Held
+     (Standard_Annotation_Namespace_Holder);
+
    type Refcount_Base is abstract limited new
      Ada.Finalization.Limited_Controlled with record
       Refcount : Natural := 1;
