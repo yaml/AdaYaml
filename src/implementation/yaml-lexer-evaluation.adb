@@ -272,10 +272,26 @@ package body Yaml.Lexer.Evaluation is
       L.Value := New_Content_From (L.Pool, Result);
    end Read_Single_Quoted_Scalar;
 
+   subtype Hex_Code_Point is Natural range 0 .. 16#1FFFFF#;
+
    procedure Read_Hex_Sequence (L : in out Instance; Length : Positive;
                                 Result : in out Out_Buffer_Type) is
-      Char_Pos : Natural := 0;
+      Char_Pos : Hex_Code_Point := 0;
+      Start_Pos : constant Positive := L.Pos;
    begin
+      --  first, we make sure that this is a valid escape sequence. it is
+      --  important to not calculate its value directly because that may lead
+      --  to an overflow before we checked that the escape sequence is
+      --  syntactically correct. We only want to report that the value is out of
+      --  range if it is a valid escape sequence.
+      for I in 0 .. Length - 1 loop
+         if not (L.Buffer (Start_Pos + I) in Digit | 'a' .. 'f' | 'A' .. 'F')
+         then
+            raise Lexer_Error with
+                 "Invalid character in hex escape sequence: " &
+              Escaped (L.Buffer (Start_Pos + I));
+         end if;
+      end loop;
       for Exponent in reverse 0 .. Length - 1 loop
          L.Cur := Next (L);
          case L.Cur is
@@ -289,13 +305,16 @@ package body Yaml.Lexer.Evaluation is
                Char_Pos := Char_Pos + (16 ** Exponent) *
                  (Character'Pos (L.Cur) - Character'Pos ('A') + 10);
             when others =>
-               raise Lexer_Error with
-                 "Invalid character in hex escape sequence: " &
-                 Escaped (L.Cur);
+               null; --  cannot happen because of the check above
          end case;
       end loop;
       Add (Result, Ada.Strings.UTF_Encoding.Wide_Wide_Strings.Encode (
            "" & Wide_Wide_Character'Val (Char_Pos)));
+   exception
+      when Constraint_Error =>
+         raise Lexer_Error with
+           "Invalid hex escape sequence (value too large): " &
+           L.Buffer (Start_Pos .. Start_Pos + Length - 1);
    end Read_Hex_Sequence;
 
    procedure Read_Double_Quoted_Scalar (L : in out Instance; T : out Token) is

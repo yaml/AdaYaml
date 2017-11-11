@@ -9,7 +9,7 @@ package body Yaml.Lexer.Tokenization_Test is
    use type Text.Reference;
 
    subtype Evaluated_Token is Token_Kind with Static_Predicate =>
-     Evaluated_Token in Scalar_Token_Kind | Tag_Uri | Verbatim_Tag;
+     Evaluated_Token in Scalar_Token_Kind | Suffix | Verbatim_Tag;
    subtype Short_Lexeme_Token is Token_Kind with Static_Predicate =>
      Short_Lexeme_Token in Unknown_Directive | Anchor | Alias;
    subtype Full_Lexeme_Token is Token_Kind with Static_Predicate =>
@@ -149,7 +149,7 @@ package body Yaml.Lexer.Tokenization_Test is
      (With_String (Verbatim_Tag, Content, T));
    function TTU (T : in out Test_Cases.Test_Case'Class; Content : String)
                  return Token_With_Value is
-     (With_String (Tag_Uri, Content, T));
+     (With_String (Suffix, Content, T));
    function TUD (T : in out Test_Cases.Test_Case'Class; Content : String)
                  return Token_With_Value is
      (With_String (Unknown_Directive, Content, T));

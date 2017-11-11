@@ -111,7 +111,7 @@ package body Yaml.Parser is
            "Unknown tag handle: " & Tag_Handle;
       end if;
       P.Current := Lexer.Next_Token (P.L);
-      if P.Current.Kind /= Lexer.Tag_Uri then
+      if P.Current.Kind /= Lexer.Suffix then
          raise Parser_Error with "Unexpected token (expected tag suffix): " &
            P.Current.Kind'Img;
       end if;
@@ -218,7 +218,7 @@ package body Yaml.Parser is
                Holder : access Tag_Handle_Sets.Holder;
             begin
                P.Current := Lexer.Next_Token (P.L);
-               if P.Current.Kind /= Lexer.Tag_Uri then
+               if P.Current.Kind /= Lexer.Suffix then
                   raise Parser_Error with
                     "Invalid token (expected tag URI): " & P.Current.Kind'Img;
                end if;
@@ -630,12 +630,32 @@ package body Yaml.Parser is
             end if;
             P.Inline_Props.Anchor :=
               P.Pool.From_String (Lexer.Short_Lexeme (P.L));
-         when Lexer.Annotation =>
-            E := Event'(Start_Position => P.Inline_Start,
-                        End_Position => P.Current.Start_Pos,
-                        Kind => Annotation_Start,
-                        Annotation_Properties => P.Inline_Props,
-                        Name => P.Pool.From_String (Lexer.Short_Lexeme (P.L)));
+         when Lexer.Annotation_Handle =>
+            declare
+               NS : constant String := Lexer.Full_Lexeme (P.L);
+            begin
+               P.Current := Lexer.Next_Token (P.L);
+               if P.Current.Kind /= Lexer.Suffix then
+                  raise Parser_Error with
+                    "Unexpected token (expected annotation suffix): " &
+                    P.Current.Kind'Img;
+               end if;
+               if NS = "@@" then
+                  E := Event'(Start_Position => P.Inline_Start,
+                              End_Position => P.Current.Start_Pos,
+                              Kind => Annotation_Start,
+                              Annotation_Properties => P.Inline_Props,
+                              Namespace => Standard_Annotation_Namespace,
+                              Name => Lexer.Current_Content (P.L));
+               else
+                  E := Event'(Start_Position => P.Inline_Start,
+                              End_Position => P.Current.Start_Pos,
+                              Kind => Annotation_Start,
+                              Annotation_Properties => P.Inline_Props,
+                              Namespace => P.Pool.From_String (NS),
+                              Name => Lexer.Current_Content (P.L));
+               end if;
+            end;
             P.Inline_Props := Default_Properties;
             P.Current := Lexer.Next_Token (P.L);
             if P.Current.Kind = Lexer.Params_Start then
@@ -1331,7 +1351,7 @@ package body Yaml.Parser is
             P.Levels.Pop;
             return True;
          when Lexer.Flow_Scalar_Token_Kind | Lexer.Map_Key_Ind |
-              Lexer.Anchor | Lexer.Alias | Lexer.Annotation |
+              Lexer.Anchor | Lexer.Alias | Lexer.Annotation_Handle |
               Lexer.Flow_Map_Start | Lexer.Flow_Seq_Start =>
             raise Parser_Error with "Missing ','";
          when others =>
@@ -1356,7 +1376,7 @@ package body Yaml.Parser is
             P.Levels.Pop;
             return True;
          when Lexer.Flow_Scalar_Token_Kind | Lexer.Map_Key_Ind |
-              Lexer.Anchor | Lexer.Alias | Lexer.Annotation |
+              Lexer.Anchor | Lexer.Alias | Lexer.Annotation_Handle |
               Lexer.Flow_Map_Start | Lexer.Flow_Seq_Start =>
             raise Parser_Error with "Missing ','";
          when others =>
@@ -1576,7 +1596,7 @@ package body Yaml.Parser is
             P.Levels.Pop;
             return True;
          when Lexer.Flow_Scalar_Token_Kind | Lexer.Map_Key_Ind |
-              Lexer.Anchor | Lexer.Alias | Lexer.Annotation |
+              Lexer.Anchor | Lexer.Alias | Lexer.Annotation_Handle |
               Lexer.Flow_Map_Start | Lexer.Flow_Seq_Start =>
             raise Parser_Error with "Missing ','";
          when others =>

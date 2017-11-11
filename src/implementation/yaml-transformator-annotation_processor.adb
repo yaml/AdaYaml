@@ -10,6 +10,8 @@ with Yaml.Transformator.Annotation.Concatenation;
 pragma Unreferenced (Yaml.Transformator.Annotation.Concatenation);
 
 package body Yaml.Transformator.Annotation_Processor is
+   use type Text.Reference;
+
    procedure Free_Array is new Ada.Unchecked_Deallocation
      (Node_Array, Node_Array_Pointer);
    procedure Free_Transformator is new Ada.Unchecked_Deallocation
@@ -68,7 +70,9 @@ package body Yaml.Transformator.Annotation_Processor is
             declare
                use type Annotation.Maps.Cursor;
                Pos : constant Annotation.Maps.Cursor :=
-                 Annotation.Map.Find (E.Name.Value);
+                 (if E.Namespace = Standard_Annotation_Namespace then
+                     Annotation.Map.Find (E.Name.Value) else
+                       Annotation.Maps.No_Element);
             begin
                if Object.Count = Object.Annotations.all'Length then
                   declare
