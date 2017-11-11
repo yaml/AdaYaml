@@ -57,7 +57,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
    begin
       if E.Kind /= Annotation_End then
          raise Annotation_Error with
-           "@concat does not take any parameters.";
+           "@@concat does not take any parameters.";
       end if;
       Object.State := After_Annotation_End'Access;
    end After_Annotation_Start;
@@ -66,7 +66,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
    begin
       if E.Kind /= Sequence_Start then
          raise Annotation_Error with
-           "@concat must be applied on a sequence.";
+           "@@concat must be applied on a sequence.";
       end if;
       Object.State := After_List_Start'Access;
    end After_Annotation_End;
@@ -251,7 +251,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
    procedure After_List_End (Object : in out Instance'Class; E : Event) is
    begin
       raise Constraint_Error with
-        "unexpected input to @concat (already finished)";
+        "unexpected input to @@concat (already finished)";
    end After_List_End;
 begin
    Map.Include ("concat", New_Concatenation'Access);

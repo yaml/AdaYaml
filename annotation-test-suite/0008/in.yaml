@@ -1,0 +1,5 @@
+--- @@vars
+first: foo
+second: bar
+--- @@concat
+[*first, *second]

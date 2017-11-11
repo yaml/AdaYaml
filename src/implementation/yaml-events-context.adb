@@ -2,33 +2,49 @@
 --  released under the terms of the MIT license, see the file "copying.txt"
 
 package body Yaml.Events.Context is
-   function Empty return Instance is
+   function Create (External : Store.Reference := Store.New_Store)
+                    return Instance is
      ((Ada.Finalization.Controlled with
-       Local_Store => Store.New_Store, Global_Store => Store.New_Store));
+       Document_Ref => Store.New_Store, Stream_Ref => Store.New_Store,
+       External_Ref => External));
 
-   function Global (Object : Instance) return Store.Reference is
-     (Object.Global_Store);
+   function External_Store (Object : Instance) return Store.Reference is
+     (Object.External_Ref);
 
-   function Local (Object : Instance) return Store.Reference is
-     (Object.Local_Store);
+   function Stream_Store (Object : Instance) return Store.Reference is
+     (Object.Stream_Ref);
+
+   function Document_Store (Object : Instance) return Store.Reference is
+     (Object.Document_Ref);
 
    function Position (Object : Instance; Alias : Text.Reference) return Cursor
    is
       use type Store.Anchored_Position;
       Pos : Store.Anchored_Position :=
-        Object.Local_Store.Value.Position (Alias);
+        Object.Document_Ref.Value.Position (Alias);
    begin
       if Pos = Store.No_Element then
-         Pos := Object.Global_Store.Value.Position (Alias);
+         Pos := Object.Stream_Ref.Value.Position (Alias);
          if Pos = Store.No_Element then
-            return No_Element;
+            Pos := Object.External_Ref.Value.Position (Alias);
+            if Pos = Store.No_Element then
+               return No_Element;
+            else
+               return (Target => Object.External_Ref.Optional, Position => Pos,
+                       Target_Location => External);
+            end if;
          else
-            return (Target => Object.Global_Store.Optional, Position => Pos);
+            return (Target => Object.Stream_Ref.Optional, Position => Pos,
+                    Target_Location => Stream);
          end if;
       else
-         return (Target => Object.Local_Store.Optional, Position => Pos);
+         return (Target => Object.Document_Ref.Optional, Position => Pos,
+                 Target_Location => Document);
       end if;
    end Position;
+
+   function Location (Position : Cursor) return Location_Type is
+     (Position.Target_Location);
 
    function Retrieve (Pos : Cursor) return  Store.Stream_Reference is
      (Store.Iteration.Retrieve (Pos.Target.Required, Pos.Position));
