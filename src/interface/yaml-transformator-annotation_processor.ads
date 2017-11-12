@@ -34,7 +34,7 @@ private
                                Absent);
 
    type Instance is limited new Transformator.Instance with record
-      Context : Events.Context.Instance;
+      Context : Events.Context.Reference;
       Pool : Text.Pool.Reference;
       Depth, Count, Stream_Depth : Natural := 0;
       Current, Held_Back : Event;

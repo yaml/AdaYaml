@@ -4,19 +4,20 @@
 with Yaml.Events.Store;
 
 package Yaml.Events.Context is
-   type Instance is private;
+   type Reference is tagged private;
+
    type Cursor is private;
 
    type Location_Type is (Document, Stream, External, None);
 
    function Create (External : Store.Reference := Store.New_Store)
-                    return Instance;
+                    return Reference;
 
-   function External_Store (Object : Instance) return Store.Reference;
-   function Stream_Store (Object : Instance) return Store.Reference;
-   function Document_Store (Object : Instance) return Store.Reference;
+   function External_Store (Object : Reference) return Store.Accessor;
+   function Stream_Store (Object : Reference) return Store.Accessor;
+   function Document_Store (Object : Reference) return Store.Accessor;
 
-   function Position (Object : Instance; Alias : Text.Reference) return Cursor;
+   function Position (Object : Reference; Alias : Text.Reference) return Cursor;
    function Location (Position : Cursor) return Location_Type;
 
    No_Element : constant Cursor;
@@ -24,9 +25,16 @@ package Yaml.Events.Context is
    function Retrieve (Pos : Cursor) return Store.Stream_Reference
      with Pre => Pos /= No_Element;
 private
-   type Instance is new Ada.Finalization.Controlled with record
-      Document_Ref, Stream_Ref, External_Ref : Store.Reference;
+   type Instance is limited new Refcount_Base with record
+      Document_Data, Stream_Data, External_Data : Store.Reference;
    end record;
+
+   type Reference is new Ada.Finalization.Controlled with record
+      Data : not null access Instance;
+   end record;
+
+   overriding procedure Adjust (Object : in out Reference);
+   overriding procedure Finalize (Object : in out Reference);
 
    type Cursor is record
       Target : Store.Optional_Reference;

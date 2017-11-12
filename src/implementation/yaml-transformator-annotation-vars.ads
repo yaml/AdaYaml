@@ -17,7 +17,7 @@ package Yaml.Transformator.Annotation.Vars is
                                           return Boolean is (True);
 
    function New_Vars (Pool : Text.Pool.Reference;
-                      Context : Events.Context.Instance)
+                      Context : Events.Context.Reference)
                       return not null Pointer;
 private
    type State_Type is not null access procedure (Object : in out Instance;
@@ -31,7 +31,7 @@ private
    procedure After_Mapping_End (Object : in out Instance; E : Event);
 
    type Instance is limited new Transformator.Instance with record
-      Context : Events.Context.Instance;
+      Context : Events.Context.Reference;
       Depth : Natural := 0;
       State : State_Type := Initial'Access;
       Cur_Queue : Events.Queue.Instance;

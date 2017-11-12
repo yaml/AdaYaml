@@ -18,7 +18,7 @@ package body Yaml.Transformator.Annotation.Vars is
    end Next;
 
    function New_Vars (Pool : Text.Pool.Reference;
-                      Context : Events.Context.Instance)
+                      Context : Events.Context.Reference)
                       return not null Pointer is
      (new Instance'(Transformator.Instance with Context => Context,
                     others => <>));
@@ -106,8 +106,8 @@ package body Yaml.Transformator.Annotation.Vars is
                                 "alias referenced " & Modified_Event.Kind'Img;
                         end case;
                         loop
-                           Events.Context.Stream_Store
-                             (Object.Context).Value.Memorize (Modified_Event);
+                           Object.Context.Stream_Store.Memorize
+                             (Modified_Event);
                            case Modified_Event.Kind is
                            when Mapping_Start | Sequence_Start =>
                               Depth := Depth + 1;
@@ -170,7 +170,7 @@ package body Yaml.Transformator.Annotation.Vars is
       end case;
       if Object.Depth = 0 then
          loop
-            Events.Context.Stream_Store (Object.Context).Value.Memorize
+            Object.Context.Stream_Store.Memorize
               (Object.Cur_Queue.First);
             Object.Cur_Queue.Dequeue;
             exit when Object.Cur_Queue.Length = 0;

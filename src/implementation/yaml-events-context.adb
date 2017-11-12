@@ -3,42 +3,42 @@
 
 package body Yaml.Events.Context is
    function Create (External : Store.Reference := Store.New_Store)
-                    return Instance is
-     ((Ada.Finalization.Controlled with
-       Document_Ref => Store.New_Store, Stream_Ref => Store.New_Store,
-       External_Ref => External));
+                    return Reference is
+     ((Ada.Finalization.Controlled with Data => new Instance'(Refcount_Base with
+       Document_Data => Store.New_Store, Stream_Data => Store.New_Store,
+       External_Data => External)));
 
-   function External_Store (Object : Instance) return Store.Reference is
-     (Object.External_Ref);
+   function External_Store (Object : Reference) return Store.Accessor is
+     (Object.Data.External_Data.Value);
 
-   function Stream_Store (Object : Instance) return Store.Reference is
-     (Object.Stream_Ref);
+   function Stream_Store (Object : Reference) return Store.Accessor is
+     (Object.Data.Stream_Data.Value);
 
-   function Document_Store (Object : Instance) return Store.Reference is
-     (Object.Document_Ref);
+   function Document_Store (Object : Reference) return Store.Accessor is
+     (Object.Data.Document_Data.Value);
 
-   function Position (Object : Instance; Alias : Text.Reference) return Cursor
+   function Position (Object : Reference; Alias : Text.Reference) return Cursor
    is
       use type Store.Anchored_Position;
       Pos : Store.Anchored_Position :=
-        Object.Document_Ref.Value.Position (Alias);
+        Object.Data.Document_Data.Value.Position (Alias);
    begin
       if Pos = Store.No_Element then
-         Pos := Object.Stream_Ref.Value.Position (Alias);
+         Pos := Object.Data.Stream_Data.Value.Position (Alias);
          if Pos = Store.No_Element then
-            Pos := Object.External_Ref.Value.Position (Alias);
+            Pos := Object.Data.External_Data.Value.Position (Alias);
             if Pos = Store.No_Element then
                return No_Element;
             else
-               return (Target => Object.External_Ref.Optional, Position => Pos,
-                       Target_Location => External);
+               return (Target => Object.Data.External_Data.Optional,
+                       Position => Pos, Target_Location => External);
             end if;
          else
-            return (Target => Object.Stream_Ref.Optional, Position => Pos,
+            return (Target => Object.Data.Stream_Data.Optional, Position => Pos,
                     Target_Location => Stream);
          end if;
       else
-         return (Target => Object.Document_Ref.Optional, Position => Pos,
+         return (Target => Object.Data.Document_Data.Optional, Position => Pos,
                  Target_Location => Document);
       end if;
    end Position;
@@ -48,4 +48,14 @@ package body Yaml.Events.Context is
 
    function Retrieve (Pos : Cursor) return  Store.Stream_Reference is
      (Store.Iteration.Retrieve (Pos.Target.Required, Pos.Position));
+
+   procedure Adjust (Object : in out Reference) is
+   begin
+      Object.Data.Increase_Refcount;
+   end Adjust;
+
+   procedure Finalize (Object : in out Reference) is
+   begin
+      Object.Data.Decrease_Refcount;
+   end Finalize;
 end Yaml.Events.Context;

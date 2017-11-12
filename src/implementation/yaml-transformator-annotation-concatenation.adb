@@ -38,7 +38,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
    end Next;
 
    function New_Concatenation (Pool : Text.Pool.Reference;
-                               Context : Events.Context.Instance)
+                               Context : Events.Context.Reference)
                                return not null Pointer is
      (new Instance'(Transformator.Instance with Pool => Pool,
                     Context => Context, others => <>));

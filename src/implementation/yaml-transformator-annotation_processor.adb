@@ -79,8 +79,7 @@ package body Yaml.Transformator.Annotation_Processor is
    end Finalize_Finished_Annotation_Impl;
 
    procedure Put (Object : in out Instance; E : Event) is
-      Locals : Events.Store.Accessor
-        renames Events.Context.Document_Store (Object.Context).Value;
+      Locals : constant Events.Store.Accessor := Object.Context.Document_Store;
    begin
       case E.Kind is
          when Annotation_Start =>
@@ -196,7 +195,7 @@ package body Yaml.Transformator.Annotation_Processor is
                      return Ret : constant Event :=
                        Object.Current_Stream.Value.Next do
                         Events.Context.Document_Store
-                          (Object.Context).Value.Memorize (Ret);
+                          (Object.Context).Memorize (Ret);
                         case Ret.Kind is
                         when Scalar =>
                            Object.Current_Stream.Clear;
