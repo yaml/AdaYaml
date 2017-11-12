@@ -11,6 +11,10 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with AUnit.Assertions; use AUnit.Assertions;
 
 package body Yaml.Annotation_Test is
+   Tests_Dir : constant String :=
+     Compose (Containing_Directory (Containing_Directory
+              (Current_Directory)), "annotation-test-suite");
+
    procedure Register_Tests (T : in out TC) is
       procedure Add_Test (Directory_Entry : Directory_Entry_Type) is
          Title_File : File_Type;
@@ -33,7 +37,8 @@ package body Yaml.Annotation_Test is
          end if;
       end Add_Test;
    begin
-      Search ("annotation-test-suite", "", (Directory => True, others => False),
+      Search (Tests_Dir, "",
+              (Directory => True, others => False),
               Add_Test'Access);
       T.Cur := 1;
    end Register_Tests;
@@ -48,7 +53,7 @@ package body Yaml.Annotation_Test is
 
    procedure Execute_Next_Test (T : in out Test_Cases.Test_Case'Class) is
       Test_Dir : constant String :=
-        Compose ("annotation-test-suite", TC (T).Test_Cases.Element (TC (T).Cur));
+        Compose (Tests_Dir, TC (T).Test_Cases.Element (TC (T).Cur));
       P : constant Parser.Reference := Parser.New_Parser;
       Trans : Parser_Transformation.Instance :=
         Parser_Transformation.Transform (P);
@@ -89,7 +94,7 @@ package body Yaml.Annotation_Test is
 
    procedure Execute_Error_Test (T : in out Test_Cases.Test_Case'Class) is
       Test_Dir : constant String :=
-        Compose ("annotation-test-suite", TC (T).Test_Cases.Element (TC (T).Cur));
+        Compose (Tests_Dir, TC (T).Test_Cases.Element (TC (T).Cur));
       P : constant Parser.Reference := Parser.New_Parser;
       Trans : Parser_Transformation.Instance :=
         Parser_Transformation.Transform (P);

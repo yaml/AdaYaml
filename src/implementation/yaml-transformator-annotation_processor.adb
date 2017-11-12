@@ -180,45 +180,71 @@ package body Yaml.Transformator.Annotation_Processor is
             Object.Current_State := Absent;
          end if;
       end Look_For_Additional_Element;
+
+      procedure Update_Exists_In_Output (Anchor : Text.Reference) is
+         use type Events.Context.Cursor;
+      begin
+         if Anchor /= Text.Empty then
+            declare
+               Pos : Events.Context.Cursor :=
+                 Events.Context.Position (Object.Context, Anchor);
+            begin
+               if Pos /= Events.Context.No_Element then
+                  declare
+                     Referenced : constant Event := Events.Context.First (Pos);
+                  begin
+                     if
+                       Referenced.Start_Position =
+                         Object.Current.Start_Position and
+                         Referenced.Kind = Object.Current.Kind then
+                        Events.Context.Set_Exists_In_Output (Pos);
+                     end if;
+                  end;
+               end if;
+            end;
+         end if;
+      end Update_Exists_In_Output;
    begin
       case Object.Current_State is
          when Existing =>
-            if Object.Current.Kind = Alias then
-               declare
-                  Pos : constant Events.Context.Cursor :=
-                    Events.Context.Position
-                      (Object.Context, Object.Current.Target);
-               begin
-                  if Events.Context.Location (Pos) = Events.Context.Stream then
-                     Object.Current_Stream :=
-                       Events.Context.Retrieve (Pos).Optional;
-                     return Ret : constant Event :=
-                       Object.Current_Stream.Value.Next do
-                        Events.Context.Document_Store
-                          (Object.Context).Memorize (Ret);
-                        case Ret.Kind is
-                        when Scalar =>
-                           Object.Current_Stream.Clear;
-                           Look_For_Additional_Element;
-                        when Mapping_Start | Sequence_Start =>
-                           Object.Current_State := Localizing_Alias;
-                           Object.Stream_Depth := Object.Stream_Depth + 1;
-                        when others =>
-                           raise Program_Error with
-                             "alias refers to " & Object.Current.Kind'Img;
-                        end case;
-                     end return;
-                  else
-                     return Ret : constant Event := Object.Current do
-                        Look_For_Additional_Element;
-                     end return;
-                  end if;
-               end;
-            else
-               return Ret : constant Event := Object.Current do
-                  Look_For_Additional_Element;
-               end return;
-            end if;
+            case Object.Current.Kind is
+               when Alias =>
+                  declare
+                     Pos : Events.Context.Cursor :=
+                       Events.Context.Position
+                         (Object.Context, Object.Current.Target);
+                  begin
+                     if not Events.Context.Exists_In_Ouput (Pos) then
+                        Events.Context.Set_Exists_In_Output (Pos);
+                        Object.Current_Stream :=
+                          Events.Context.Retrieve (Pos).Optional;
+                        return Ret : constant Event :=
+                          Object.Current_Stream.Value.Next do
+                           case Ret.Kind is
+                           when Scalar =>
+                              Object.Current_Stream.Clear;
+                              Look_For_Additional_Element;
+                           when Mapping_Start | Sequence_Start =>
+                              Object.Current_State := Localizing_Alias;
+                              Object.Stream_Depth := Object.Stream_Depth + 1;
+                           when others =>
+                              raise Program_Error with
+                                "alias refers to " & Object.Current.Kind'Img;
+                           end case;
+                        end return;
+                     end if;
+                  end;
+               when Scalar =>
+                  Update_Exists_In_Output
+                    (Object.Current.Scalar_Properties.Anchor);
+               when Mapping_Start | Sequence_Start =>
+                  Update_Exists_In_Output
+                    (Object.Current.Collection_Properties.Anchor);
+               when others => null;
+            end case;
+            return Ret : constant Event := Object.Current do
+               Look_For_Additional_Element;
+            end return;
          when Existing_But_Held_Back =>
             if Object.Current.Kind = Document_Start then
                raise Constraint_Error with "no event to retrieve";

@@ -11,7 +11,7 @@ package Yaml.Events.Store is
    type Accessor (Data : not null access Instance) is limited null record with
      Implicit_Dereference => Data;
 
-   type Anchored_Position is private;
+   type Cursor is private;
 
    function New_Store return Reference;
    function Value (Object : Reference) return Accessor;
@@ -25,10 +25,12 @@ package Yaml.Events.Store is
    function Required (Object : Optional_Reference'Class) return Reference;
 
    procedure Memorize (Object : in out Instance; Item : Event);
-   function Position (Object : Instance; Alias : Text.Reference)
-                      return Anchored_Position;
+   function Find (Object : Instance; Alias : Text.Reference)
+                  return Cursor;
+   function Exists_In_Output (Position : Cursor) return Boolean;
+   procedure Set_Exists_In_Output (Object : in out Instance; Position : Cursor);
 
-   No_Element : constant Anchored_Position;
+   No_Element : constant Cursor;
 
    procedure Clear (Object : in out Instance);
    procedure Copy (Source : in Instance; Target : in out Instance);
@@ -53,14 +55,23 @@ package Yaml.Events.Store is
    procedure Clear (Object : in out Optional_Stream_Reference) with
      Post => not Object.Exists;
 
+   function First (Object : Reference; Position : Cursor) return Event;
+
    package Iteration is
       function Retrieve (Object : Reference;
-                         Position : Anchored_Position) return Stream_Reference
+                         Position : Cursor) return Stream_Reference
         with Pre => Position /= No_Element;
    end Iteration;
 private
+   type Anchor_Info is record
+      Position : Positive;
+      Has_Been_Output : Boolean;
+   end record;
+
    package Anchor_To_Index is new Ada.Containers.Hashed_Maps
-     (Text.Reference, Positive, Text.Hash, Text."=");
+     (Text.Reference, Anchor_Info, Text.Hash, Text."=");
+
+   type Cursor is new Anchor_To_Index.Cursor;
 
    type Instance is limited new Event_Holder with record
       Anchor_Map : Anchor_To_Index.Map;
@@ -85,9 +96,7 @@ private
    Null_Reference : constant Optional_Reference :=
      (Ada.Finalization.Controlled with Data => null);
 
-   type Anchored_Position is new Natural;
-
-   No_Element : constant Anchored_Position := 0;
+   No_Element : constant Cursor := Cursor (Anchor_To_Index.No_Element);
 
    type Stream_Instance is limited new Refcount_Base with record
       Object  : Reference;

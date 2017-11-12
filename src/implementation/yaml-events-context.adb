@@ -19,14 +19,14 @@ package body Yaml.Events.Context is
 
    function Position (Object : Reference; Alias : Text.Reference) return Cursor
    is
-      use type Store.Anchored_Position;
-      Pos : Store.Anchored_Position :=
-        Object.Data.Document_Data.Value.Position (Alias);
+      use type Store.Cursor;
+      Pos : Store.Cursor :=
+        Object.Data.Document_Data.Value.Find (Alias);
    begin
       if Pos = Store.No_Element then
-         Pos := Object.Data.Stream_Data.Value.Position (Alias);
+         Pos := Object.Data.Stream_Data.Value.Find (Alias);
          if Pos = Store.No_Element then
-            Pos := Object.Data.External_Data.Value.Position (Alias);
+            Pos := Object.Data.External_Data.Value.Find (Alias);
             if Pos = Store.No_Element then
                return No_Element;
             else
@@ -34,12 +34,12 @@ package body Yaml.Events.Context is
                        Position => Pos, Target_Location => External);
             end if;
          else
-            return (Target => Object.Data.Stream_Data.Optional, Position => Pos,
-                    Target_Location => Stream);
+            return (Target => Object.Data.Stream_Data.Optional,
+                    Position => Pos, Target_Location => Stream);
          end if;
       else
-         return (Target => Object.Data.Document_Data.Optional, Position => Pos,
-                 Target_Location => Document);
+         return (Target => Object.Data.Document_Data.Optional,
+                 Position => Pos, Target_Location => Document);
       end if;
    end Position;
 
@@ -48,6 +48,9 @@ package body Yaml.Events.Context is
 
    function Retrieve (Pos : Cursor) return  Store.Stream_Reference is
      (Store.Iteration.Retrieve (Pos.Target.Required, Pos.Position));
+
+   function First (Pos : Cursor) return Event is
+     (Store.First (Pos.Target.Required, Pos.Position));
 
    procedure Adjust (Object : in out Reference) is
    begin
@@ -58,4 +61,12 @@ package body Yaml.Events.Context is
    begin
       Object.Data.Decrease_Refcount;
    end Finalize;
+
+   function Exists_In_Ouput (Position : Cursor) return Boolean is
+     (Store.Exists_In_Output (Position.Position));
+
+   procedure Set_Exists_In_Output (Position : in out Cursor) is
+   begin
+      Store.Set_Exists_In_Output (Position.Target.Value, Position.Position);
+   end Set_Exists_In_Output;
 end Yaml.Events.Context;

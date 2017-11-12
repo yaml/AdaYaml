@@ -1,0 +1,7 @@
+--- @@vars
+scalar: text
+sequence: [1, 2, 3]
+---
+- *scalar
+- *sequence
+- *scalar

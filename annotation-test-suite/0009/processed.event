@@ -1,0 +1,9 @@
++STR
++DOC ---
++SEQ
+=VAL &scalar :text
++SEQ &sequence
+=ALI *scalar
+-SEQ
+-DOC
+-STR

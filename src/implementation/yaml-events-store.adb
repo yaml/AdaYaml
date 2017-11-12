@@ -36,23 +36,29 @@ package body Yaml.Events.Store is
       case Item.Kind is
          when Scalar =>
             if Item.Scalar_Properties.Anchor /= Text.Empty then
-               Object.Anchor_Map.Include (Item.Scalar_Properties.Anchor,
-                                          Object.Length + 1);
+               Object.Anchor_Map.Include
+                 (Item.Scalar_Properties.Anchor,
+                  (Position => Object.Length + 1,
+                   Has_Been_Output => False));
             elsif Object.Depth = 0 then
                return;
             end if;
          when Mapping_Start =>
             if Item.Collection_Properties.Anchor /= Text.Empty then
-               Object.Anchor_Map.Include (Item.Collection_Properties.Anchor,
-                                          Object.Length + 1);
+               Object.Anchor_Map.Include
+                 (Item.Collection_Properties.Anchor,
+                  (Position => Object.Length + 1,
+                   Has_Been_Output => False));
             elsif Object.Depth = 0 then
                return;
             end if;
             Object.Depth := Object.Depth + 1;
          when Sequence_Start =>
             if Item.Collection_Properties.Anchor /= Text.Empty then
-               Object.Anchor_Map.Include (Item.Collection_Properties.Anchor,
-                                          Object.Length + 1);
+               Object.Anchor_Map.Include
+                 (Item.Collection_Properties.Anchor,
+                  (Position => Object.Length + 1,
+                   Has_Been_Output => False));
             elsif Object.Depth = 0 then
                return;
             end if;
@@ -74,19 +80,26 @@ package body Yaml.Events.Store is
       Object.Data (Object.Length) := Item;
    end Memorize;
 
-   function Position (Object : Instance; Alias : Text.Reference)
-                      return Anchored_Position is
-      use type Anchor_To_Index.Cursor;
+   function Find (Object : Instance; Alias : Text.Reference) return Cursor is
+      (Cursor (Object.Anchor_Map.Find (Alias)));
 
-      Pos : constant Anchor_To_Index.Cursor :=
-        Object.Anchor_Map.Find (Alias);
+   function Exists_In_Output (Position : Cursor) return Boolean is
+     (Anchor_To_Index.Element
+        (Anchor_To_Index.Cursor (Position)).Has_Been_Output);
+
+   procedure Set_Exists_In_Output (Object : in out Instance;
+                                   Position : Cursor) is
+      procedure Process (Key : Text.Reference;
+                         Element : in out Anchor_Info) is
+         pragma Unreferenced (Key);
+      begin
+         Element.Has_Been_Output := True;
+      end Process;
    begin
-      if Pos = Anchor_To_Index.No_Element then
-         return No_Element;
-      else
-         return Anchored_Position (Anchor_To_Index.Element (Pos));
-      end if;
-   end Position;
+      Anchor_To_Index.Update_Element (Object.Anchor_Map,
+                                      Anchor_To_Index.Cursor (Position),
+                                      Process'Access);
+   end Set_Exists_In_Output;
 
    procedure Clear (Object : in out Instance) is
    begin
@@ -111,12 +124,12 @@ package body Yaml.Events.Store is
    end Copy;
 
    package body Iteration is
-      function Retrieve (Object : Reference;
-                         Position : Anchored_Position)
+      function Retrieve (Object : Reference; Position : Cursor)
                          return Stream_Reference is
          Ptr : constant not null access Stream_Instance :=
            new Stream_Instance'(Refcount_Base with Object => Object,
-                                Depth => 0, Current => Positive (Position));
+                                Depth => 0, Current => Anchor_To_Index.Element
+                                  (Anchor_To_Index.Cursor (Position)).Position);
       begin
          Object.Data.Stream_Count := Object.Data.Stream_Count + 1;
          return Stream_Reference'(Ada.Finalization.Controlled with Data => Ptr);
@@ -163,6 +176,10 @@ package body Yaml.Events.Store is
          Object.Data := null;
       end if;
    end Clear;
+
+   function First (Object : Reference; Position : Cursor) return Event is
+     (Object.Data.Data (Anchor_To_Index.Element (Anchor_To_Index.Cursor
+                                                 (Position)).Position));
 
    procedure Adjust (Object : in out Reference) is
    begin
