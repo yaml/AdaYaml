@@ -26,7 +26,8 @@ package body Yaml.Events.Store is
       return (Ada.Finalization.Controlled with Data => Object.Data);
    end Required;
 
-   procedure Memorize (Object : in out Instance; Item : Event) is
+   procedure Memorize (Object : in out Instance; Item : Event; Force : Boolean)
+   is
       use type Text.Reference;
    begin
       if Object.Stream_Count > 0 then
@@ -40,7 +41,7 @@ package body Yaml.Events.Store is
                  (Item.Scalar_Properties.Anchor,
                   (Position => Object.Length + 1,
                    Has_Been_Output => False));
-            elsif Object.Depth = 0 then
+            elsif Object.Depth = 0 and not Force then
                return;
             end if;
          when Mapping_Start =>
@@ -49,7 +50,7 @@ package body Yaml.Events.Store is
                  (Item.Collection_Properties.Anchor,
                   (Position => Object.Length + 1,
                    Has_Been_Output => False));
-            elsif Object.Depth = 0 then
+            elsif Object.Depth = 0 and not Force then
                return;
             end if;
             Object.Depth := Object.Depth + 1;
@@ -59,17 +60,17 @@ package body Yaml.Events.Store is
                  (Item.Collection_Properties.Anchor,
                   (Position => Object.Length + 1,
                    Has_Been_Output => False));
-            elsif Object.Depth = 0 then
+            elsif Object.Depth = 0 and not Force then
                return;
             end if;
             Object.Depth := Object.Depth + 1;
          when Mapping_End | Sequence_End =>
-            if Object.Depth = 0 then
+            if Object.Depth = 0 and not Force then
                return;
             end if;
             Object.Depth := Object.Depth - 1;
          when others =>
-            if Object.Depth = 0 then
+            if Object.Depth = 0 and not Force then
                return;
             end if;
       end case;
@@ -80,15 +81,28 @@ package body Yaml.Events.Store is
       Object.Data (Object.Length) := Item;
    end Memorize;
 
-   function Find (Object : Instance; Alias : Text.Reference) return Cursor is
-      (Cursor (Object.Anchor_Map.Find (Alias)));
+   procedure Memorize (Object : in out Instance; Item : Event) is
+   begin
+      Memorize (Object, Item, False);
+   end Memorize;
 
-   function Exists_In_Output (Position : Cursor) return Boolean is
+   procedure Force_Memorize (Object : in out Instance; Item : Event;
+                             Position : out Element_Cursor) is
+   begin
+      Memorize (Object, Item, True);
+      Position := Element_Cursor (Object.Length);
+   end Force_Memorize;
+
+   function Find (Object : Instance; Alias : Text.Reference)
+                  return Anchor_Cursor is
+      (Anchor_Cursor (Object.Anchor_Map.Find (Alias)));
+
+   function Exists_In_Output (Position : Anchor_Cursor) return Boolean is
      (Anchor_To_Index.Element
         (Anchor_To_Index.Cursor (Position)).Has_Been_Output);
 
    procedure Set_Exists_In_Output (Object : in out Instance;
-                                   Position : Cursor) is
+                                   Position : Anchor_Cursor) is
       procedure Process (Key : Text.Reference;
                          Element : in out Anchor_Info) is
          pragma Unreferenced (Key);
@@ -100,6 +114,41 @@ package body Yaml.Events.Store is
                                       Anchor_To_Index.Cursor (Position),
                                       Process'Access);
    end Set_Exists_In_Output;
+
+   procedure Advance (Position : in out Element_Cursor) is
+   begin
+      Position := Element_Cursor'Succ (Position);
+   end Advance;
+
+   procedure Advance_At_Same_Level (Object : Instance;
+                                    Position : in out Element_Cursor) is
+      Depth : Natural := 0;
+   begin
+      loop
+         case Object.Data (Positive (Position)).Kind is
+            when Annotation_Start | Sequence_Start | Mapping_Start |
+                 Document_Start =>
+               Depth := Depth + 1;
+            when Annotation_End =>
+               Depth := Depth - 1;
+            when Sequence_End | Mapping_End | Document_End =>
+               Depth := Depth - 1;
+               if Depth = 0 then
+                  Position := Element_Cursor'Succ (Position);
+                  return;
+               end if;
+            when Scalar | Alias =>
+               if Depth = 0 then
+                  Position := Element_Cursor'Succ (Position);
+                  return;
+               end if;
+            when Stream_Start | Stream_End =>
+               raise Stream_Error with "Unexpected event inside stream: " &
+                 Object.Data (Positive (Position)).Kind'Img;
+         end case;
+         Position := Element_Cursor'Succ (Position);
+      end loop;
+   end Advance_At_Same_Level;
 
    procedure Clear (Object : in out Instance) is
    begin
@@ -123,18 +172,26 @@ package body Yaml.Events.Store is
       Target.Depth := Source.Depth;
    end Copy;
 
-   package body Iteration is
-      function Retrieve (Object : Reference; Position : Cursor)
+   function Retrieve (Object : Reference'Class; Position : Anchor_Cursor)
                          return Stream_Reference is
-         Ptr : constant not null access Stream_Instance :=
-           new Stream_Instance'(Refcount_Base with Object => Object,
-                                Depth => 0, Current => Anchor_To_Index.Element
-                                  (Anchor_To_Index.Cursor (Position)).Position);
-      begin
-         Object.Data.Stream_Count := Object.Data.Stream_Count + 1;
-         return Stream_Reference'(Ada.Finalization.Controlled with Data => Ptr);
-      end Retrieve;
-   end Iteration;
+      Ptr : constant not null access Stream_Instance :=
+        new Stream_Instance'(Refcount_Base with Object => Reference (Object),
+                             Depth => 0, Current => Anchor_To_Index.Element
+                               (Anchor_To_Index.Cursor (Position)).Position);
+   begin
+      Object.Data.Stream_Count := Object.Data.Stream_Count + 1;
+      return Stream_Reference'(Ada.Finalization.Controlled with Data => Ptr);
+   end Retrieve;
+
+   function Retrieve (Object : Reference'Class; Position : Element_Cursor)
+                      return Stream_Reference is
+      Ptr : constant not null access Stream_Instance :=
+        new Stream_Instance'(Refcount_Base with Object => Reference (Object),
+                             Depth => 0, Current => Positive (Position));
+   begin
+      Object.Data.Stream_Count := Object.Data.Stream_Count + 1;
+      return Stream_Reference'(Ada.Finalization.Controlled with Data => Ptr);
+   end Retrieve;
 
    function Value (Object : Stream_Reference) return Stream_Accessor is
       ((Data => Object.Data));
@@ -177,9 +234,13 @@ package body Yaml.Events.Store is
       end if;
    end Clear;
 
-   function First (Object : Reference; Position : Cursor) return Event is
-     (Object.Data.Data (Anchor_To_Index.Element (Anchor_To_Index.Cursor
-                                                 (Position)).Position));
+   function First (Object : Instance; Position : Anchor_Cursor) return Event is
+     (Object.Data (Anchor_To_Index.Element (Anchor_To_Index.Cursor
+                                            (Position)).Position));
+
+   function Element (Object : Instance; Position : Element_Cursor)
+                     return Event is
+     (Object.Data (Positive (Position)));
 
    procedure Adjust (Object : in out Reference) is
    begin
@@ -233,4 +294,9 @@ package body Yaml.Events.Store is
          Decrease_Refcount (Object.Data);
       end if;
    end Finalize;
+
+   function To_Element_Cursor (Position : Anchor_Cursor) return Element_Cursor
+   is (if Position = No_Anchor then No_Element else
+          Element_Cursor (Anchor_To_Index.Element (Anchor_To_Index.Cursor
+                                                   (Position)).Position));
 end Yaml.Events.Store;

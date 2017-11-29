@@ -50,6 +50,9 @@ package body Yaml.Events.Queue is
    function Length (Object : in Instance) return Natural is
      (Object.Length);
 
+   function Length (Object : Reference) return Natural is
+     (Object.Data.Length);
+
    function First (Object : in Instance) return Event is
    begin
       if Object.Length = 0 then
@@ -105,8 +108,12 @@ package body Yaml.Events.Queue is
    function Value (Object : Stream_Reference) return Stream_Accessor is
      ((Data => Object.Data));
 
+   function Value (Object : Optional_Stream_Reference) return Stream_Accessor is
+     ((Data => Object.Data));
+
    function Next (Object : in out Stream_Instance) return Event is
-      Index : constant Positive := (Object.Buffer.Data.First_Pos + Object.Offset) mod
+      Index : constant Positive :=
+        (Object.Buffer.Data.First_Pos + Object.Offset) mod
         Object.Buffer.Data.Data.all'Last;
    begin
       if Object.Offset = Object.Buffer.Data.Length then
@@ -118,6 +125,20 @@ package body Yaml.Events.Queue is
          end return;
       end if;
    end Next;
+
+   function Required (Object : Optional_Stream_Reference'Class)
+                      return Stream_Reference is
+   begin
+      Object.Data.Increase_Refcount;
+      return (Ada.Finalization.Controlled with Data => Object.Data);
+   end Required;
+
+   function Optional (Object : Stream_Reference'Class)
+                     return Optional_Stream_Reference is
+   begin
+      Object.Data.Increase_Refcount;
+      return (Ada.Finalization.Controlled with Data => Object.Data);
+   end Optional;
 
    procedure Finalize (Object : in out Stream_Instance) is
    begin
@@ -132,5 +153,19 @@ package body Yaml.Events.Queue is
    procedure Finalize (Object : in out Stream_Reference) is
    begin
       Decrease_Refcount (Object.Data);
+   end Finalize;
+
+   overriding procedure Adjust (Object : in out Optional_Stream_Reference) is
+   begin
+      if Object.Data /= null then
+         Increase_Refcount (Object.Data);
+      end if;
+   end Adjust;
+
+   procedure Finalize (Object : in out Optional_Stream_Reference) is
+   begin
+      if Object.Data /= null then
+         Decrease_Refcount (Object.Data);
+      end if;
    end Finalize;
 end Yaml.Events.Queue;

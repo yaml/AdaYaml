@@ -95,7 +95,7 @@ package body Yaml.Lexer.Evaluation is
                               end if;
                               exit Space_Loop;
                            when Flow_Indicator =>
-                              if L.Flow_Depth > 0 then
+                              if L.Flow_Depth + L.Annotation_Depth > 0 then
                                  L.State := Inside_Line'Access;
                                  exit Multiline_Loop;
                               end if;
@@ -119,7 +119,7 @@ package body Yaml.Lexer.Evaluation is
                      exit Multiline_Loop;
                   end if;
                when Flow_Indicator =>
-                  if L.Flow_Depth > 0 then
+                  if L.Flow_Depth + L.Annotation_Depth > 0 then
                      T.End_Pos := Cur_Mark (L);
                      L.State := Inside_Line'Access;
                      exit Multiline_Loop;
@@ -173,7 +173,8 @@ package body Yaml.Lexer.Evaluation is
             end loop Newline_Loop;
             if
               (L.Cur = ':' and then not Next_Is_Plain_Safe (L)) or else
-              L.Cur = '#' or else (L.Cur in Flow_Indicator and L.Flow_Depth > 0)
+              L.Cur = '#' or else (L.Cur in Flow_Indicator and
+                                    L.Flow_Depth + L.Annotation_Depth > 0)
               or else (L.Cur = ')' and L.Annotation_Depth > 0)
             then
                L.State := After_Newline_State;

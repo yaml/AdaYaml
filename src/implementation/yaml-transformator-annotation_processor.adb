@@ -8,8 +8,10 @@ with Ada.Unchecked_Deallocation;
 with Yaml.Transformator.Annotation.Identity;
 with Yaml.Transformator.Annotation.Concatenation;
 with Yaml.Transformator.Annotation.Vars;
+with Yaml.Transformator.Annotation.For_Loop;
 pragma Unreferenced (Yaml.Transformator.Annotation.Concatenation);
 pragma Unreferenced (Yaml.Transformator.Annotation.Vars);
+pragma Unreferenced (Yaml.Transformator.Annotation.For_Loop);
 
 package body Yaml.Transformator.Annotation_Processor is
    use type Text.Reference;
@@ -27,6 +29,21 @@ package body Yaml.Transformator.Annotation_Processor is
                     Context => Events.Context.Create (Externals),
                     others => <>));
 
+   procedure Finalize_Finished_Annotation_Impl (Object : in out Instance) is
+   begin
+      if Object.Depth = Object.Annotations (Object.Count).Depth
+        and then not Object.Annotations (Object.Count).Impl.Has_Next then
+         if Object.Annotations (Object.Count).Impl.Swallows_Document then
+            Object.Current_State := Swallowing_Document_End;
+            Object.Current :=
+              (Kind => Document_End, others => <>);
+         end if;
+         Free_Transformator (Object.Annotations
+                             (Object.Count).Impl);
+         Object.Count := Object.Count - 1;
+      end if;
+   end Finalize_Finished_Annotation_Impl;
+
    procedure Append (Object : in out Instance; E : Event; Start : Natural) is
    begin
       if Object.Current_State = Existing_But_Held_Back then
@@ -41,16 +58,29 @@ package body Yaml.Transformator.Annotation_Processor is
                Object.Annotations (Cur_Annotation).Impl.Put (Cur_Event);
                if Object.Annotations (Cur_Annotation).Impl.Has_Next then
                   Cur_Event := Object.Annotations (Cur_Annotation).Impl.Next;
+                  if (Cur_Annotation = Object.Count and
+                        E.Kind in Sequence_End | Mapping_End | Scalar | Alias)
+                  then
+                     Finalize_Finished_Annotation_Impl (Object);
+                  end if;
                   Cur_Annotation := Cur_Annotation - 1;
                else
                   loop
                      Cur_Annotation := Cur_Annotation + 1;
                      if Cur_Annotation > Object.Count then
+                        if E.Kind /= Annotation_End then
+                           Finalize_Finished_Annotation_Impl (Object);
+                        end if;
                         return;
                      end if;
                      if Object.Annotations (Cur_Annotation).Impl.Has_Next then
                         Cur_Event :=
                           Object.Annotations (Cur_Annotation).Impl.Next;
+                        if (Cur_Annotation = Object.Count and
+                          E.Kind in Sequence_End | Mapping_End | Scalar | Alias)
+                        then
+                           Finalize_Finished_Annotation_Impl (Object);
+                        end if;
                         Cur_Annotation := Cur_Annotation - 1;
                         exit;
                      end if;
@@ -62,21 +92,6 @@ package body Yaml.Transformator.Annotation_Processor is
          end;
       end if;
    end Append;
-
-   procedure Finalize_Finished_Annotation_Impl (Object : in out Instance) is
-   begin
-      if Object.Count > 0 and then
-        Object.Depth = Object.Annotations (Object.Count).Depth and then
-        not Object.Annotations (Object.Count).Impl.Has_Next then
-         if Object.Annotations (Object.Count).Impl.Swallows_Document then
-            Object.Current_State := Swallowing_Document_End;
-            Object.Current := (Kind => Document_End, others => <>);
-         end if;
-         Free_Transformator
-           (Object.Annotations (Object.Count).Impl);
-         Object.Count := Object.Count - 1;
-      end if;
-   end Finalize_Finished_Annotation_Impl;
 
    procedure Put (Object : in out Instance; E : Event) is
       Locals : constant Events.Store.Accessor := Object.Context.Document_Store;
@@ -140,7 +155,6 @@ package body Yaml.Transformator.Annotation_Processor is
             Object.Depth := Object.Depth - 1;
             Locals.Memorize (E);
             Object.Append (E, Object.Count);
-            Finalize_Finished_Annotation_Impl (Object);
          when Document_End =>
             if Object.Current_State = Swallowing_Document_End then
                Object.Current_State := Absent;
@@ -151,7 +165,6 @@ package body Yaml.Transformator.Annotation_Processor is
          when Scalar | Alias =>
             Locals.Memorize (E);
             Object.Append (E, Object.Count);
-            Finalize_Finished_Annotation_Impl (Object);
          when others =>
             Object.Append (E, Object.Count);
       end case;

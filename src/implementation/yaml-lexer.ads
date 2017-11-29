@@ -153,6 +153,8 @@ private
      Ascii_Char in 'A' .. 'Z' | 'a' .. 'z';
    subtype Flow_Indicator is Character with Static_Predicate =>
      Flow_Indicator in '{' | '}' | '[' | ']' | ',';
+   subtype Annotation_Param_Indicator is Character with Static_Predicate =>
+     Annotation_Param_Indicator in '(' | ')';
    subtype Tag_Shorthand_Char is Character with Static_Predicate =>
      Tag_Shorthand_Char in Ascii_Char | Digit | '-';
    subtype Tag_Uri_Char is Character with Static_Predicate =>
@@ -161,6 +163,9 @@ private
          '(' | ')' | '[' | ']' | '-';
    subtype Tag_Char is Character with Static_Predicate =>
      (Tag_Char in Tag_Uri_Char) and not (Tag_Char in Flow_Indicator | '!');
+   subtype Suffix_Char is Character with Static_Predicate =>
+     Suffix_Char in Ascii_Char | Digit | '#' | ';' | '/' | '?' | '@' | '&' |
+       '=' | '+' | '$' | '_' | '.' | '!' | '~' | '*' | ''' | '-';
 
    -----------------------------------------------------------------------------
    --  utility subroutines (used by child packages)
@@ -270,17 +275,11 @@ private
    --  marker ending a plain scalar.
    function Line_Doc_End (L : in out Instance; T : out Token) return Boolean;
 
-   --  state after having read a tag handle. this will always yield the
-   --  corresponding tag suffix.
-   function At_Tag_Suffix (L : in out Instance; T : out Token) return Boolean;
+   --  state after having read a suffix of a tag or annotation namespace. this
+   --  will always yield the corresponding suffix.
+   function At_Suffix (L : in out Instance; T : out Token) return Boolean;
 
-   --  state after having read an annotation handle. this will always yield the
-   --  corresponding annotation suffix.
-   function At_Annotation_Suffix (L : in out Instance; T : out Token)
-                                  return Boolean;
-
-   --  state after having read an annotation. checks whether the annotation
-   --  has parameters.
-   function After_Annotation (L : in out Instance; T : out Token)
-                              return Boolean;
+   --  state after having read an annotation or tag. checks whether a parameter
+   --  list follows.
+   function After_Suffix (L : in out Instance; T : out Token) return Boolean;
 end Yaml.Lexer;

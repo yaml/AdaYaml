@@ -15,7 +15,8 @@ package Yaml.Events.Queue is
 
    procedure Append (Object : in out Instance; E : Event);
    procedure Append (Object : in out Instance; E : Event; Position : out Mark);
-   function Length (Object : in Instance) return Natural;
+   function Length (Object : Instance) return Natural;
+   function Length (Object : Reference) return Natural;
    function First (Object : in Instance) return Event;
    procedure Dequeue (Object : in out Instance);
 
@@ -30,8 +31,19 @@ package Yaml.Events.Queue is
    type Stream_Accessor (Data : not null access Stream_Instance) is limited
      null record with Implicit_Dereference => Data;
 
+   type Optional_Stream_Reference is tagged private;
+
+   Null_Reference : constant Optional_Stream_Reference;
+
    function Value (Object : Stream_Reference) return Stream_Accessor;
+   function Value (Object : Optional_Stream_Reference) return Stream_Accessor
+     with Pre => Object /= Null_Reference;
    function Next (Object : in out Stream_Instance) return Event;
+
+   function Required (Object : Optional_Stream_Reference'Class)
+                      return Stream_Reference;
+   function Optional (Object : Stream_Reference'Class)
+                     return Optional_Stream_Reference;
 
    function As_Stream (Object : Reference'Class) return Stream_Reference;
 private
@@ -69,4 +81,13 @@ private
    overriding procedure Adjust (Object : in out Stream_Reference);
    overriding procedure Finalize (Object : in out Stream_Reference);
 
+   type Optional_Stream_Reference is new Ada.Finalization.Controlled with record
+      Data : access Stream_Instance;
+   end record;
+
+   overriding procedure Adjust (Object : in out Optional_Stream_Reference);
+   overriding procedure Finalize (Object : in out Optional_Stream_Reference);
+
+   Null_Reference : constant Optional_Stream_Reference :=
+     (Ada.Finalization.Controlled with Data => null);
 end Yaml.Events.Queue;

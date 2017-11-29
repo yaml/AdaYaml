@@ -11,7 +11,8 @@ package Yaml.Events.Store is
    type Accessor (Data : not null access Instance) is limited null record with
      Implicit_Dereference => Data;
 
-   type Cursor is private;
+   type Anchor_Cursor is private;
+   type Element_Cursor is private;
 
    function New_Store return Reference;
    function Value (Object : Reference) return Accessor;
@@ -25,12 +26,20 @@ package Yaml.Events.Store is
    function Required (Object : Optional_Reference'Class) return Reference;
 
    procedure Memorize (Object : in out Instance; Item : Event);
-   function Find (Object : Instance; Alias : Text.Reference)
-                  return Cursor;
-   function Exists_In_Output (Position : Cursor) return Boolean;
-   procedure Set_Exists_In_Output (Object : in out Instance; Position : Cursor);
+   procedure Force_Memorize (Object : in out Instance; Item : Event;
+                             Position : out Element_Cursor);
 
-   No_Element : constant Cursor;
+   function Find (Object : Instance; Alias : Text.Reference)
+                  return Anchor_Cursor;
+   function Exists_In_Output (Position : Anchor_Cursor) return Boolean;
+   procedure Set_Exists_In_Output (Object : in out Instance;
+                                   Position : Anchor_Cursor);
+   procedure Advance (Position : in out Element_Cursor);
+   procedure Advance_At_Same_Level (Object : Instance;
+                                    Position : in out Element_Cursor);
+
+   No_Anchor : constant Anchor_Cursor;
+   No_Element : constant Element_Cursor;
 
    procedure Clear (Object : in out Instance);
    procedure Copy (Source : in Instance; Target : in out Instance);
@@ -55,13 +64,19 @@ package Yaml.Events.Store is
    procedure Clear (Object : in out Optional_Stream_Reference) with
      Post => not Object.Exists;
 
-   function First (Object : Reference; Position : Cursor) return Event;
+   function First (Object : Instance; Position : Anchor_Cursor) return Event;
 
-   package Iteration is
-      function Retrieve (Object : Reference;
-                         Position : Cursor) return Stream_Reference
-        with Pre => Position /= No_Element;
-   end Iteration;
+   function Element (Object : Instance;
+                     Position : Element_Cursor) return Event;
+
+   function Retrieve (Object : Reference'Class;
+                      Position : Anchor_Cursor) return Stream_Reference
+     with Pre => Position /= No_Anchor;
+   function Retrieve (Object : Reference'Class;
+                      Position : Element_Cursor) return Stream_Reference
+     with Pre => Position /= No_Element;
+
+   function To_Element_Cursor (Position : Anchor_Cursor) return Element_Cursor;
 private
    type Anchor_Info is record
       Position : Positive;
@@ -71,7 +86,8 @@ private
    package Anchor_To_Index is new Ada.Containers.Hashed_Maps
      (Text.Reference, Anchor_Info, Text.Hash, Text."=");
 
-   type Cursor is new Anchor_To_Index.Cursor;
+   type Anchor_Cursor is new Anchor_To_Index.Cursor;
+   type Element_Cursor is new Natural;
 
    type Instance is limited new Event_Holder with record
       Anchor_Map : Anchor_To_Index.Map;
@@ -96,7 +112,9 @@ private
    Null_Reference : constant Optional_Reference :=
      (Ada.Finalization.Controlled with Data => null);
 
-   No_Element : constant Cursor := Cursor (Anchor_To_Index.No_Element);
+   No_Anchor : constant Anchor_Cursor :=
+     Anchor_Cursor (Anchor_To_Index.No_Element);
+   No_Element : constant Element_Cursor := 0;
 
    type Stream_Instance is limited new Refcount_Base with record
       Object  : Reference;

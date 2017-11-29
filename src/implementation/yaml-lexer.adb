@@ -557,7 +557,8 @@ package body Yaml.Lexer is
             Handle_End : Positive := L.Token_Start;
          begin
             loop
-               if L.Buffer (Handle_End) in Space_Or_Line_End | Flow_Indicator
+               if L.Buffer (Handle_End) in Space_Or_Line_End | Flow_Indicator |
+                 Annotation_Param_Indicator
                then
                   Handle_End := L.Token_Start;
                   L.Pos := L.Pos - 1;
@@ -579,7 +580,7 @@ package body Yaml.Lexer is
             L.Cur := Next (L);
             T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
                   Kind => Kind);
-            L.State := At_Tag_Suffix'Access;
+            L.State := At_Suffix'Access;
          end;
       end if;
    end Read_Namespace;
@@ -800,29 +801,20 @@ package body Yaml.Lexer is
       return True;
    end Line_Doc_End;
 
-   function At_Tag_Suffix (L : in out Instance; T : out Token) return Boolean is
+   function At_Suffix (L : in out Instance; T : out Token) return Boolean is
    begin
       Start_Token (L);
-      Evaluation.Read_URI (L, True);
+      while L.Cur in Suffix_Char loop
+         L.Cur := Next (L);
+      end loop;
+      L.Value := L.Pool.From_String (L.Full_Lexeme);
       T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
             Kind => Suffix);
-      L.State := After_Token'Access;
+      L.State := After_Suffix'Access;
       return True;
-   end At_Tag_Suffix;
+   end At_Suffix;
 
-   function At_Annotation_Suffix (L : in out Instance; T : out Token)
-                                  return Boolean is
-   begin
-      Start_Token (L);
-      Evaluation.Read_URI (L, True);
-      T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
-            Kind => Suffix);
-      L.State := After_Annotation'Access;
-      return True;
-   end At_Annotation_Suffix;
-
-   function After_Annotation (L : in out Instance; T : out Token)
-                              return Boolean is
+   function After_Suffix (L : in out Instance; T : out Token) return Boolean is
    begin
       L.State := After_Token'Access;
       if L.Cur = '(' then
@@ -836,6 +828,6 @@ package body Yaml.Lexer is
       else
          return False;
       end if;
-   end After_Annotation;
+   end After_Suffix;
 
 end Yaml.Lexer;
