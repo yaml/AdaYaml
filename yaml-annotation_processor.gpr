@@ -1,0 +1,17 @@
+with "yaml";
+
+library project Yaml.Annotation_Processor is
+   for Languages use ("ada");
+
+   for Library_Name use "AdaYaml-Annotations";
+   
+   for Object_Dir use Yaml'Object_Dir;
+   for Library_Dir use Yaml'Library_Dir;
+
+   for Source_Dirs use ("src/annotation_processor/interface",
+                        "src/annotation_processor/implementation");
+   
+   package Builder renames Yaml.Builder;
+   package Compiler renames Yaml.Compiler;
+   package Ide renames Yaml.Ide;
+end Yaml.Annotation_Processor;

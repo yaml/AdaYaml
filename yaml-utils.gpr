@@ -1,4 +1,5 @@
 with "yaml";
+with "yaml-annotation_processor";
 
 project Yaml.Utils is
    for Languages use ("ada");
