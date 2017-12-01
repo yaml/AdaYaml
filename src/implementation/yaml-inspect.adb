@@ -27,7 +27,8 @@ begin
 
          if Cur_Event.Start_Position.Index > Cur_Pos then
             Next_Pos := Cur_Pos;
-            while Next_Pos < Cur_Event.Start_Position.Index loop
+            while Next_Pos <= Input'Last and then
+              Next_Pos < Cur_Event.Start_Position.Index loop
                if Input (Next_Pos) = '#' then
                   if Cur_Pos < Next_Pos then
                      Emit_Whitespace (Input (Cur_Pos .. Next_Pos - 1));
