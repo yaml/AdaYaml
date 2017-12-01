@@ -1,0 +1,97 @@
+<svg version="1.1"
+     baseProfile="full"
+     width="750" height="420"
+     xmlns="http://www.w3.org/2000/svg"
+xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <marker id="Triangle" viewBox="0 0 10 10" refX="10" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" />
+    </marker>
+    <g id="box">
+      <rect x="0" y="0" width="120" height="120" stroke="black" fill="white" stroke-width="2"/>
+      <line x1="0" y1="50" x2="120" y2="50" stroke="black" stroke-width="1"/>
+    </g>
+    <g id="step">
+      <path d="M 50 0 A 50 40 0 0 1 -50 0" marker-end="url(#Triangle)" fill="none" stroke="black"/>
+    </g>
+  </defs>
+  
+  <g id="boxes" text-anchor="middle">
+    <g id="native" transform="translate(0 0)">
+      <use xlink:href="#box"/>
+      <text x="60" y="20" font-weight="bold">Native</text>
+      <text x="60" y="40" font-weight="bold">(Data Structure)</text>
+
+      <text x="60" y="70">opaque</text>
+      <text x="60" y="90">program</text>
+      <text x="60" y="110">data</text>
+    </g>
+
+    <g id="representation" transform="translate(170 0)">
+      <use xlink:href="#box"/>
+      <text x="60" y="20" font-weight="bold">Representation</text>
+      <text x="60" y="40" font-weight="bold">(Node Graph)</text>
+
+      <g font-size="x-small">
+        <text x="60" y="70">tags, annotations,</text>
+        <text x="60" y="90">mapping/sequence/scalar,</text>
+        <text x="60" y="110">canonical string value</text>
+      </g>
+    </g>
+
+    <g id="serialization" transform="translate(320 0)">
+      <use xlink:href="#box"/>
+      <text x="60" y="20" font-weight="bold">Serialization</text>
+      <text x="60" y="40" font-weight="bold">(Processed Events)</text>
+
+      <text x="60" y="70">anchors,</text>
+      <text x="60" y="90">aliases,</text>
+      <text x="60" y="110">key order</text>
+    </g>
+
+    <g id="serialization" transform="translate(470 0)">
+      <use xlink:href="#box"/>
+      <text x="60" y="20" font-weight="bold">Raw Serialization</text>
+      <text x="60" y="40" font-weight="bold">(Event Tree)</text>
+
+      <text x="60" y="70" font-style="italic">transformation</text>
+      <text x="60" y="90" font-style="italic">annotations,</text>
+      <text x="60" y="110">external aliases</text>
+    </g>
+
+    <g id="presentation" transform="translate(620 0)">
+      <use xlink:href="#box"/>
+      <text x="60" y="20" font-weight="bold">Presentation</text>
+      <text x="60" y="40" font-weight="bold">(Character Stream)</text>
+
+      <g font-size="x-small">
+        <text x="60" y="70">styles, comments</text>
+        <text x="60" y="90">directives, spacing,</text>
+        <text x="60" y="110">formatted string values, …</text>
+      </g>
+    </g>
+  </g>
+
+  <g id="processes" text-anchor="middle" transform="translate(0 120)">
+    <g id="parse" transform="translate(605 0)">
+        <use xlink:href="#step"/>
+        <text x="0" y="55">parse</text>
+    </g>
+
+    <g id="process" transform="translate(455 0)">
+        <use xlink:href="#step"/>
+        <text x="0" y="55">process annotations</text>
+    </g>
+
+    <g id="compose" transform="translate(305 0)">
+        <use xlink:href="#step"/>
+        <text x="0" y="55">compose</text>
+    </g>
+
+    <g id="construct" transform="translate(145 0)">
+        <use xlink:href="#step"/>
+        <text x="0" y="55">construct</text>
+    </g>
+  </g>
+</svg>
