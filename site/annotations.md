@@ -73,7 +73,9 @@ When loading a YAML character stream with the Transformation Processor enabled,
 the loading process takes the following form (modified from the original
 process in the YAML specification):
 
-![Adjusted YAML Loading Process](img/annotation-loading.svg)
+<svg width="750" height="220">
+  <use xlink:href="/img/annotation-loading.svg#diagram"></use>
+</svg>
 
 As you can see, *transformation annotations* are removed in the
 *annotation processing* step when moving from the **Raw Serialization** to the
@@ -182,3 +184,4 @@ raise an error.
 
 
  [1]: http://yaml.org/type/merge.html
+

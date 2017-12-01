@@ -1,6 +1,6 @@
 <svg version="1.1"
      baseProfile="full"
-     width="750" height="420"
+     width="750" height="220"
      xmlns="http://www.w3.org/2000/svg"
 xmlns:xlink="http://www.w3.org/1999/xlink">
   <defs>
@@ -16,6 +16,7 @@ xmlns:xlink="http://www.w3.org/1999/xlink">
       <path d="M 50 0 A 50 40 0 0 1 -50 0" marker-end="url(#Triangle)" fill="none" stroke="black"/>
     </g>
   </defs>
+  <g id="diagram" viewBox="0 0 750 220">
   
   <g id="boxes" text-anchor="middle">
     <g id="native" transform="translate(0 0)">
@@ -93,5 +94,6 @@ xmlns:xlink="http://www.w3.org/1999/xlink">
         <use xlink:href="#step"/>
         <text x="0" y="55">construct</text>
     </g>
+  </g>
   </g>
 </svg>
