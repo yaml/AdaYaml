@@ -101,7 +101,7 @@ article {
   font-size: 90%;
 }
 
-p code, li code {
+p code, li code, figcaption code {
   background: #ddd;
   border-radius: 5px;
   padding: 0px 3px;
@@ -121,10 +121,46 @@ p code, li code {
   color: white;
 }
 
-
 .github img {
   display: inline-block;
   width: 1em;
   height: 1em;
   vertical-align: middle;
+}
+
+figure.example {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: block;
+  box-shadow: 3px 3px 5px gray;
+  border: 1px solid gray;
+}
+
+figure.example > .left {
+  margin: 0;
+  padding: 5pt;
+  width: 48%;
+  display: inline-block;
+  vertical-align: top;
+}
+
+figure.example > .right {
+  margin: 0;
+  padding: 5pt;
+  width: 48%;
+  display: inline-block;
+  vertical-align: top;
+}
+
+figure.example > .left > p,
+figure.example > .right > p {
+  text-align: center;
+  font-weight: bold;
+  margin: 0;
+}
+
+figure.example > figcaption {
+  text-align: center;
+  padding: 0 20pt;
 }
