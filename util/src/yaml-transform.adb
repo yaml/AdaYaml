@@ -37,8 +37,8 @@ begin
    end if;
 
    P.Value.Set_Input (Input);
-   Trans.Append (new Transformator.Canonical.Instance);
    Trans.Append (Transformator.Annotation_Processor.New_Processor (P.Value.Pool));
+   Trans.Append (new Transformator.Canonical.Instance);
    Pres.Configure (Presenter.Default_Line_Length, Presenter.Canonical);
    Pres.Set_Output (Destination.Text_IO.As_Destination (Ada.Text_IO.Standard_Output));
 

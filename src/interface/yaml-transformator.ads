@@ -12,9 +12,6 @@ package Yaml.Transformator is
    function Has_Next (Object : Instance) return Boolean is abstract;
 
    function Next (Object : in out Instance) return Event is abstract;
-
-   function Swallows_Document (Object : in out Instance) return Boolean is
-     (False);
 private
    type Instance is abstract limited new Ada.Finalization.Limited_Controlled
      with null record;

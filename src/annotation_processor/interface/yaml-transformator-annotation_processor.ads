@@ -4,6 +4,7 @@
 with Text.Pool;
 with Yaml.Events.Store;
 private with Yaml.Events.Context;
+private with Yaml.Transformator.Annotation;
 
 package Yaml.Transformator.Annotation_Processor is
    type Instance (<>) is limited new Transformator.Instance with private;
@@ -13,15 +14,17 @@ package Yaml.Transformator.Annotation_Processor is
       Externals : Events.Store.Reference := Events.Store.New_Store)
       return Pointer;
 
-   overriding procedure Put (Object : in out Instance; E : Event);
+   overriding procedure Put (Object : in out Instance; E : Event)
+     with Pre => not Object.Has_Next;
 
    function Has_Next (Object : Instance) return Boolean;
 
    function Next (Object : in out Instance) return Event;
 private
-   procedure Append (Object : in out Instance; E : Event; Start : Natural);
+   procedure Append (Object : in out Instance; E : Event);
 
    type Annotated_Node is record
+      Swallows_Next : Boolean;
       Impl : Transformator.Pointer;
       Depth : Natural;
    end record;
@@ -29,18 +32,24 @@ private
    type Node_Array is array (Positive range <>) of Annotated_Node;
    type Node_Array_Pointer is access Node_Array;
 
-   type Current_State_Type is (Existing, Existing_But_Held_Back,
+   type Level_Array is array (Positive range <>) of
+     Annotation.Node_Context_Type;
+   type Level_Array_Pointer is access Level_Array;
+
+   type Current_State_Type is (Existing, Event_Held_Back, Releasing_Held_Back,
                                Swallowing_Document_End, Localizing_Alias,
                                Absent);
 
    type Instance is limited new Transformator.Instance with record
       Context : Events.Context.Reference;
       Pool : Text.Pool.Reference;
-      Depth, Count, Stream_Depth : Natural := 0;
+      Annotation_Count, Level_Count, Stream_Depth : Natural := 0;
       Current, Held_Back : Event;
       Current_State : Current_State_Type := Absent;
       Current_Stream : Events.Store.Optional_Stream_Reference;
       Annotations : not null Node_Array_Pointer := new Node_Array (1 .. 16);
+      Levels : not null Level_Array_Pointer := new Level_Array (1 .. 64);
+      May_Finish_Transformation : Boolean := False;
    end record;
 
    overriding procedure Finalize (Object : in out Instance);

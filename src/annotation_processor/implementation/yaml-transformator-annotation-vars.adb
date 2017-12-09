@@ -18,10 +18,20 @@ package body Yaml.Transformator.Annotation.Vars is
    end Next;
 
    function New_Vars (Pool : Text.Pool.Reference;
-                      Context : Events.Context.Reference)
+                      Node_Context : Node_Context_Type;
+                      Processor_Context : Events.Context.Reference;
+                      Swallows_Previous : out Boolean)
                       return not null Pointer is
-     (new Instance'(Transformator.Instance with Context => Context,
-                    others => <>));
+      pragma Unreferenced (Pool);
+   begin
+      if Node_Context /= Document_Root then
+         raise Annotation_Error with
+           "@@vars may only be applied to a document's root node";
+      end if;
+      Swallows_Previous := True;
+      return new Instance'(Transformator.Instance with
+                             Context => Processor_Context, others => <>);
+   end New_Vars;
 
    procedure Initial (Object : in out Instance; E : Event) is
    begin

@@ -38,10 +38,16 @@ package body Yaml.Transformator.Annotation.Concatenation is
    end Next;
 
    function New_Concatenation (Pool : Text.Pool.Reference;
-                               Context : Events.Context.Reference)
+                               Node_Context : Node_Context_Type;
+                               Processor_Context : Events.Context.Reference;
+                               Swallows_Previous : out Boolean)
                                return not null Pointer is
-     (new Instance'(Transformator.Instance with Pool => Pool,
-                    Context => Context, others => <>));
+      pragma Unreferenced (Node_Context);
+   begin
+      Swallows_Previous := False;
+      return new Instance'(Transformator.Instance with Pool => Pool,
+                           Context => Processor_Context, others => <>);
+   end New_Concatenation;
 
    procedure Initial (Object : in out Instance'Class; E : Event) is
    begin

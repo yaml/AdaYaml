@@ -14,7 +14,9 @@ package Yaml.Transformator.Annotation.Concatenation is
    overriding function Next (Object : in out Instance) return Event;
 
    function New_Concatenation (Pool : Text.Pool.Reference;
-                               Context : Events.Context.Reference)
+                               Node_Context : Node_Context_Type;
+                               Processor_Context : Events.Context.Reference;
+                               Swallows_Previous : out Boolean)
                                return not null Pointer;
 private
    type State_Type is not null access procedure (Object : in out Instance'Class;

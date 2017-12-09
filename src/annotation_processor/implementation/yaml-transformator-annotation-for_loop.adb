@@ -57,6 +57,7 @@ package body Yaml.Transformator.Annotation.For_Loop is
                   if Object.Loop_Variable_Store.Value.Element
                     (Object.Loop_Variable_Target).Kind = Sequence_End then
                      Object.Emitting_State := Emit_Sequence_End;
+                     return;
                   else
                      Object.Start_Next_Loop_Iteration;
                      return;
@@ -75,16 +76,25 @@ package body Yaml.Transformator.Annotation.For_Loop is
    end Next;
 
    function New_For_Loop (Pool : Text.Pool.Reference;
-                          Context : Events.Context.Reference)
+                          Node_Context : Node_Context_Type;
+                          Processor_Context : Events.Context.Reference;
+                          Swallows_Previous : out Boolean)
                           return not null Pointer is
-     (new Instance'(Ada.Finalization.Limited_Controlled with
-                    Context => Context, Node_Properties => <>,
-                    State => Initial'Access, Depth => 0, Body_Store => <>,
-                    Loop_Variable => <>, Loop_Variable_Store => <>,
-                    Loop_Variable_Target => <>, Body_Start => <>,
-                    Emitting_State => Emit_Sequence_Start, Next_Event => <>,
-                    Header_Locals => Events.Context.No_Local_Store,
-                    Body_Locals => Events.Context.No_Local_Store));
+      pragma Unreferenced (Pool);
+      pragma Unreferenced (Node_Context);
+   begin
+      Swallows_Previous := False;
+      return new Instance'(Ada.Finalization.Limited_Controlled with
+                             Context => Processor_Context,
+                           Node_Properties => <>, State => Initial'Access,
+                           Depth => 0, Body_Store => <>, Loop_Variable => <>,
+                           Loop_Variable_Store => <>,
+                           Loop_Variable_Target => <>, Body_Start => <>,
+                           Emitting_State => Emit_Sequence_Start,
+                           Next_Event => <>,
+                           Header_Locals => Events.Context.No_Local_Store,
+                           Body_Locals => Events.Context.No_Local_Store);
+   end New_For_Loop;
 
    procedure Initial (Object : in out Instance; E : Event) is
    begin
