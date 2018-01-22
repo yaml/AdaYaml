@@ -35,6 +35,19 @@ package body Yaml.Events.Store is
            "cannot manipulate event queue while a Stream_Instance exists";
       end if;
       case Item.Kind is
+         when Annotation_Start =>
+            if Item.Annotation_Properties.Anchor /= Text.Empty then
+               Object.Anchor_Map.Include
+                 (Item.Annotation_Properties.Anchor,
+                  (Position => Object.Length + 1, Has_Been_Output => False));
+            elsif Object.Depth = 0 and not Force then
+               return;
+            end if;
+            if Object.Depth = After_Annotation_End then
+               Object.Depth := 1;
+            else
+               Object.Depth := Object.Depth + 1;
+            end if;
          when Scalar =>
             if Item.Scalar_Properties.Anchor /= Text.Empty then
                Object.Anchor_Map.Include
@@ -43,6 +56,9 @@ package body Yaml.Events.Store is
                    Has_Been_Output => False));
             elsif Object.Depth = 0 and not Force then
                return;
+            end if;
+            if Object.Depth = After_Annotation_End then
+               Object.Depth := 0;
             end if;
          when Mapping_Start =>
             if Item.Collection_Properties.Anchor /= Text.Empty then
@@ -53,7 +69,11 @@ package body Yaml.Events.Store is
             elsif Object.Depth = 0 and not Force then
                return;
             end if;
-            Object.Depth := Object.Depth + 1;
+            if Object.Depth = After_Annotation_End then
+               Object.Depth := 1;
+            else
+               Object.Depth := Object.Depth + 1;
+            end if;
          when Sequence_Start =>
             if Item.Collection_Properties.Anchor /= Text.Empty then
                Object.Anchor_Map.Include
@@ -63,15 +83,29 @@ package body Yaml.Events.Store is
             elsif Object.Depth = 0 and not Force then
                return;
             end if;
-            Object.Depth := Object.Depth + 1;
+            if Object.Depth = After_Annotation_End then
+               Object.Depth := 1;
+            else
+               Object.Depth := Object.Depth + 1;
+            end if;
          when Mapping_End | Sequence_End =>
             if Object.Depth = 0 and not Force then
                return;
             end if;
             Object.Depth := Object.Depth - 1;
+         when Annotation_End =>
+            if Object.Depth = 0 and not Force then
+               return;
+            end if;
+            Object.Depth := Object.Depth - 1;
+            if Object.Depth = 0 then
+               Object.Depth := After_Annotation_End;
+            end if;
          when others =>
             if Object.Depth = 0 and not Force then
                return;
+            elsif Object.Depth = After_Annotation_End then
+               Object.Depth := 0;
             end if;
       end case;
       if Object.Length = Object.Data.all'Length then

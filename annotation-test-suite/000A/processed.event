@@ -1,0 +1,9 @@
++STR
++DOC
++SEQ
+=VAL <!foo> :ab
+=VAL &a :dore
+=VAL &b <!bar> :doremi
+-SEQ
+-DOC
+-STR

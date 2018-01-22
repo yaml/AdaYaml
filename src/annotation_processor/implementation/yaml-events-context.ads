@@ -10,10 +10,11 @@ package Yaml.Events.Context is
    type Cursor is private;
 
    type Local_Scope_Cursor is private;
+   type Generated_Store_Cursor is private;
 
    type Symbol_Cursor is private;
 
-   type Location_Type is (Local, Document, Stream, External, None);
+   type Location_Type is (Generated, Local, Document, Stream, External, None);
 
    function Create (External : Store.Reference := Store.New_Store)
                     return Reference;
@@ -21,10 +22,17 @@ package Yaml.Events.Context is
    function External_Store (Object : Reference) return Store.Accessor;
    function Stream_Store (Object : Reference) return Store.Accessor;
    function Document_Store (Object : Reference) return Store.Accessor;
+   function Transformed_Store (Object : Reference) return Store.Accessor;
    function Local_Store (Object : Reference; Position : Local_Scope_Cursor)
                          return Store.Accessor;
    function Local_Store_Ref (Object : Reference; Position : Local_Scope_Cursor)
                              return Store.Optional_Reference;
+   function Generated_Store (Object : Reference;
+                             Position : Generated_Store_Cursor)
+                             return Store.Accessor;
+   function Generated_Store_Ref (Object : Reference;
+                                 Position : Generated_Store_Cursor)
+                                 return Store.Optional_Reference;
 
    function Position (Object : Reference; Alias : Text.Reference) return Cursor;
    function Location (Position : Cursor) return Location_Type;
@@ -35,6 +43,11 @@ package Yaml.Events.Context is
                                         Position : out Local_Scope_Cursor);
    procedure Release_Local_Store (Object : Reference;
                                   Position : Local_Scope_Cursor);
+
+   procedure Create_Generated_Store (Object : Reference;
+                                     Position : out Generated_Store_Cursor);
+   procedure Release_Generated_Store (Object : Reference;
+                                      Position : Generated_Store_Cursor);
 
    procedure Create_Symbol (Object : Reference;
                             Scope  : Local_Scope_Cursor;
@@ -88,15 +101,21 @@ private
    type Scope_Array is array (Positive range <>) of Local_Scope;
    type Scope_Array_Pointer is access Scope_Array;
 
+   type Data_Array is array (Positive range <>) of Store.Optional_Reference;
+   type Data_Array_Pointer is access Data_Array;
+
    type Instance is limited new Refcount_Base with record
-      Document_Data, Stream_Data, External_Data : Store.Reference;
+      Generated_Data : Data_Array_Pointer;
+      Document_Data, Stream_Data, External_Data, Transformed_Data :
+        Store.Reference;
       Local_Scopes : Scope_Array_Pointer := null;
-      Local_Scope_Count : Natural := 0;
+      Local_Scope_Count, Generated_Data_Count : Natural := 0;
    end record;
 
    overriding procedure Finalize (Object : in out Instance);
 
    type Local_Scope_Cursor is new Natural;
+   type Generated_Store_Cursor is new Natural;
 
    type Symbol_Cursor is new Symbol_Tables.Cursor;
 

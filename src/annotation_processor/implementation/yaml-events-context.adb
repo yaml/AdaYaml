@@ -9,8 +9,11 @@ package body Yaml.Events.Context is
    use type Store.Anchor_Cursor;
    use type Store.Element_Cursor;
 
-   procedure Free_Array is new Ada.Unchecked_Deallocation
+   procedure Free_Scope_Array is new Ada.Unchecked_Deallocation
      (Scope_Array, Scope_Array_Pointer);
+
+   procedure Free_Data_Array is new Ada.Unchecked_Deallocation
+     (Data_Array, Data_Array_Pointer);
 
    procedure Free_Symbol_Table is new Ada.Unchecked_Deallocation
      (Symbol_Tables.Map, Symbol_Table_Pointer);
@@ -18,8 +21,11 @@ package body Yaml.Events.Context is
    function Create (External : Store.Reference := Store.New_Store)
                     return Reference is
      ((Ada.Finalization.Controlled with Data =>
-            new Instance'(Refcount_Base with Document_Data => Store.New_Store,
+            new Instance'(Refcount_Base with Generated_Data => null,
+                          Generated_Data_Count => 0,
+                          Document_Data => Store.New_Store,
                           Stream_Data => Store.New_Store,
+                          Transformed_Data => Store.New_Store,
                           External_Data => External,
                           Local_Scopes => null, Local_Scope_Count => 0)));
 
@@ -31,6 +37,9 @@ package body Yaml.Events.Context is
 
    function Document_Store (Object : Reference) return Store.Accessor is
      (Object.Data.Document_Data.Value);
+
+   function Transformed_Store (Object : Reference) return Store.Accessor is
+     (Object.Data.Transformed_Data.Value);
 
    function Local_Store (Object : Reference; Position : Local_Scope_Cursor)
                          return Store.Accessor is
@@ -49,8 +58,8 @@ package body Yaml.Events.Context is
    function Local_Store_Ref (Object : Reference; Position : Local_Scope_Cursor)
                              return Store.Optional_Reference is
    begin
-      if (Object.Data.Local_Scopes = null or
-            Object.Data.Local_Scope_Count < Natural (Position)) then
+      if Object.Data.Local_Scopes = null or
+            Object.Data.Local_Scope_Count < Natural (Position) then
          return Store.Null_Reference;
       elsif Object.Data.Local_Scopes (Positive (Position)).Events =
         Store.Null_Reference then
@@ -59,6 +68,38 @@ package body Yaml.Events.Context is
       end if;
       return Object.Data.Local_Scopes (Positive (Position)).Events;
    end Local_Store_Ref;
+
+   function Generated_Store (Object : Reference;
+                             Position : Generated_Store_Cursor)
+                             return Store.Accessor is
+   begin
+      if Object.Data.Generated_Data = null or
+        Object.Data.Generated_Data_Count < Natural (Position) then
+         raise Constraint_Error with "no generated store at this position";
+      elsif Object.Data.Generated_Data (Positive (Position)) =
+        Store.Null_Reference then
+         raise Program_Error with
+           "internal error: expected generated store at position" &
+           Position'Img;
+      end if;
+      return Object.Data.Generated_Data (Positive (Position)).Value;
+   end Generated_Store;
+
+   function Generated_Store_Ref (Object : Reference;
+                                 Position : Generated_Store_Cursor)
+                                 return Store.Optional_Reference is
+   begin
+      if Object.Data.Generated_Data = null or
+        Object.Data.Generated_Data_Count < Natural (Position) then
+         return Store.Null_Reference;
+      elsif Object.Data.Generated_Data (Positive (Position)) =
+        Store.Null_Reference then
+         raise Program_Error with
+           "internal error: expected generated store at position" &
+           Position'Img;
+      end if;
+      return Object.Data.Generated_Data (Positive (Position));
+   end Generated_Store_Ref;
 
    procedure Grow_Scopes (Object : in out Instance) is
    begin
@@ -71,7 +112,7 @@ package body Yaml.Events.Context is
          begin
             New_Array (Object.Local_Scopes'Range) :=
               Object.Local_Scopes.all;
-            Free_Array (Object.Local_Scopes);
+            Free_Scope_Array (Object.Local_Scopes);
             Object.Local_Scopes := New_Array;
          end;
       end if;
@@ -112,6 +153,42 @@ package body Yaml.Events.Context is
          Object.Data.Local_Scope_Count := Object.Data.Local_Scope_Count - 1;
       end loop;
    end Release_Local_Store;
+
+   procedure Create_Generated_Store (Object : Reference;
+                                     Position : out Generated_Store_Cursor) is
+   begin
+      if Object.Data.Generated_Data = null then
+         Object.Data.Generated_Data := new Data_Array (1 .. 16);
+      elsif Object.Data.Generated_Data_Count =
+        Object.Data.Generated_Data'Last then
+         declare
+            New_Array : constant not null Data_Array_Pointer :=
+              new Data_Array (1 .. Object.Data.Generated_Data_Count * 2);
+         begin
+            New_Array (Object.Data.Generated_Data'Range) :=
+              Object.Data.Generated_Data.all;
+            Free_Data_Array (Object.Data.Generated_Data);
+            Object.Data.Generated_Data := New_Array;
+         end;
+      end if;
+      Object.Data.Generated_Data_Count := Object.Data.Generated_Data_Count + 1;
+
+      Object.Data.Generated_Data (Object.Data.Generated_Data_Count) :=
+        Store.New_Store.Optional;
+      Position := Generated_Store_Cursor (Object.Data.Generated_Data_Count);
+   end Create_Generated_Store;
+
+   procedure Release_Generated_Store (Object : Reference;
+                                      Position : Generated_Store_Cursor) is
+   begin
+      Object.Data.Generated_Data (Positive (Position)) := Store.Null_Reference;
+      while Object.Data.Generated_Data_Count > 0 and then
+        (Object.Data.Generated_Data (Object.Data.Generated_Data_Count) =
+             Store.Null_Reference) loop
+         Object.Data.Generated_Data_Count :=
+           Object.Data.Generated_Data_Count - 1;
+      end loop;
+   end Release_Generated_Store;
 
    procedure Create_Symbol (Object : Reference;
                             Scope  : Local_Scope_Cursor;
@@ -172,7 +249,40 @@ package body Yaml.Events.Context is
    function Position (Object : Reference; Alias : Text.Reference) return Cursor
    is
       Pos : Store.Anchor_Cursor := Store.No_Anchor;
+
+      function Resolved (Position : Cursor) return Cursor is
+      begin
+         return Pos : Cursor := Position do
+            declare
+               Target_Event : constant Event := First (Pos);
+            begin
+               if Target_Event.Kind = Annotation_Start and then
+                 Target_Event.Annotation_Properties.Anchor /= Text.Empty then
+                  declare
+                     Resolved_Target : constant Store.Anchor_Cursor :=
+                       Object.Data.Transformed_Data.Value.Find
+                         (Target_Event.Annotation_Properties.Anchor);
+                  begin
+                     if Resolved_Target /= Store.No_Anchor then
+                        Pos.Target := Object.Data.Transformed_Data.Optional;
+                        Pos.Anchored_Position := Resolved_Target;
+                        Pos.Element_Position := Store.No_Element;
+                     end if;
+                  end;
+               end if;
+            end;
+         end return;
+      end Resolved;
    begin
+      for Index in reverse 1 .. Object.Data.Generated_Data_Count loop
+         Pos := Object.Data.Generated_Data (Index).Value.Find (Alias);
+         if Pos /= Store.No_Anchor then
+            return Resolved ((Target => Object.Data.Generated_Data (Index),
+                              Anchored_Position => Pos,
+                              Element_Position => Events.Store.No_Element,
+                              Target_Location => Generated));
+         end if;
+      end loop;
       for Index in reverse 1 .. Object.Data.Local_Scope_Count loop
          if Object.Data.Local_Scopes (Index).Symbols /= null then
             declare
@@ -180,17 +290,18 @@ package body Yaml.Events.Context is
                  Object.Data.Local_Scopes (Index).Symbols.Find (Alias);
             begin
                if Symbol_Tables.Has_Element (Symbol_Pos) then
-                  return Symbol_Tables.Element (Symbol_Pos);
+                  return Resolved (Symbol_Tables.Element (Symbol_Pos));
                end if;
             end;
          end if;
          if Object.Data.Local_Scopes (Index).Events /= Store.Null_Reference then
             Pos := Object.Data.Local_Scopes (Index).Events.Value.Find (Alias);
             if Pos /= Store.No_Anchor then
-               return (Target => Object.Data.Local_Scopes (Index).Events,
-                       Anchored_Position => Pos,
-                       Element_Position => Events.Store.No_Element,
-                       Target_Location => Local);
+               return Resolved
+                 ((Target => Object.Data.Local_Scopes (Index).Events,
+                   Anchored_Position => Pos,
+                   Element_Position => Events.Store.No_Element,
+                   Target_Location => Local));
             end if;
          end if;
       end loop;
@@ -202,22 +313,22 @@ package body Yaml.Events.Context is
             if Pos = Store.No_Anchor then
                return No_Element;
             else
-               return (Target => Object.Data.External_Data.Optional,
-                       Anchored_Position => Pos,
-                       Element_Position => Events.Store.No_Element,
-                       Target_Location => External);
+               return Resolved ((Target => Object.Data.External_Data.Optional,
+                                 Anchored_Position => Pos,
+                                 Element_Position => Events.Store.No_Element,
+                                 Target_Location => External));
             end if;
          else
-            return (Target => Object.Data.Stream_Data.Optional,
-                    Anchored_Position => Pos,
-                    Element_Position => Events.Store.No_Element,
-                    Target_Location => Stream);
+            return Resolved ((Target => Object.Data.Stream_Data.Optional,
+                              Anchored_Position => Pos,
+                              Element_Position => Events.Store.No_Element,
+                              Target_Location => Stream));
          end if;
       else
-         return (Target => Object.Data.Document_Data.Optional,
-                 Anchored_Position => Pos,
-                 Element_Position => Events.Store.No_Element,
-                 Target_Location => Document);
+         return Resolved ((Target => Object.Data.Document_Data.Optional,
+                           Anchored_Position => Pos,
+                           Element_Position => Events.Store.No_Element,
+                           Target_Location => Document));
       end if;
    end Position;
 
@@ -267,7 +378,10 @@ package body Yaml.Events.Context is
                Free_Symbol_Table (Object.Local_Scopes (Index).Symbols);
             end if;
          end loop;
-         Free_Array (Object.Local_Scopes);
+         Free_Scope_Array (Object.Local_Scopes);
+      end if;
+      if Object.Generated_Data /= null then
+         Free_Data_Array (Object.Generated_Data);
       end if;
    end Finalize;
 

@@ -19,21 +19,22 @@ package Yaml.Transformator.Annotation.Concatenation is
                                Swallows_Previous : out Boolean)
                                return not null Pointer;
 private
-   type State_Type is not null access procedure (Object : in out Instance'Class;
+   type State_Type is not null access procedure (Object : in out Instance;
                                                  E : Event);
 
-   procedure Initial (Object : in out Instance'Class; E : Event);
-   procedure After_Annotation_Start (Object : in out Instance'Class; E : Event);
-   procedure After_Annotation_End (Object : in out Instance'Class; E : Event);
-   procedure After_List_Start (Object : in out Instance'Class; E : Event);
-   procedure In_Sequence (Object : in out Instance'Class; E : Event);
-   procedure After_Sequence (Object : in out Instance'Class; E : Event);
-   procedure After_String (Object : in out Instance'Class; E : Event);
-   procedure After_List_End (Object : in out Instance'Class; E : Event);
+   procedure Initial (Object : in out Instance; E : Event);
+   procedure After_Annotation_Start (Object : in out Instance; E : Event);
+   procedure After_Annotation_End (Object : in out Instance; E : Event);
+   procedure After_List_Start (Object : in out Instance; E : Event);
+   procedure In_Sequence (Object : in out Instance; E : Event);
+   procedure After_Sequence (Object : in out Instance; E : Event);
+   procedure After_String (Object : in out Instance; E : Event);
+   procedure After_List_End (Object : in out Instance; E : Event);
 
    type Builder_Pointer is access Text.Builder.Reference;
 
    type Instance is limited new Transformator.Instance with record
+      Node_Properties : Properties;
       Builder : Builder_Pointer;
       Context : Events.Context.Reference;
       Pool : Text.Pool.Reference;

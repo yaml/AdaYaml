@@ -45,6 +45,13 @@ package body Yaml.Transformator.Annotation_Processor is
          Free_Transformator (Object.Annotations
                              (Object.Annotation_Count).Impl);
          Object.Annotation_Count := Object.Annotation_Count - 1;
+         if Object.Annotation_Count = 0 and Object.Next_Event_Storage = Yes then
+            if Object.Current_State = Existing then
+               Object.Next_Event_Storage := Finishing;
+            else
+               Object.Next_Event_Storage := No;
+            end if;
+         end if;
       end if;
    end Finalize_Finished_Annotation_Impl;
 
@@ -188,6 +195,12 @@ package body Yaml.Transformator.Annotation_Processor is
                        Annotation.Maps.No_Element);
             begin
                Grow_Annotations (Object.Annotations, Object.Annotation_Count);
+               if Object.Annotation_Count = 1 then
+                  Object.Next_Event_Storage :=
+                    (if E.Annotation_Properties.Anchor /= Text.Empty then
+                        Searching else No);
+               end if;
+
                declare
                   Swallows_Previous : Boolean := False;
                   Impl : constant Transformator.Pointer :=
@@ -328,6 +341,33 @@ package body Yaml.Transformator.Annotation_Processor is
             end;
          end if;
       end Update_Exists_In_Output;
+
+      procedure Update_Next_Storage (E : Event) is
+      begin
+         case Object.Next_Event_Storage is
+            when Searching =>
+               if (case E.Kind is
+                      when Annotation_Start =>
+                         E.Annotation_Properties.Anchor /= Text.Empty,
+                      when Mapping_Start | Sequence_Start =>
+                         E.Collection_Properties.Anchor /= Text.Empty,
+                      when Scalar =>
+                         E.Scalar_Properties.Anchor /= Text.Empty,
+                      when others => False) then
+                  Object.Context.Transformed_Store.Memorize (E);
+                  Object.Next_Event_Storage := Yes;
+               else
+                  Object.Next_Event_Storage := No;
+               end if;
+            when Finishing =>
+               Object.Context.Transformed_Store.Memorize (E);
+               Object.Next_Event_Storage := No;
+            when Yes =>
+               Object.Context.Transformed_Store.Memorize (E);
+            when No => null;
+         end case;
+      end Update_Next_Storage;
+
    begin
       case Object.Current_State is
          when Existing | Releasing_Held_Back =>
@@ -348,6 +388,7 @@ package body Yaml.Transformator.Annotation_Processor is
                           Events.Context.Retrieve (Pos).Optional;
                         return Ret : constant Event :=
                           Object.Current_Stream.Value.Next do
+                           Update_Next_Storage (Ret);
                            case Ret.Kind is
                            when Scalar =>
                               Object.Current_Stream.Clear;
@@ -371,10 +412,12 @@ package body Yaml.Transformator.Annotation_Processor is
                when others => null;
             end case;
             return Ret : constant Event := Object.Current do
+               Update_Next_Storage (Ret);
                Look_For_Additional_Element;
             end return;
          when Localizing_Alias =>
             return Ret : constant Event := Object.Current_Stream.Value.Next do
+               Update_Next_Storage (Ret);
                case Ret.Kind is
                when Mapping_Start | Sequence_Start =>
                   Object.Stream_Depth := Object.Stream_Depth + 1;
@@ -392,6 +435,7 @@ package body Yaml.Transformator.Annotation_Processor is
                raise Constraint_Error with "no event to retrieve";
             else
                return Ret : constant Event := Object.Current do
+                  Update_Next_Storage (Ret);
                   Object.Current := (Kind => Document_End, others => <>);
                end return;
             end if;

@@ -40,6 +40,8 @@ private
                                Swallowing_Document_End, Localizing_Alias,
                                Absent);
 
+   type Next_Event_Storage_Type is (No, Searching, Finishing, Yes);
+
    type Instance is limited new Transformator.Instance with record
       Context : Events.Context.Reference;
       Pool : Text.Pool.Reference;
@@ -50,6 +52,7 @@ private
       Annotations : not null Node_Array_Pointer := new Node_Array (1 .. 16);
       Levels : not null Level_Array_Pointer := new Level_Array (1 .. 64);
       May_Finish_Transformation : Boolean := False;
+      Next_Event_Storage : Next_Event_Storage_Type := No;
    end record;
 
    overriding procedure Finalize (Object : in out Instance);

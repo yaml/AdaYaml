@@ -49,17 +49,18 @@ package body Yaml.Transformator.Annotation.Concatenation is
                            Context => Processor_Context, others => <>);
    end New_Concatenation;
 
-   procedure Initial (Object : in out Instance'Class; E : Event) is
+   procedure Initial (Object : in out Instance; E : Event) is
    begin
       if E.Kind /= Annotation_Start then
          raise Stream_Error with
            "unexpected token (expected annotation start): " & E.Kind'Img;
       end if;
+      Object.Node_Properties := E.Annotation_Properties;
       Object.Current.Start_Position := E.Start_Position;
       Object.State := After_Annotation_Start'Access;
    end Initial;
 
-   procedure After_Annotation_Start (Object : in out Instance'Class; E : Event) is
+   procedure After_Annotation_Start (Object : in out Instance; E : Event) is
    begin
       if E.Kind /= Annotation_End then
          raise Annotation_Error with
@@ -68,7 +69,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
       Object.State := After_Annotation_End'Access;
    end After_Annotation_Start;
 
-   procedure After_Annotation_End (Object : in out Instance'Class; E : Event) is
+   procedure After_Annotation_End (Object : in out Instance; E : Event) is
    begin
       if E.Kind /= Sequence_Start then
          raise Annotation_Error with
@@ -77,7 +78,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
       Object.State := After_List_Start'Access;
    end After_Annotation_End;
 
-   procedure After_List_Start (Object : in out Instance'Class; E : Event) is
+   procedure After_List_Start (Object : in out Instance; E : Event) is
    begin
       case E.Kind is
          when Scalar =>
@@ -112,31 +113,33 @@ package body Yaml.Transformator.Annotation.Concatenation is
                   case Referred.Kind is
                      when Scalar =>
                         Object.Builder :=
-                          new Text.Builder.Reference'(Text.Builder.Create (Object.Pool));
+                          new Text.Builder.Reference'(Text.Builder.Create
+                                                      (Object.Pool));
                         Object.Builder.Append (Referred.Content.Value);
                         Object.State := After_String'Access;
                      when Sequence_Start =>
                         Object.Depth := 1;
                         Object.Current := Event'(Kind => Sequence_Start,
                                                  Collection_Style => Any,
-                                                 Collection_Properties => Default_Properties,
+                                                 Collection_Properties =>
+                                                    Object.Node_Properties,
                                                  others => <>);
                         Object.Current_Exists := True;
                         Object.State := After_Sequence'Access;
                         Object.Current_Aliased := Stream.Optional;
                      when others =>
                         raise Annotation_Error with
-                          "@concat requires a list of scalars or sequences";
+                          "@@concat requires a list of scalars or sequences";
                   end case;
                end;
             end;
          when others =>
             raise Annotation_Error with
-              "@concat requires a list of scalars or sequences";
+              "@@concat requires a list of scalars or sequences";
       end case;
    end After_List_Start;
 
-   procedure In_Sequence (Object : in out Instance'Class; E : Event) is
+   procedure In_Sequence (Object : in out Instance; E : Event) is
    begin
       case E.Kind is
          when Sequence_Start =>
@@ -157,7 +160,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
       end case;
    end In_Sequence;
 
-   procedure After_Sequence (Object : in out Instance'Class; E : Event) is
+   procedure After_Sequence (Object : in out Instance; E : Event) is
    begin
       case E.Kind is
          when Sequence_Start =>
@@ -206,7 +209,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
       end case;
    end After_Sequence;
 
-   procedure After_String (Object : in out Instance'Class; E : Event) is
+   procedure After_String (Object : in out Instance; E : Event) is
       procedure Free is new Ada.Unchecked_Deallocation
         (Text.Builder.Reference, Builder_Pointer);
    begin
@@ -240,7 +243,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
             end;
          when Sequence_End =>
             Object.Current := (Kind => Scalar, Scalar_Style => Any,
-                               Scalar_Properties => Default_Properties,
+                               Scalar_Properties => Object.Node_Properties,
                                Start_Position => Object.Current.Start_Position,
                                End_Position => E.End_Position,
                                Content => Object.Builder.Lock);
@@ -254,7 +257,7 @@ package body Yaml.Transformator.Annotation.Concatenation is
       end case;
    end After_String;
 
-   procedure After_List_End (Object : in out Instance'Class; E : Event) is
+   procedure After_List_End (Object : in out Instance; E : Event) is
    begin
       raise Constraint_Error with
         "unexpected input to @@concat (already finished)";

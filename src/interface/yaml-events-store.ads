@@ -88,11 +88,15 @@ private
 
    type Anchor_Cursor is new Anchor_To_Index.Cursor;
    type Element_Cursor is new Natural;
+   subtype Depth_Type is Integer with Static_Predicate =>
+     Depth_Type = Integer'First or Depth_Type >= 0;
+
+   After_Annotation_End : constant Depth_Type := Integer'First;
 
    type Instance is limited new Event_Holder with record
       Anchor_Map : Anchor_To_Index.Map;
       Stream_Count : Natural := 0;
-      Depth : Natural := 0;
+      Depth : Depth_Type := 0;
    end record;
 
    type Reference is new Ada.Finalization.Controlled with record
