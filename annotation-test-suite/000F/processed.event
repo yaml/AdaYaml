@@ -1,0 +1,22 @@
++STR
++DOC ---
++SEQ
++SEQ
+=VAL :spam
+=VAL :spam
+-SEQ
++SEQ
+=VAL :spam
+=VAL :egg
+-SEQ
++SEQ
+=VAL :spam
+=VAL :sausage
+-SEQ
++SEQ
+=VAL :spam
+=VAL :spam
+-SEQ
+-SEQ
+-DOC
+-STR

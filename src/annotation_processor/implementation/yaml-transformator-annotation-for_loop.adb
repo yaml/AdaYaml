@@ -28,44 +28,15 @@ package body Yaml.Transformator.Annotation.For_Loop is
       end if;
       case Object.Emitting_State is
          when Emit_Sequence_Start =>
-            Object.Emitting_State := Emit_Sequence_Body;
-            Start_Next_Loop_Iteration (Object);
+            Object.Emitting_State := Emit_Sequence_Body_Start;
             return (Kind => Sequence_Start, Start_Position => <>,
                     End_Position => <>, Collection_Style => <>,
                     Collection_Properties => Object.Node_Properties);
+         when Emit_Sequence_Body_Start =>
+            Start_Next_Loop_Iteration (Object);
+            Object.Emitting_State := Emit_Sequence_Body;
          when Emit_Sequence_Body =>
-            return Ret : constant Event :=
-              Object.Body_Store.Value.Element (Object.Next_Event) do
-               case Ret.Kind is
-                  when Annotation_Start | Mapping_Start | Sequence_Start =>
-                     Object.Depth := Object.Depth + 1;
-                  when Annotation_End =>
-                     Object.Depth := Object.Depth - 1;
-                     goto After_Depth_Check;
-                  when Sequence_End | Mapping_End =>
-                     Object.Depth := Object.Depth - 1;
-                  when Scalar | Alias => null;
-                  when Stream_Start | Stream_End | Document_Start |
-                       Document_End =>
-                     raise Stream_Error with "Unexpected event: " &
-                       Ret.Kind'Img;
-               end case;
-
-               if Object.Depth = 0 then
-                  Object.Loop_Variable_Store.Value.Advance_At_Same_Level
-                    (Object.Loop_Variable_Target);
-                  if Object.Loop_Variable_Store.Value.Element
-                    (Object.Loop_Variable_Target).Kind = Sequence_End then
-                     Object.Emitting_State := Emit_Sequence_End;
-                     return;
-                  else
-                     Object.Start_Next_Loop_Iteration;
-                     return;
-                  end if;
-               end if;
-               <<After_Depth_Check>>
-               Events.Store.Advance (Object.Next_Event);
-            end return;
+            null;
          when Emit_Sequence_End =>
             Object.Emitting_State := Emitting_Finished;
             return (Kind => Sequence_End, Start_Position => <>,
@@ -73,6 +44,38 @@ package body Yaml.Transformator.Annotation.For_Loop is
          when others =>
             raise Constraint_Error with "no event available";
       end case;
+      return Ret : constant Event :=
+        Object.Body_Store.Value.Element (Object.Next_Event) do
+         case Ret.Kind is
+            when Annotation_Start | Mapping_Start | Sequence_Start =>
+               Object.Depth := Object.Depth + 1;
+            when Annotation_End =>
+               Object.Depth := Object.Depth - 1;
+               goto After_Depth_Check;
+            when Sequence_End | Mapping_End =>
+               Object.Depth := Object.Depth - 1;
+            when Scalar | Alias => null;
+            when Stream_Start | Stream_End | Document_Start |
+                 Document_End =>
+               raise Stream_Error with "Unexpected event: " &
+                 Ret.Kind'Img;
+         end case;
+
+         if Object.Depth = 0 then
+            Object.Loop_Variable_Store.Value.Advance_At_Same_Level
+              (Object.Loop_Variable_Target);
+            if Object.Loop_Variable_Store.Value.Element
+              (Object.Loop_Variable_Target).Kind = Sequence_End then
+               Object.Emitting_State := Emit_Sequence_End;
+               return;
+            else
+               Object.Emitting_State := Emit_Sequence_Body_Start;
+               return;
+            end if;
+         end if;
+         <<After_Depth_Check>>
+         Events.Store.Advance (Object.Next_Event);
+      end return;
    end Next;
 
    function New_For_Loop (Pool : Text.Pool.Reference;
@@ -193,12 +196,21 @@ package body Yaml.Transformator.Annotation.For_Loop is
    end After_Sequence_Parameter;
 
    procedure After_Annotation_End (Object : in out Instance; E : Event) is
+      use type Text.Reference;
    begin
       case E.Kind is
          when Alias =>
-            Events.Context.Get_Store_And_Cursor
-              (Object.Context.Position (E.Target), Object.Body_Store,
-               Object.Body_Start);
+            if E.Target /= Events.Context.Symbol_Name (Object.Loop_Variable)
+            then
+               Events.Context.Get_Store_And_Cursor
+                 (Object.Context.Position (E.Target), Object.Body_Store,
+                  Object.Body_Start);
+            else
+               Object.Context.Create_Local_Store (Object.Body_Locals);
+               Object.Body_Store := Object.Context.Local_Store_Ref
+                 (Object.Body_Locals);
+               Object.Body_Store.Value.Force_Memorize (E, Object.Body_Start);
+            end if;
             Object.State := Emitting'Access;
          when Scalar =>
             Object.Context.Create_Local_Store (Object.Body_Locals);

@@ -276,7 +276,7 @@ package body Yaml.Transformator.Annotation_Processor is
    end Put;
 
    function Has_Next (Object : Instance) return Boolean is
-     (Object.Current_State in Existing | Releasing_Held_Back or
+     (Object.Current_State in Existing | Releasing_Held_Back | Localizing_Alias or
         (Object.Current_State = Swallowing_Document_End and
              Object.Current.Kind /= Document_End));
 

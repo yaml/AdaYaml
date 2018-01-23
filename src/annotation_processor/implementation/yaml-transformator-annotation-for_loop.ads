@@ -30,8 +30,9 @@ private
    procedure In_Body (Object : in out Instance; E : Event);
    procedure Emitting (Object : in out Instance; E : Event);
 
-   type Emitting_State_Type is (Emit_Sequence_Start, Emit_Sequence_Body,
-                                Emit_Sequence_End, Emitting_Finished);
+   type Emitting_State_Type is (Emit_Sequence_Start, Emit_Sequence_Body_Start,
+                                Emit_Sequence_Body, Emit_Sequence_End,
+                                Emitting_Finished);
 
    type Instance is limited new Transformator.Instance with record
       Node_Properties : Properties;

@@ -1,0 +1,27 @@
++STR
++DOC ---
++SEQ
++MAP
+=VAL :type
+=VAL :record
+=VAL :contents
+=VAL :false
+-MAP
++MAP
+=VAL :type
+=VAL :record
+=VAL :contents
++MAP
+=VAL :foo
+=VAL :bar
+-MAP
+-MAP
++MAP
+=VAL :type
+=VAL :record
+=VAL :contents
+=VAL :42
+-MAP
+-SEQ
+-DOC
+-STR

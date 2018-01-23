@@ -59,6 +59,8 @@ package Yaml.Events.Context is
                             Position  : Symbol_Cursor;
                             New_Value : Cursor);
 
+   function Symbol_Name (Position : Symbol_Cursor) return Text.Reference;
+
    No_Element : constant Cursor;
    No_Local_Store : constant Local_Scope_Cursor;
 

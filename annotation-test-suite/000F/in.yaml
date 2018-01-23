@@ -1,0 +1,2 @@
+--- @@for(x, @@concat [ [spam, egg], [sausage, spam]])
+[spam, *x]

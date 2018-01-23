@@ -1,13 +1,9 @@
 +STR
 +DOC ---
 +SEQ
-=VAL &scalar :text
-+SEQ &sequence
 =VAL :1
 =VAL :2
 =VAL :3
--SEQ
-=ALI *scalar
 -SEQ
 -DOC
 -STR

@@ -246,6 +246,9 @@ package body Yaml.Events.Context is
         (Symbol_Tables.Cursor (Position), New_Value);
    end Update_Symbol;
 
+   function Symbol_Name (Position : Symbol_Cursor) return Text.Reference is
+     (Symbol_Tables.Key (Symbol_Tables.Cursor (Position)));
+
    function Position (Object : Reference; Alias : Text.Reference) return Cursor
    is
       Pos : Store.Anchor_Cursor := Store.No_Anchor;
@@ -253,24 +256,26 @@ package body Yaml.Events.Context is
       function Resolved (Position : Cursor) return Cursor is
       begin
          return Pos : Cursor := Position do
-            declare
-               Target_Event : constant Event := First (Pos);
-            begin
-               if Target_Event.Kind = Annotation_Start and then
-                 Target_Event.Annotation_Properties.Anchor /= Text.Empty then
-                  declare
-                     Resolved_Target : constant Store.Anchor_Cursor :=
-                       Object.Data.Transformed_Data.Value.Find
-                         (Target_Event.Annotation_Properties.Anchor);
-                  begin
-                     if Resolved_Target /= Store.No_Anchor then
-                        Pos.Target := Object.Data.Transformed_Data.Optional;
-                        Pos.Anchored_Position := Resolved_Target;
-                        Pos.Element_Position := Store.No_Element;
-                     end if;
-                  end;
-               end if;
-            end;
+            if Pos /= No_Element then
+               declare
+                  Target_Event : constant Event := First (Pos);
+               begin
+                  if Target_Event.Kind = Annotation_Start and then
+                    Target_Event.Annotation_Properties.Anchor /= Text.Empty then
+                     declare
+                        Resolved_Target : constant Store.Anchor_Cursor :=
+                          Object.Data.Transformed_Data.Value.Find
+                            (Target_Event.Annotation_Properties.Anchor);
+                     begin
+                        if Resolved_Target /= Store.No_Anchor then
+                           Pos.Target := Object.Data.Transformed_Data.Optional;
+                           Pos.Anchored_Position := Resolved_Target;
+                           Pos.Element_Position := Store.No_Element;
+                        end if;
+                     end;
+                  end if;
+               end;
+            end if;
          end return;
       end Resolved;
    begin

@@ -1,0 +1,9 @@
++STR
++DOC ---
++SEQ
+=VAL :foo
+=VAL :foo
+=VAL :foo
+-SEQ
+-DOC
+-STR
