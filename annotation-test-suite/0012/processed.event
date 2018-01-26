@@ -1,0 +1,12 @@
++STR
++DOC
++SEQ
++SEQ &a
+=VAL :foo
+=VAL :bar
+-SEQ
+=VAL :foo
+=VAL :bar
+-SEQ
+-DOC
+-STR

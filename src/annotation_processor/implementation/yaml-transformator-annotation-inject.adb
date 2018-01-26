@@ -13,12 +13,10 @@ package body Yaml.Transformator.Annotation.Inject is
    overriding function Next (Object : in out Instance) return Event is
    begin
       return Ret : constant Event := Object.Current do
-         if Object.State = Injecting'Access then
-            Object.Current_Exists := False;
-         elsif Object.State = Injecting_Aliased'Access then
+         if Object.State = Injecting_Aliased'Access then
             Object.Injecting (Object.Current_Aliased.Value.Next);
          else
-            raise Constraint_Error with "no event available";
+            Object.Current_Exists := False;
          end if;
       end return;
    end Next;
@@ -147,6 +145,7 @@ package body Yaml.Transformator.Annotation.Inject is
       end case;
       if Object.Depth = 0 then
          Object.State := After_Inject_End'Access;
+         Object.Current_Exists := False;
       else
          Object.Current_Exists := True;
       end if;
