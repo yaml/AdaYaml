@@ -6,6 +6,6 @@
 [subrepo]
 	remote = git@github.com:flyx/ParserTools.git
 	branch = master
-	commit = 7fd6bf34d2245a125dd7882a33cc817dbf90f7a9
-	parent = 2f5f126f70248c1c5b5d14085fb50ca9dc949116
+	commit = 46a7617cbfe571c7dbaa4f2145f3f89e86f8c7a9
+	parent = 8a3222e76e3eed8ff719f8767a28d6af68eb9dc1
 	cmdver = 0.3.1
