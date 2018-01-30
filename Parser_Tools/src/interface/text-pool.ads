@@ -18,10 +18,10 @@ package Text.Pool is
 
    --  create a new string from the given data. the string will be allocated
    --  within the pool.
-   function From_String (P : in out Reference'Class; Data : String)
+   function From_String (P : Reference'Class; Data : String)
                          return Text.Reference;
 
-   function With_Length (P : in out Reference'Class; Length : Positive)
+   function With_Length (P : Reference'Class; Length : Positive)
                          return Text.Reference;
 
    --  for debugging

@@ -30,7 +30,7 @@ package body Text.Pool is
       end return;
    end With_Capacity;
 
-   function From_String (P : in out Reference'Class; Data : String)
+   function From_String (P : Reference'Class; Data : String)
                          return Text.Reference is
       New_String_Address : constant System.Address :=
         Fitting_Position (Data'Length, P.Data);
@@ -44,7 +44,7 @@ package body Text.Pool is
       return (Ada.Finalization.Controlled with Data => Target_Data);
    end From_String;
 
-   function With_Length (P : in out Reference'Class; Length : Positive)
+   function With_Length (P : Reference'Class; Length : Positive)
                          return Text.Reference is
       use System.Storage_Elements;
       New_String_Address : constant System.Address :=

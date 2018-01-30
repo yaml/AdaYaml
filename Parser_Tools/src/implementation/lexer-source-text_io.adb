@@ -13,6 +13,9 @@ package body Lexer.Source.Text_IO is
             Buffer (Length) := Character'Val (4);
             exit;
          end if;
+         Ada.Text_IO.Get_Line (S.File_Pointer.all,
+                               Buffer (Length .. Buffer'Last), Length);
+         exit when Length = Buffer'Last;
          Buffer (Length + 1) := Character'Val (10);
          Length := Length + 2;
          exit when Length > Buffer'Last;
