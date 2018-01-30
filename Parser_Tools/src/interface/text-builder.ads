@@ -24,7 +24,7 @@ package Text.Builder is
 private
    type Reference is new Ada.Finalization.Controlled with record
       Pool : Text.Pool.Reference;
-      Buffer : not null UTF_8_String_Access;
+      Buffer : UTF_8_String_Access;
       Next : System.Storage_Elements.Storage_Offset := 1;
    end record;
 

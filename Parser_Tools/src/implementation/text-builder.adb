@@ -75,20 +75,30 @@ package body Text.Builder is
    end Lock;
 
    procedure Adjust (Object : in out Reference) is
-      H : Header with Import;
-      for H'Address use Object.Buffer.all'Address - H_Size;
    begin
-      H.Refcount := H.Refcount + 1;
+      if Object.Buffer /= null then
+         declare
+            H : Header with Import;
+            for H'Address use Object.Buffer.all'Address - H_Size;
+         begin
+            H.Refcount := H.Refcount + 1;
+         end;
+      end if;
    end Adjust;
 
    procedure Finalize (Object : in out Reference) is
-      H : Header with Import;
-      for H'Address use Object.Buffer.all'Address - H_Size;
    begin
-      H.Refcount := H.Refcount - 1;
-      if H.Refcount = 0 then
-         H.Last := Round_To_Header_Size (H.Last);
-         Decrease_Usage (H.Pool, H.Chunk_Index);
+      if Object.Buffer /= null then
+         declare
+            H : Header with Import;
+            for H'Address use Object.Buffer.all'Address - H_Size;
+         begin
+            H.Refcount := H.Refcount - 1;
+            if H.Refcount = 0 then
+               H.Last := Round_To_Header_Size (H.Last);
+               Decrease_Usage (H.Pool, H.Chunk_Index);
+            end if;
+         end;
       end if;
    end Finalize;
 end Text.Builder;
