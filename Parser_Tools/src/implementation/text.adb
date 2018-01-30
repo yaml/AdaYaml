@@ -3,7 +3,9 @@
 
 pragma No_Strict_Aliasing;
 
+with Ada.Exceptions;
 with Ada.Strings.Hash;
+with Ada.Strings.Fixed;
 with Ada.Strings.Unbounded;
 with Ada.Unchecked_Deallocation;
 
@@ -111,7 +113,7 @@ package body Text is
       Object.Data := null;
       if Reference /= null then
          declare
-            H : constant access Header := Header_Of (Reference);
+            H : constant not null access Header := Header_Of (Reference);
          begin
             if H.Pool /= null then
                H.Refcount := H.Refcount - 1;
@@ -165,6 +167,7 @@ package body Text is
       Necessary : constant Pool_Offset :=
         Round_To_Header_Size (Length + 1);
       Cur : Pool_Offset := P.Pos;
+      Cur_Was_Below_Pos : Boolean;
 
       procedure Allocate_Next_Chunk (Size : Pool_Offset) is
          Next : Chunk_Index_Type;
@@ -253,8 +256,14 @@ package body Text is
                   end if;
                end;
             end if;
+            Cur_Was_Below_Pos := Cur < P.Pos;
             Cur := Cur + H.Last + Header_Size;
             loop
+               if Cur > P.Pos and Cur_Was_Below_Pos then
+                  raise Program_Error with
+                    "encountered illegal situation while searching for space in chunk! Pos =" &
+                    P.Pos'Img;
+               end if;
                if Cur >= C.all'Last then
                   Cur := 1;
                end if;
@@ -286,6 +295,7 @@ package body Text is
 
    function As_String (C : Chunk) return String is
       use Ada.Strings.Unbounded;
+      use Ada.Strings.Fixed;
       Cur : Pool_Offset := 1;
       Output : Unbounded_String;
    begin
@@ -293,19 +303,31 @@ package body Text is
          declare
             H : Header with Import;
             for H'Address use C (Cur)'Address;
+            Index_Prefix : constant String := "[" & Cur'Img & " ] ";
+            Indentation : constant String := Index_Prefix'Length * ' ';
          begin
-            Append (Output, "Refcount:" & H.Refcount'Img & Character'Val (10));
+            Append (Output, Index_Prefix & "Refcount:" & H.Refcount'Img & Character'Val (10));
+
             if H.Refcount = 0 then
-               Append (Output, "Length:" & H.Last'Img & Character'Val (10));
+               Append (Output, Indentation & "Length (free space):" & H.Last'Img & Character'Val (10));
                Cur := Cur + Header_Size + H.Last;
             else
-               Append (Output, "Content: " & To_UTF_8_String_Access (C (Cur + Header_Size)'Address).all);
+               Append (Output, Indentation & "Length (String):" & H.Last'Img & Character'Val (10));
+               if H.First = 1 then
+                  Append (Output, Indentation & "Content: " & To_UTF_8_String_Access (C (Cur + Header_Size)'Address).all
+                            (1 .. Positive (System.Storage_Elements.Storage_Offset'Min (H.Last, 255))));
+               else
+                  Append (Output, Indentation & "illegal state (first index is not 1 but" & H.First'Img);
+               end if;
                Cur := Cur + Header_Size + Round_To_Header_Size (H.Last + 1);
             end if;
          end;
          exit when Cur > C.all'Last;
-         Append (Output, Character'Val (10) & Character'Val (10));
+         Append (Output, Character'Val (10));
       end loop;
       return To_String (Output);
+   exception when E : others =>
+         return "unable to create chunk representation: " &
+           Ada.Exceptions.Exception_Information (E);
    end As_String;
 end Text;

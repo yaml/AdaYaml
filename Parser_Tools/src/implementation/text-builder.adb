@@ -1,6 +1,8 @@
 --  part of ParserTools, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
+with Ada.Text_IO;
+
 package body Text.Builder is
    H_Size : constant System.Storage_Elements.Storage_Offset :=
      System.Storage_Elements.Storage_Offset (Header_Size);
@@ -11,6 +13,7 @@ package body Text.Builder is
       H : constant not null access Header := Header_Of (Base.Data);
    begin
       H.Refcount := H.Refcount + 1;
+      H.Last := Round_To_Header_Size (H.Last + 1) - 1;
       Object.Next := 1;
       Object.Buffer := Base.Data;
       Object.Pool := Pool;
@@ -29,8 +32,7 @@ package body Text.Builder is
 
    procedure Grow (Object : in out Reference;
                    Size : System.Storage_Elements.Storage_Offset) is
-      H : Header with Import;
-      for H'Address use Object.Buffer.all'Address - H_Size;
+      H : constant not null access Header := Header_Of (Object.Buffer);
       Old : constant Text.Reference := (Ada.Finalization.Controlled with
                                         Data => Object.Buffer);
       New_Buffer : constant Text.Reference :=
@@ -39,6 +41,7 @@ package body Text.Builder is
            (H.Last + 1)) * (H.Last + 1) - 1));
       New_H : constant not null access Header := Header_Of (New_Buffer.Data);
    begin
+      Ada.Text_IO.Put_Line ("Builder growing");
       New_H.Refcount := New_H.Refcount + 1;
       New_Buffer.Data (1 .. Natural (Object.Next - 1)) :=
         Old.Data (1 .. Natural (Object.Next - 1));
@@ -74,12 +77,24 @@ package body Text.Builder is
    end Append;
 
    function Lock (Object : in out Reference) return Text.Reference is
-      H : Header with Import;
-      for H'Address use Object.Buffer.all'Address - H_Size;
+      H : constant not null access Header := Header_Of (Object.Buffer);
    begin
+      Object.Buffer (Positive (Object.Next)) := Character'Val (0);
+      if Round_To_Header_Size (Object.Next) /= H.Last + 1 then
+         declare
+            Next : Header with Import;
+            for Next'Address use Object.Buffer.all'Address +
+              Round_To_Header_Size (Object.Next);
+         begin
+            Next.Refcount := 0;
+            Next.Last := H.Last + 1 - Round_To_Header_Size (Object.Next) - Header_Size;
+         end;
+      end if;
       H.Last := Object.Next - 1;
-      H.Refcount := H.Refcount + 1;
-      return (Ada.Finalization.Controlled with Data => Object.Buffer);
+      return Ret : constant Text.Reference :=
+        (Ada.Finalization.Controlled with Data => Object.Buffer) do
+         Object.Buffer := null;
+      end return;
    end Lock;
 
    procedure Adjust (Object : in out Reference) is
@@ -98,12 +113,11 @@ package body Text.Builder is
    begin
       if Object.Buffer /= null then
          declare
-            H : Header with Import;
-            for H'Address use Object.Buffer.all'Address - H_Size;
+            H : constant not null access Header := Header_Of (Object.Buffer);
          begin
             H.Refcount := H.Refcount - 1;
             if H.Refcount = 0 then
-               H.Last := Round_To_Header_Size (H.Last);
+               H.Last := Round_To_Header_Size (H.Last + 1);
                Decrease_Usage (H.Pool, H.Chunk_Index);
             end if;
          end;
