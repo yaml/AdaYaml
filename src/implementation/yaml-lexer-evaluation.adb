@@ -5,6 +5,8 @@ with Ada.Strings.UTF_Encoding.Strings;
 with Ada.Strings.UTF_Encoding.Wide_Strings;
 with Ada.Strings.UTF_Encoding.Wide_Wide_Strings;
 
+with Text.Builder;
+
 package body Yaml.Lexer.Evaluation is
    -----------------------------------------------------------------------------
    --  constant UTF-8 strings that may be generated from escape sequences
@@ -22,42 +24,15 @@ package body Yaml.Lexer.Evaluation is
        ("" & Wide_Character'Val (16#2029#)));
 
    -----------------------------------------------------------------------------
-   --  buffer for generating scalars
-   -----------------------------------------------------------------------------
-
-   type Out_Buffer_Type (Length : Positive) is record
-      Content : UTF_8_String (1 .. Length);
-      Pos : Positive := 1;
-   end record;
-
-   procedure Add (O : in out Out_Buffer_Type; C : Character) with Inline is
-   begin
-      O.Content (O.Pos) := C;
-      O.Pos := O.Pos + 1;
-   end Add;
-
-   procedure Add (O : in out Out_Buffer_Type; S : Standard.String) with Inline is
-   begin
-      O.Content (O.Pos .. O.Pos + S'Length - 1) := S;
-      O.Pos := O.Pos + S'Length;
-   end Add;
-
-   function New_Content_From (Pool : in out Text.Pool.Reference;
-                              O : Out_Buffer_Type) return Text.Reference is
-      (Pool.From_String (O.Content (1 .. O.Pos - 1))) with Inline;
-
-   -----------------------------------------------------------------------------
    --  implementation
    -----------------------------------------------------------------------------
 
    procedure Read_Plain_Scalar (L : in out Instance; T : out Token) is
-      --  our scalar cannot possibly have more content than the size of our
-      --  buffer. Therefore, we read its value into a string of the same size
-      --  so we never have to do any bounds checking and growing of the string.
-      Result : Out_Buffer_Type (L.Buffer.all'Length);
+      Target : Text.Builder.Reference := Text.Builder.Create (L.Pool);
       After_Newline_State : constant State_Type :=
         (if L.Flow_Depth + L.Annotation_Depth = 0 then Line_Indentation'Access
            else Flow_Line_Indentation'Access);
+      Line_Start_Pos : Positive;
    begin
       L.Seen_Multiline := False;
       Start_Token (L);
@@ -68,40 +43,52 @@ package body Yaml.Lexer.Evaluation is
       T := (Start_Pos => L.Token_Start_Mark, End_Pos => <>,
             Kind => Plain_Scalar);
       Multiline_Loop : loop
+         Line_Start_Pos := L.Pos - 1;
          Inline_Loop : loop
-            Add (Result, L.Cur);
             L.Cur := Next (L);
             case L.Cur is
                when ' ' =>
                   T.End_Pos := Cur_Mark (L);
                   declare
-                     Space_Start : constant Positive := L.Pos;
+                     Space_Start : constant Positive := L.Pos - 1;
                   begin
                      Space_Loop : loop
                         L.Cur := Next (L);
                         case L.Cur is
                            when Line_Feed | Carriage_Return =>
+                              Target.Append
+                                (L.Buffer (Line_Start_Pos .. Space_Start - 1));
                               exit Inline_Loop;
                            when End_Of_Input =>
+                              Target.Append
+                                (L.Buffer (Line_Start_Pos .. Space_Start - 1));
                               L.State := Stream_End'Access;
                               exit Multiline_Loop;
                            when '#' =>
+                              Target.Append
+                                (L.Buffer (Line_Start_Pos .. Space_Start - 1));
                               L.State := Expect_Line_End'Access;
                               exit Multiline_Loop;
                            when ':' =>
                               if not Next_Is_Plain_Safe (L) then
+                                 Target.Append
+                                   (L.Buffer (Line_Start_Pos .. Space_Start - 1));
                                  L.State := Inside_Line'Access;
                                  exit Multiline_Loop;
                               end if;
                               exit Space_Loop;
                            when Flow_Indicator =>
                               if L.Flow_Depth + L.Annotation_Depth > 0 then
+                                 Target.Append
+                                   (L.Buffer (Line_Start_Pos .. Space_Start - 1));
                                  L.State := Inside_Line'Access;
                                  exit Multiline_Loop;
                               end if;
                               exit Space_Loop;
                            when ')' =>
                               if L.Annotation_Depth > 0 then
+                                 Target.Append
+                                   (L.Buffer (Line_Start_Pos .. Space_Start - 1));
                                  L.State := Inside_Line'Access;
                                  exit Multiline_Loop;
                               end if;
@@ -110,30 +97,39 @@ package body Yaml.Lexer.Evaluation is
                            when others => exit Space_Loop;
                         end case;
                      end loop Space_Loop;
-                     Add (Result, (1 .. L.Pos - Space_Start => ' '));
                   end;
                when ':' =>
                   if not Next_Is_Plain_Safe (L) then
+                     Target.Append
+                       (L.Buffer (Line_Start_Pos .. L.Pos - 2));
                      T.End_Pos := Cur_Mark (L);
                      L.State := Inside_Line'Access;
                      exit Multiline_Loop;
                   end if;
                when Flow_Indicator =>
                   if L.Flow_Depth + L.Annotation_Depth > 0 then
+                     Target.Append
+                       (L.Buffer (Line_Start_Pos .. L.Pos - 2));
                      T.End_Pos := Cur_Mark (L);
                      L.State := Inside_Line'Access;
                      exit Multiline_Loop;
                   end if;
                when ')' =>
                   if L.Annotation_Depth > 0 then
+                     Target.Append
+                       (L.Buffer (Line_Start_Pos .. L.Pos - 2));
                      T.End_Pos := Cur_Mark (L);
                      L.State := Inside_Line'Access;
                      exit Multiline_Loop;
                   end if;
                when Line_Feed | Carriage_Return =>
+                  Target.Append
+                    (L.Buffer (Line_Start_Pos .. L.Pos - 2));
                   T.End_Pos := Cur_Mark (L);
                   exit Inline_Loop;
                when End_Of_Input =>
+                  Target.Append
+                    (L.Buffer (Line_Start_Pos .. L.Pos - 2));
                   if L.Pos /= L.Line_Start then
                      T.End_Pos := Cur_Mark (L);
                   end if;
@@ -182,24 +178,23 @@ package body Yaml.Lexer.Evaluation is
             end if;
             L.Seen_Multiline := True;
             if Newlines = 1 then
-               Add (Result, ' ');
+               Target.Append (' ');
             else
-               Add (Result, (1 .. Newlines - 1 => Line_Feed));
+               Target.Append ((1 .. Newlines - 1 => Line_Feed));
             end if;
          end;
       end loop Multiline_Loop;
-      L.Value := New_Content_From (L.Pool, Result);
+      L.Value := Target.Lock;
    end Read_Plain_Scalar;
 
    procedure Process_Quoted_Whitespace (L : in out Instance; Init : Natural;
-                                        Result : in out Out_Buffer_Type) is
+                                        Target : in out Text.Builder.Reference) is
       Newlines : Natural := Init;
-      Before_Space : constant Positive := Result.Pos;
+      First_Space : constant Positive := L.Pos - 1;
    begin
       loop
          case L.Cur is
-            when ' ' =>
-               Add (Result, ' ');
+            when ' ' => null;
             when Line_Feed =>
                Handle_LF (L);
                L.Cur := L.Next;
@@ -209,12 +204,12 @@ package body Yaml.Lexer.Evaluation is
                L.Cur := L.Next;
                exit;
             when others =>
+               Target.Append (L.Buffer (First_Space .. L.Pos - 2));
                return;
          end case;
          L.Cur := Next (L);
       end loop;
       L.Seen_Multiline := True;
-      Result.Pos := Before_Space;
       loop
          case Start_Line (L) is
             when Content | Comment => exit;
@@ -232,14 +227,15 @@ package body Yaml.Lexer.Evaluation is
       if Newlines = 0 then
          null;
       elsif Newlines = 1 then
-         Add (Result, ' ');
+         Target.Append (' ');
       else
-         Add (Result, (1 .. Newlines - 1 => Line_Feed));
+         Target.Append ((1 .. Newlines - 1 => Line_Feed));
       end if;
    end Process_Quoted_Whitespace;
 
    procedure Read_Single_Quoted_Scalar (L : in out Instance; T : out Token) is
-      Result : Out_Buffer_Type (L.Buffer.all'Length);
+      Target : Text.Builder.Reference := Text.Builder.Create (L.Pool);
+      Literal_Start : Positive;
    begin
       L.Seen_Multiline := False;
       Start_Token (L);
@@ -247,6 +243,7 @@ package body Yaml.Lexer.Evaluation is
          L.Indentation := L.Proposed_Indentation;
          L.Proposed_Indentation := -1;
       end if;
+      Literal_Start := L.Pos;
       L.Cur := Next (L);
       loop
          case L.Cur is
@@ -254,29 +251,32 @@ package body Yaml.Lexer.Evaluation is
                raise Lexer_Error with
                  "Unexpected end of input (quoted string not closed)";
             when ''' =>
+               Target.Append (L.Buffer (Literal_Start .. L.Pos - 2));
                L.Cur := Next (L);
                if L.Cur = ''' then
-                  Add (Result, ''');
+                  Target.Append (''');
+                  Literal_Start := L.Pos;
                   L.Cur := Next (L);
                else
                   exit;
                end if;
             when ' ' | Line_Feed | Carriage_Return =>
-               Process_Quoted_Whitespace (L, 1, Result);
+               Target.Append (L.Buffer (Literal_Start .. L.Pos - 2));
+               Process_Quoted_Whitespace (L, 1, Target);
+               Literal_Start := L.Pos - 1;
             when others =>
-               Add (Result, L.Cur);
                L.Cur := Next (L);
          end case;
       end loop;
       T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
             Kind => Single_Quoted_Scalar);
-      L.Value := New_Content_From (L.Pool, Result);
+      L.Value := Target.Lock;
    end Read_Single_Quoted_Scalar;
 
    subtype Hex_Code_Point is Natural range 0 .. 16#1FFFFF#;
 
    procedure Read_Hex_Sequence (L : in out Instance; Length : Positive;
-                                Result : in out Out_Buffer_Type) is
+                                Target : in out Text.Builder.Reference) is
       Char_Pos : Hex_Code_Point := 0;
       Start_Pos : constant Positive := L.Pos;
    begin
@@ -309,7 +309,7 @@ package body Yaml.Lexer.Evaluation is
                null; --  cannot happen because of the check above
          end case;
       end loop;
-      Add (Result, Ada.Strings.UTF_Encoding.Wide_Wide_Strings.Encode (
+      Target.Append (Ada.Strings.UTF_Encoding.Wide_Wide_Strings.Encode (
            "" & Wide_Wide_Character'Val (Char_Pos)));
    exception
       when Constraint_Error =>
@@ -319,7 +319,8 @@ package body Yaml.Lexer.Evaluation is
    end Read_Hex_Sequence;
 
    procedure Read_Double_Quoted_Scalar (L : in out Instance; T : out Token) is
-      Result : Out_Buffer_Type (L.Buffer.all'Length);
+      Target : Text.Builder.Reference := Text.Builder.Create (L.Pool);
+      Literal_Start : Positive;
    begin
       L.Seen_Multiline := False;
       Start_Token (L);
@@ -327,6 +328,7 @@ package body Yaml.Lexer.Evaluation is
          L.Indentation := L.Proposed_Indentation;
          L.Proposed_Indentation := -1;
       end if;
+      Literal_Start := L.Pos;
       L.Cur := Next (L);
       loop
          <<Handle_Char>>
@@ -335,47 +337,59 @@ package body Yaml.Lexer.Evaluation is
                raise Lexer_Error with
                  "Unexpected end of input (quoted string not closed)";
             when '\' =>
+               Target.Append (L.Buffer (Literal_Start .. L.Pos - 2));
                L.Cur := Next (L);
+               Literal_Start := L.Pos;
                case L.Cur is
-                  when '0' => Add (Result, Character'Val (0));
-                  when 'a' => Add (Result, Character'Val (7));
-                  when 'b' => Add (Result, Character'Val (8));
+                  when '0' => Target.Append (Character'Val (0));
+                  when 'a' => Target.Append (Character'Val (7));
+                  when 'b' => Target.Append (Character'Val (8));
                   when 't' | Character'Val (9) =>
-                     Add (Result, Character'Val (9));
-                  when 'n' => Add (Result, Line_Feed);
-                  when 'v' => Add (Result, Character'Val (11));
-                  when 'f' => Add (Result, Character'Val (12));
-                  when 'r' => Add (Result, Carriage_Return);
-                  when 'e' => Add (Result, Character'Val (27));
-                  when ' ' | '"' | '/' | '\' => Add (Result, L.Cur);
-                  when 'N' => Add (Result, Next_Line);
-                  when '_' => Add (Result, Non_Breaking_Space);
-                  when 'L' => Add (Result, Line_Separator);
-                  when 'P' => Add (Result, Paragraph_Separator);
-                  when 'x' => Read_Hex_Sequence (L, 2, Result);
-                  when 'u' => Read_Hex_Sequence (L, 4, Result);
-                  when 'U' => Read_Hex_Sequence (L, 8, Result);
+                     Target.Append (Character'Val (9));
+                  when 'n' => Target.Append (Line_Feed);
+                  when 'v' => Target.Append (Character'Val (11));
+                  when 'f' => Target.Append (Character'Val (12));
+                  when 'r' => Target.Append (Carriage_Return);
+                  when 'e' => Target.Append (Character'Val (27));
+                  when ' ' | '"' | '/' | '\' => Target.Append (L.Cur);
+                  when 'N' => Target.Append (Next_Line);
+                  when '_' => Target.Append (Non_Breaking_Space);
+                  when 'L' => Target.Append (Line_Separator);
+                  when 'P' => Target.Append (Paragraph_Separator);
+                  when 'x' =>
+                     Read_Hex_Sequence (L, 2, Target);
+                     Literal_Start := L.Pos;
+                  when 'u' =>
+                     Read_Hex_Sequence (L, 4, Target);
+                     Literal_Start := L.Pos;
+                  when 'U' =>
+                     Read_Hex_Sequence (L, 8, Target);
+                     Literal_Start := L.Pos;
                   when Line_Feed | Carriage_Return =>
-                     Process_Quoted_Whitespace (L, 0, Result);
+                     Process_Quoted_Whitespace (L, 0, Target);
+                     Literal_Start := L.Pos - 1;
                      goto Handle_Char;
                   when others =>
                      raise Lexer_Error with
                        "Illegal character in escape sequence: " &
                        Escaped (L.Cur);
                end case;
-            when '"' => exit;
+            when '"' =>
+               Target.Append (L.Buffer (Literal_Start .. L.Pos - 2));
+               exit;
             when ' ' | Line_Feed | Carriage_Return =>
-               Process_Quoted_Whitespace (L, 1, Result);
+               Target.Append (L.Buffer (Literal_Start .. L.Pos - 2));
+               Process_Quoted_Whitespace (L, 1, Target);
+               Literal_Start := L.Pos - 1;
                goto Handle_Char;
-            when others =>
-               Add (Result, L.Cur);
+            when others => null;
          end case;
          L.Cur := Next (L);
       end loop;
       L.Cur := Next (L);
       T := (Start_Pos => L.Token_Start_Mark, End_Pos => Cur_Mark (L),
             Kind => Double_Quoted_Scalar);
-      L.Value := New_Content_From (L.Pool, Result);
+      L.Value := Target.Lock;
    end Read_Double_Quoted_Scalar;
 
    procedure Read_Block_Scalar (L : in out Instance; T : out Token) is
@@ -385,7 +399,8 @@ package body Yaml.Lexer.Evaluation is
       Indent : Natural := 0;
       Separation_Lines : Natural := 0;
 
-      Result : Out_Buffer_Type (L.Buffer.all'Length);
+      Content_Start : Positive;
+      Target : Text.Builder.Reference := Text.Builder.Create (L.Pool);
    begin
       Start_Token (L);
       T := (Start_Pos => L.Token_Start_Mark, End_Pos => <>,
@@ -471,17 +486,18 @@ package body Yaml.Lexer.Evaluation is
             end case;
          end loop;
          if Separation_Lines > 0 then
-            Add (Result, (1 .. Separation_Lines => Line_Feed));
+            Target.Append ((1 .. Separation_Lines => Line_Feed));
          end if;
       end;
 
       --  read block scalar content
       Block_Content : loop
          --  content of line
+         Content_Start := L.Pos - 1;
          while not (L.Cur in Line_End) loop
-            Add (Result, L.Cur);
             L.Cur := Next (L);
          end loop;
+         Target.Append (L.Buffer (Content_Start .. L.Pos - 2));
          Separation_Lines := 0;
          if L.Cur = End_Of_Input then
             L.State := Stream_End'Access;
@@ -519,11 +535,11 @@ package body Yaml.Lexer.Evaluation is
 
          --  line folding
          if T.Kind = Literal_Scalar then
-            Add (Result, (1 .. Separation_Lines  => Line_Feed));
+            Target.Append ((1 .. Separation_Lines  => Line_Feed));
          elsif Separation_Lines = 1 then
-            Add (Result, ' ');
+            Target.Append (' ');
          else
-            Add (Result, (1 .. Separation_Lines - 1 => Line_Feed));
+            Target.Append ((1 .. Separation_Lines - 1 => Line_Feed));
          end if;
       end loop Block_Content;
 
@@ -565,54 +581,57 @@ package body Yaml.Lexer.Evaluation is
       case Chomp is
          when Strip => null;
          when Clip =>
-            if Result.Pos /= 1 then
-               Add (Result, Line_Feed);
+            if Target.Length > 0 then
+               Target.Append (Line_Feed);
             end if;
-         when Keep => Add (Result, (1 .. Separation_Lines => Line_Feed));
+         when Keep => Target.Append ((1 .. Separation_Lines => Line_Feed));
       end case;
 
-      L.Value := New_Content_From (L.Pool, Result);
+      L.Value := Target.Lock;
    end Read_Block_Scalar;
 
    procedure Read_URI (L : in out Instance; Restricted : Boolean) is
-      Result : Out_Buffer_Type (L.Buffer.all'Length);
+      Target : Text.Builder.Reference := Text.Builder.Create (L.Pool);
       End_With_Space : constant Boolean := L.Cur /= '<';
+      Literal_Start : Positive;
    begin
       if End_With_Space then
          if (not Restricted) and L.Cur in '[' | ']' | ',' then
             raise Lexer_Error with "Flow indicator cannot start tag prefix";
          end if;
+         Literal_Start := L.Pos - 1;
       else
+         Literal_Start := L.Pos;
          L.Cur := Next (L);
       end if;
       loop
          case L.Cur is
             when Space_Or_Line_End =>
                if End_With_Space then
+                  Target.Append (L.Buffer (Literal_Start .. L.Pos - 2));
                   exit;
                else
                   raise Lexer_Error with "Unclosed verbatim tag";
                end if;
             when '%' =>
-               Read_Hex_Sequence (L, 2, Result);
-            when Tag_Char =>
-               Add (Result, L.Cur);
+               Target.Append (L.Buffer (Literal_Start .. L.Pos - 2));
+               Read_Hex_Sequence (L, 2, Target);
+               Literal_Start := L.Pos;
+            when Tag_Char => null;
             when '[' | ']' | ',' =>
                if Restricted then
+                  Target.Append (L.Buffer (Literal_Start .. L.Pos - 2));
                   exit;
-               else
-                  Add (Result, L.Cur);
                end if;
             when '!' =>
                if Restricted then
                   raise Lexer_Error with "Illegal '!' in tag suffix!";
-               else
-                  Add (Result, '!');
                end if;
             when '>' =>
                if End_With_Space then
                   raise Lexer_Error with "Illegal character in URI: "">""";
                else
+                  Target.Append (L.Buffer (Literal_Start .. L.Pos - 2));
                   L.Cur := Next (L);
                   exit;
                end if;
@@ -622,7 +641,7 @@ package body Yaml.Lexer.Evaluation is
          end case;
          L.Cur := Next (L);
       end loop;
-      L.Value := New_Content_From (L.Pool, Result);
+      L.Value := Target.Lock;
    end Read_URI;
 
 

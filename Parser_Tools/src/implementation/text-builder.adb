@@ -1,8 +1,6 @@
 --  part of ParserTools, (c) 2017 Felix Krause
 --  released under the terms of the MIT license, see the file "copying.txt"
 
-with Ada.Text_IO;
-
 package body Text.Builder is
    H_Size : constant System.Storage_Elements.Storage_Offset :=
      System.Storage_Elements.Storage_Offset (Header_Size);
@@ -41,7 +39,6 @@ package body Text.Builder is
            (H.Last + 1)) * (H.Last + 1) - 1));
       New_H : constant not null access Header := Header_Of (New_Buffer.Data);
    begin
-      Ada.Text_IO.Put_Line ("Builder growing");
       New_H.Refcount := New_H.Refcount + 1;
       New_Buffer.Data (1 .. Natural (Object.Next - 1)) :=
         Old.Data (1 .. Natural (Object.Next - 1));
@@ -49,7 +46,6 @@ package body Text.Builder is
    end Grow;
 
    procedure Append (Object : in out Reference; Value : String) is
-
    begin
       if Object.Next + Value'Length - 1 >
         System.Storage_Elements.Storage_Offset (Object.Buffer.all'Last) then
@@ -64,7 +60,7 @@ package body Text.Builder is
       H : Header with Import;
       for H'Address use Object.Buffer.all'Address - H_Size;
    begin
-      if Object.Next = H.Last - 1 then
+      if Object.Next > H.Last then
          Grow (Object, 1);
       end if;
       Object.Buffer (Positive (Object.Next)) := Value;
@@ -78,8 +74,11 @@ package body Text.Builder is
 
    function Lock (Object : in out Reference) return Text.Reference is
       H : constant not null access Header := Header_Of (Object.Buffer);
+      Null_Terminator : Character with Import;
+      for Null_Terminator'Address use
+        Object.Buffer.all'Address + Object.Next;
    begin
-      Object.Buffer (Positive (Object.Next)) := Character'Val (0);
+      Null_Terminator := Character'Val (0);
       if Round_To_Header_Size (Object.Next) /= H.Last + 1 then
          declare
             Next : Header with Import;
@@ -96,6 +95,9 @@ package body Text.Builder is
          Object.Buffer := null;
       end return;
    end Lock;
+
+   function Length (Object : Reference) return Natural is
+     (Natural (Object.Next) - 1);
 
    procedure Adjust (Object : in out Reference) is
    begin

@@ -24,6 +24,8 @@ package Text.Builder is
      with Pre => Object.Initialized;
 
    function Lock (Object : in out Reference) return Text.Reference;
+
+   function Length (Object : Reference) return Natural;
 private
    type Reference is new Ada.Finalization.Controlled with record
       Pool : Text.Pool.Reference;

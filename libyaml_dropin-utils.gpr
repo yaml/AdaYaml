@@ -9,9 +9,9 @@ project Libyaml_Dropin.Utils is
 
    for Main use ("libyaml_dropin_events.c", "libyaml_dropin_emitter_test.c");
 
-   --  package Builder renames Yaml.Builder;
-   --  package Compiler renames Yaml.Compiler;
-   --  package Ide renames Yaml.Ide;
+   package Builder renames Libyaml_Dropin.Builder;
+   package Compiler renames Libyaml_Dropin.Compiler;
+   package Ide renames Libyaml_Dropin.Ide;
 
    for Source_Dirs use ("dropin/util/src", "dropin/include");
 end Libyaml_Dropin.Utils;
