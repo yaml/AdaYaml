@@ -532,6 +532,7 @@ package body Yaml.C is
                                          Start_Position => To_Ada (E.Start_Mark),
                                          End_Position => To_Ada (E.End_Mark),
                                          Annotation_Properties => To_Properties (E.Data.Ann_Tag, E.Data.Ann_Anchor),
+                                         Namespace => Standard_Annotation_Namespace,
                                          Name => Text.Import (E.Data.Ann_Name)),
                when Annotation_End => (Kind => Annotation_End,
                                        Start_Position => To_Ada (E.Start_Mark),
