@@ -1,5 +1,12 @@
 # AdaYaml Changelog
 
+## v0.3.0
+
+ * Added DOM API
+ * Fixed several bugs found by fuzzing (#7)
+ * Removed experimental code from main project and moved it to own project
+ * Fixed a bug when reading from stdio
+
 ## v0.2.0
 
  * passes all tests of the yaml-test-suite
