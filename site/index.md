@@ -16,17 +16,17 @@ edited to not break common YAML 1.2 documents. So if you are searching for a
 YAML 1.2 implementation, AdaYaml may still be a viable option for you which only
 breaks in rather obscure edge cases.
 
-Currently, AdaYaml only implements *parsing* and *presenting* YAML data, i.e.
+Currently, AdaYaml implements *parsing* and *presenting* YAML data, i.e.
 you can use it to transform a character stream (a file, a string, …) into a
-sequence of YAML events and vice versa. There is currently no DOM or
-support for (de-)serializing native data structures.
+sequence of YAML events and vice versa. There also is currently a DOM API which
+allows you to transform a YAML input to a DOM structure and vice versa.
+AdaYaml currently does not support serialising arbitrary Ada data structures.
 
 ## Status
 
-AdaYaml is currently under heavy development. The parser is pretty well-tested
-with the external [yaml-test-suite][2] which strives to be part of the upcoming
-YAML 1.3 standard. The presenter is poorly tested and is therefore more likely
-to contain bugs.
+The parser is pretty well-tested with the external [yaml-test-suite][2] which
+strives to be part of the upcoming YAML 1.3 standard. Other parts of the API
+have been tested less extensively.
 
 ## Project Goals
 
