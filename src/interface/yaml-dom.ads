@@ -85,6 +85,7 @@ package Yaml.Dom is
 
 private
    type Node_Pointer is not null access all Node.Instance;
+   type Constant_Node_Pointer is not null access  constant Node.Instance;
 
    function Nodes_Equal (Left, Right : access Node.Instance) return Boolean;
 

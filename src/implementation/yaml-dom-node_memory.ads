@@ -9,11 +9,11 @@ private package Yaml.Dom.Node_Memory is
    type Instance is tagged limited private;
 
    procedure Visit (Object : in out Instance;
-                    Value  : not null access constant Node.Instance;
+                    Value  : not null access Node.Instance;
                     Previously_Visited : out Boolean);
 
    procedure Forget (Object : in out Instance;
-                     Value  : not null access constant Node.Instance);
+                     Value  : not null access Node.Instance);
 
    function Pop_First (Object : in out Instance)
                        return not null access Node.Instance;

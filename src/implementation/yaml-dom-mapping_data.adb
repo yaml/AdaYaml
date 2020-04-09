@@ -144,7 +144,7 @@ package body Yaml.Dom.Mapping_Data is
       procedure Raw_Insert (Container  : in out Instance;
                             Key, Value : not null access Node.Instance) is
       begin
-         Container.Data.Insert (Key, Value);
+         Container.Data.Insert (Node_Pointer (Key), Node_Pointer (Value));
       end Raw_Insert;
    end Friend_Interface;
 end Yaml.Dom.Mapping_Data;
