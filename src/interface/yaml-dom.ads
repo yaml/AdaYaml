@@ -94,9 +94,9 @@ private
       Pool      : Text.Pool.Reference;
       Implicit_Start, Implicit_End : Boolean;
    end record;
-
+   type Document_Instance_Access is access all Document_Instance;
    type Document_Reference is new Ada.Finalization.Controlled with record
-      Data : not null access Document_Instance;
+      Data : not null Document_Instance_Access;
    end record;
 
    overriding procedure Adjust (Object : in out Document_Reference);
@@ -104,7 +104,7 @@ private
 
    type Node_Reference is new Ada.Finalization.Controlled with record
       Data : Node_Pointer;
-      Document : not null access Document_Instance;
+      Document : not null Document_Instance_Access;
    end record;
 
    overriding procedure Adjust (Object : in out Node_Reference);
@@ -112,7 +112,7 @@ private
 
    type Optional_Node_Reference is new Ada.Finalization.Controlled with record
       Data : access Node.Instance;
-      Document : access Document_Instance;
+      Document : Document_Instance_Access;
    end record;
 
    overriding procedure Adjust (Object : in out Optional_Node_Reference);

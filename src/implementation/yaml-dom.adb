@@ -8,8 +8,6 @@ with Yaml.Dom.Mapping_Data;
 with Yaml.Dom.Node_Memory;
 
 package body Yaml.Dom is
-   use type Text.Reference;
-   use type Count_Type;
    use type Node.Instance;
 
    function For_Document (Document : not null access Document_Instance)

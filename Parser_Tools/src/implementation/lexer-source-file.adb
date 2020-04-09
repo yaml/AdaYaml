@@ -22,7 +22,7 @@ package body Lexer.Source.File is
    end Finalize;
 
    function As_Source (File_Path : String) return Pointer is
-      Ret : constant access Instance :=
+      Ret : constant Instance_Access :=
         new Instance'(Source.Instance with Input_At => 0,
                          Input_Length => Ada.Directories.Size (File_Path),
                          others => <>);

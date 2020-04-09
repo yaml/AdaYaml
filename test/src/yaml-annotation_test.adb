@@ -69,7 +69,6 @@ package body Yaml.Annotation_Test is
             Expected_Event : constant String := Get_Line (Expected);
             Actual : constant Event := Trans.Next;
             Actual_Event : constant String := To_String (Actual);
-            use type Event_Kind;
          begin
             if Expected_Event = Actual_Event then
                Append (Output, Actual_Event & Character'Val (10));
@@ -101,7 +100,6 @@ package body Yaml.Annotation_Test is
       Expected_Error : File_Type;
       Output : Unbounded_String;
       Cur : Event;
-      use type Event_Kind;
    begin
       TC (T).Cur := TC (T).Cur + 1;
       P.Value.Set_Input (Source.File.As_Source (Compose (Test_Dir, "in.yaml")));

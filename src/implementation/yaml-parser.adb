@@ -10,7 +10,7 @@ package body Yaml.Parser is
    use type Text.Reference;
 
    function New_Parser return Reference is
-      Ptr : constant not null access Instance := new Instance;
+      Ptr : constant not null Instance_Access := new Instance;
    begin
       return Reference'(Ada.Finalization.Controlled with Data => Ptr);
    end New_Parser;

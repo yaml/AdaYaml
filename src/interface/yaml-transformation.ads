@@ -9,6 +9,7 @@ generic
    with package Stream_Impl is new Stream_Concept (<>);
 package Yaml.Transformation is
    type Instance is limited new Refcount_Base with private;
+   type Instance_Access is access all Instance'Class;
    type Reference is tagged private;
    type Accessor (Data : not null access Instance) is null record with
      Implicit_Dereference => Data;
@@ -27,7 +28,7 @@ package Yaml.Transformation is
                      T : not null Transformator.Pointer);
 private
    type Reference is new Ada.Finalization.Controlled with record
-      Data : not null access Instance;
+      Data : not null Instance_Access;
    end record;
 
    overriding procedure Adjust (Object : in out Reference);

@@ -122,7 +122,7 @@ package body Yaml.Events.Context is
    procedure Create_Local_Store (Object : Reference;
                                  Position : out Local_Scope_Cursor) is
    begin
-      Grow_Scopes (Object.Data.all);
+      Grow_Scopes (Instance (Object.Data.all));
       Object.Data.Local_Scopes (Object.Data.Local_Scope_Count).Events :=
         Store.New_Store.Optional;
       Position := Local_Scope_Cursor (Object.Data.Local_Scope_Count);
@@ -131,7 +131,7 @@ package body Yaml.Events.Context is
    procedure Create_Local_Symbol_Scope (Object : Reference;
                                         Position : out Local_Scope_Cursor) is
    begin
-      Grow_Scopes (Object.Data.all);
+      Grow_Scopes (Instance (Object.Data.all));
       Object.Data.Local_Scopes (Object.Data.Local_Scope_Count).Symbols :=
         new Symbol_Tables.Map;
       Position := Local_Scope_Cursor (Object.Data.Local_Scope_Count);

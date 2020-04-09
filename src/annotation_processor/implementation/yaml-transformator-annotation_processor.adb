@@ -281,7 +281,6 @@ package body Yaml.Transformator.Annotation_Processor is
              Object.Current.Kind /= Document_End));
 
    function Next (Object : in out Instance) return Event is
-      use type Events.Context.Location_Type;
 
       procedure Look_For_Additional_Element is
       begin

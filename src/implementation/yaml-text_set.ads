@@ -25,6 +25,7 @@ package Yaml.Text_Set is
                    Initial_Size : Positive);
    procedure Clear (Object : in out Reference);
 private
+   type Holder_Access is access all Holder;
    type Holder_Array is array (Natural range <>) of aliased Holder;
    type Holder_Array_Access is access Holder_Array;
 

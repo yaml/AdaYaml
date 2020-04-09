@@ -64,7 +64,7 @@ package body Yaml.Text_Set is
    begin
       <<Start>>
       declare
-         Cur : constant not null access Holder := Raw_Set (Object, Hash, S);
+         Cur : constant not null Holder_Access := Raw_Set (Object, Hash, S);
       begin
          if Cur.Hash = 0 then
             if Grow_If_Needed (Object) then

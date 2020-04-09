@@ -84,7 +84,7 @@ package body Yaml.Presenter is
 
       subtype Chosen_Scalar_Style_Type is Scalar_Style_Type range
         Plain .. Folded;
-
+      pragma Warnings (Off, "formal parameter ""In_Flow"" is not referenced");
       function Possibly_Block_Scalar_Style (Features : Analysis.Scalar_Features;
                                             In_Flow : Boolean)
                                             return Chosen_Scalar_Style_Type is
@@ -95,6 +95,7 @@ package body Yaml.Presenter is
            P.Cur_Max_Column then Literal elsif Features.Folding_Possible
          and then Features.Max_Word_Length + P.Levels.Top.Indentation + 2 <=
            P.Cur_Max_Column then Folded else Single_Quoted);
+      pragma Warnings (On, "formal parameter ""In_Flow"" is not referenced");
 
       function Chosen_Scalar_Style (Features : Analysis.Scalar_Features;
                                     In_Flow : Boolean)
@@ -500,7 +501,6 @@ package body Yaml.Presenter is
       procedure Render_Scalar (In_Flow : Boolean;
                                Features : Analysis.Scalar_Features)
         with Pre => E.Kind = Scalar is
-         use type Scalar_Style_Type;
       begin
          if P.Flow_Style = Canonical then
             if E.Scalar_Style in Literal | Folded then
