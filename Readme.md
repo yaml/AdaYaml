@@ -102,5 +102,5 @@ To edit the code, you can use GNAT Programming Studio to open the `*.gpr` files.
 [MIT](copying.txt)
 
  [1]: https://github.com/yaml/summit.yaml.io/wiki/YAML-RFC-Index
- [2]: https://github.com/yaml/summit.yaml.io/wiki/The-Transformations-Extension
+ [2]: https://github.com/yaml/yaml-spec/wiki/The-Transformations-Extension
  [3]: https://blog.adacore.com/running-american-fuzzy-lop-on-your-ada-code
