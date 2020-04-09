@@ -5,7 +5,7 @@ private with Ada.Finalization;
 
 package Yaml.Events.Queue is
    type Instance is limited new Refcount_Base with private;
-   type Instance_Access is access all Instance'Class;
+   type Instance_Access is access all Instance;
    type Reference is tagged private;
    type Accessor (Data : not null access Instance) is limited null record with
      Implicit_Dereference => Data;
@@ -28,7 +28,7 @@ package Yaml.Events.Queue is
                      return Element_Accessor;
 
    type Stream_Instance is new Refcount_Base with private;
-   type Stream_Instance_Access is access all Stream_Instance'Class;
+   type Stream_Instance_Access is access all Stream_Instance;
    type Stream_Reference is tagged private;
    type Stream_Accessor (Data : not null access Stream_Instance) is limited
      null record with Implicit_Dereference => Data;

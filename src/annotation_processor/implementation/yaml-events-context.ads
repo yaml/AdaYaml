@@ -113,7 +113,7 @@ private
       Local_Scopes : Scope_Array_Pointer := null;
       Local_Scope_Count, Generated_Data_Count : Natural := 0;
    end record;
-   type Instance_Access is access all Instance'Class;
+   type Instance_Access is access all Instance;
 
    overriding procedure Finalize (Object : in out Instance);
 
