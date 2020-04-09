@@ -4,8 +4,9 @@
 with Ada.Exceptions;
 with Yaml.Events.Queue;
 with Yaml.Parser;
-
+With GNAT.Strings;
 procedure Yaml.Inspect (Input : String) is
+   use GNAT.Strings;
    type Error_Kind is (None, From_Lexer, From_Parser);
 
    P : Parser.Instance;
@@ -15,7 +16,7 @@ procedure Yaml.Inspect (Input : String) is
    Read_Events : constant Events.Queue.Reference := Events.Queue.New_Queue;
    Occurred_Error : Error_Kind := None;
    Lexer_Token_Start, Lexer_Token_End : Mark;
-   Exception_Message : access String;
+   Exception_Message : String_Access;
 begin
    P.Set_Input (Input);
    Start_Emitting;

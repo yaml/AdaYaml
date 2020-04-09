@@ -12,7 +12,7 @@ package Yaml.Servers is
      new Server.Connections_Factory with null record;
 
    type Yaml_Client is new HTTP.HTTP_Client with null record;
-
+   pragma Warnings (Off, "formal parameter ""From"" is not referenced");
    overriding function Create (Factory  : access Yaml_Factory;
                                Listener : access Server.Connections_Server'Class;
                                From     : GNAT.Sockets.Sock_Addr_Type)
@@ -21,6 +21,8 @@ package Yaml.Servers is
                        Request_Length => Factory.Request_Length,
                        Input_Size     => Factory.Input_Size,
                        Output_Size    => Factory.Output_Size));
+
+   pragma Warnings (On, "formal parameter ""From"" is not referenced");
 
    overriding procedure Do_Get (Client : in out Yaml_Client);
 end Yaml.Servers;

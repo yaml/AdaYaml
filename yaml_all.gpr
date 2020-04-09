@@ -1,0 +1,7 @@
+Aggregate project Yaml_All is
+   for Project_Files use project'Project_Files & ("yaml-annotation_processor.gpr");
+   for Project_Files use project'Project_Files & ("yaml.gpr");
+   for Project_Files use project'Project_Files & ("yaml-server.gpr");
+   for Project_Files use project'Project_Files & ("yaml-tests.gpr");
+   for Project_Files use project'Project_Files & ("yaml-utils.gpr");
+end Yaml_All;
