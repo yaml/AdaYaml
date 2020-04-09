@@ -5,6 +5,7 @@ private with Ada.Containers.Hashed_Maps;
 
 package Yaml.Events.Store is
    type Instance is limited new Refcount_Base with private;
+   type Instance_Access is access all Instance'Class;
    type Reference is tagged private;
    type Optional_Reference is tagged private;
 
@@ -45,6 +46,8 @@ package Yaml.Events.Store is
    procedure Copy (Source : in Instance; Target : in out Instance);
 
    type Stream_Instance is limited new Refcount_Base with private;
+   type Stream_Instance_Access is access all Stream_Instance 'Class;
+
    type Stream_Reference is tagged private;
    type Optional_Stream_Reference is tagged private;
    type Stream_Accessor (Data : not null access Stream_Instance) is limited
