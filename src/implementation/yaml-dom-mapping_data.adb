@@ -43,7 +43,7 @@ package body Yaml.Dom.Mapping_Data is
       Increase_Refcount (Position.Container.Document);
       return ((Ada.Finalization.Controlled with
                 Data => Node_Maps.Key (Position.Position),
-              Document => Position.Container.Document));
+              Document => Document_Instance_Access (Position.Container.Document)));
    end Key;
 
    function Value (Position : Cursor) return Node_Reference is
@@ -51,7 +51,7 @@ package body Yaml.Dom.Mapping_Data is
       Increase_Refcount (Position.Container.Document);
       return ((Ada.Finalization.Controlled with
                 Data => Node_Maps.Element (Position.Position),
-              Document => Position.Container.Document));
+              Document => Document_Instance_Access (Position.Container.Document)));
    end Value;
 
    function Find (Object : Instance; Key : Node_Reference) return Cursor is
@@ -144,7 +144,7 @@ package body Yaml.Dom.Mapping_Data is
       procedure Raw_Insert (Container  : in out Instance;
                             Key, Value : not null access Node.Instance) is
       begin
-         Container.Data.Insert (Key, Value);
+         Container.Data.Insert (Node_Pointer (Key), Node_Pointer (Value));
       end Raw_Insert;
    end Friend_Interface;
 end Yaml.Dom.Mapping_Data;

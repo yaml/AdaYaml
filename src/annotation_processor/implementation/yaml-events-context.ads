@@ -113,6 +113,7 @@ private
       Local_Scopes : Scope_Array_Pointer := null;
       Local_Scope_Count, Generated_Data_Count : Natural := 0;
    end record;
+   type Instance_Access is access all Instance;
 
    overriding procedure Finalize (Object : in out Instance);
 
@@ -122,7 +123,7 @@ private
    type Symbol_Cursor is new Symbol_Tables.Cursor;
 
    type Reference is new Ada.Finalization.Controlled with record
-      Data : not null access Instance := raise Constraint_Error with "uninitialized context instance!";
+      Data : not null Instance_Access := raise Constraint_Error with "uninitialized context instance!";
    end record;
 
    overriding procedure Adjust (Object : in out Reference);

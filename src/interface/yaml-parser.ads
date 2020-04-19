@@ -13,6 +13,7 @@ package Yaml.Parser is
    --  YAML characters stream source.
 
    type Instance is limited new Refcount_Base with private;
+   type Instance_Access is access all Instance;
    subtype Class is Instance'Class;
    type Reference is tagged private;
    type Accessor (Data : not null access Instance) is limited null record with

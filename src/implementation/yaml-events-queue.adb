@@ -80,7 +80,7 @@ package body Yaml.Events.Queue is
      ((Data => Object.Data));
 
    function New_Queue return Reference is
-      Ptr : constant not null access Instance := new Instance;
+      Ptr : constant not null Instance_Access := new Instance;
    begin
       return Reference'(Ada.Finalization.Controlled with Data => Ptr);
    end New_Queue;
@@ -96,7 +96,7 @@ package body Yaml.Events.Queue is
    end Element;
 
    function As_Stream (Object : Reference'Class) return Stream_Reference is
-      Ptr : constant not null access Stream_Instance :=
+      Ptr : constant not null Stream_Instance_Access :=
         new Stream_Instance'(Refcount_Base with Buffer => Reference (Object),
                              Offset => 0);
    begin

@@ -4,8 +4,6 @@
 with Yaml.Lexer.Evaluation;
 
 package body Yaml.Lexer is
-   use type Text.Reference;
-
    -----------------------------------------------------------------------------
    --             Initialization and buffer handling                          --
    -----------------------------------------------------------------------------

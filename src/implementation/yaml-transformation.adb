@@ -34,7 +34,7 @@ package body Yaml.Transformation is
    end Transform;
 
    function Transform (Original : Stream_Impl.Reference) return Reference is
-      Ptr : constant not null access Instance :=
+      Ptr : constant not null Instance_Access :=
         new Instance'(Refcount_Base with Original => Original,
                       Transformators => <>);
    begin
@@ -42,7 +42,7 @@ package body Yaml.Transformation is
    end Transform;
 
    function Value (Object : Reference) return Accessor is
-     ((Data => Object.Data));
+     ((Data => Object.Data.all'Access));
 
    function Next (Object : in out Instance) return Event is
       use type Transformator_Vectors.Cursor;

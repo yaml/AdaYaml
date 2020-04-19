@@ -3,21 +3,21 @@
 
 package body Yaml.Dom.Node_Memory is
    procedure Visit (Object : in out Instance;
-                    Value : not null access constant Node.Instance;
+                    Value : not null access Node.Instance;
                     Previously_Visited : out Boolean) is
    begin
-      if Object.Data.Contains (Value) then
+      if Object.Data.Contains (Node_Pointer (Value)) then
          Previously_Visited := True;
       else
-         Object.Data.Include (Value);
+         Object.Data.Include (Node_Pointer (Value));
          Previously_Visited := False;
       end if;
    end Visit;
 
    procedure Forget (Object : in out Instance;
-                     Value  : not null access constant Node.Instance) is
+                     Value  : not null access Node.Instance) is
    begin
-      Object.Data.Exclude (Value);
+      Object.Data.Exclude (Node_Pointer (Value));
    end Forget;
 
    function Pop_First (Object : in out Instance)

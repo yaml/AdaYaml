@@ -5,7 +5,6 @@ with Yaml.Dom.Node;
 
 package body Yaml.Dom.Sequence_Data is
    use type Count_Type;
-   use type Ada.Containers.Hash_Type;
 
    type Iterator is new Iterators.Forward_Iterator with record
       Container : not null access constant Instance;
@@ -234,7 +233,7 @@ package body Yaml.Dom.Sequence_Data is
       procedure Raw_Append (Container : in out Instance;
                             New_Item  : not null access Node.Instance) is
       begin
-         Container.Data.Append (New_Item);
+         Container.Data.Append (Node_Pointer (New_Item));
       end Raw_Append;
    end Friend_Interface;
 end Yaml.Dom.Sequence_Data;

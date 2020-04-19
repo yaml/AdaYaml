@@ -92,7 +92,6 @@ package body Yaml.Parser.Event_Test is
             Expected_Event : constant String := Get_Line (Expected);
             Actual : constant Event := P.Next;
             Actual_Event : constant String := To_String (Actual);
-            use type Event_Kind;
          begin
             if Expected_Event = Actual_Event then
                Append (Output, Actual_Event & Character'Val (10));
@@ -122,7 +121,6 @@ package body Yaml.Parser.Event_Test is
       Output : Unbounded_String;
       Cur : Event;
       Expected_Error : File_Type;
-      use type Event_Kind;
    begin
       TC (T).Cur := TC (T).Cur + 1;
       P.Set_Input (Source.File.As_Source (Compose (Test_Dir, "in.yaml")));

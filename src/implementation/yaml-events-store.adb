@@ -3,7 +3,7 @@
 
 package body Yaml.Events.Store is
    function New_Store return Reference is
-      Ptr : constant not null access Instance := new Instance;
+      Ptr : constant not null Instance_Access := new Instance;
    begin
       return (Ada.Finalization.Controlled with Data => Ptr);
    end New_Store;
@@ -208,7 +208,7 @@ package body Yaml.Events.Store is
 
    function Retrieve (Object : Reference'Class; Position : Anchor_Cursor)
                          return Stream_Reference is
-      Ptr : constant not null access Stream_Instance :=
+      Ptr : constant not null Stream_Instance_Access :=
         new Stream_Instance'(Refcount_Base with Object => Reference (Object),
                              Depth => 0, Current => Anchor_To_Index.Element
                                (Anchor_To_Index.Cursor (Position)).Position);
@@ -219,7 +219,7 @@ package body Yaml.Events.Store is
 
    function Retrieve (Object : Reference'Class; Position : Element_Cursor)
                       return Stream_Reference is
-      Ptr : constant not null access Stream_Instance :=
+      Ptr : constant not null Stream_Instance_Access :=
         new Stream_Instance'(Refcount_Base with Object => Reference (Object),
                              Depth => 0, Current => Positive (Position));
    begin

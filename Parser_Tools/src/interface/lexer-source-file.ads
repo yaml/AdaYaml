@@ -8,6 +8,7 @@ package Lexer.Source.File is
    --  this provides streams which are backed by files on the file system.
 
    type Instance is new Source.Instance with private;
+   type Instance_Access is access all Instance;
 
    overriding procedure Read_Data (S : in out Instance; Buffer : out String;
                                    Length : out Natural);

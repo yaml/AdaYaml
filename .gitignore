@@ -7,3 +7,6 @@ gnatinspect.db
 *.cswi
 *-loc.xml
 cvg
+messages.txt
+*.cgpr
+
