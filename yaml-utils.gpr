@@ -5,7 +5,6 @@ project Yaml.Utils is
    for Languages use ("ada");
 
    for Object_Dir use "util/obj";
-   for Library_Dir use "util/lib";
    for Exec_Dir use "util/bin";
 
    for Main use ("yaml-to_events.adb", "yaml-transform.adb", "yaml-to_dom.adb");
