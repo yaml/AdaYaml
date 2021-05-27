@@ -4,7 +4,6 @@ project Libyaml_Dropin.Utils is
    for Languages use ("c");
 
    for Object_Dir use "dropin/util/obj";
-   for Library_Dir use "dropin/util/lib";
    for Exec_Dir use "dropin/util/bin";
 
    for Main use ("libyaml_dropin_events.c", "libyaml_dropin_emitter_test.c");

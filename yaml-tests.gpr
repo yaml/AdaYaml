@@ -6,7 +6,6 @@ project Yaml.Tests is
    for Languages use ("ada");
 
    for Object_Dir use "test/obj";
-   for Library_Dir use "test/lib";
    for Exec_Dir use "test/bin";
 
    for Main use ("yaml-loading_tests-harness.adb",
