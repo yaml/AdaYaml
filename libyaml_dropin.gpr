@@ -30,22 +30,25 @@ library project Libyaml_Dropin is
    end Ide;
 
    package Builder is
+      Default_Switches := ("-s", "-j0");
       case Mode is
       when "debug" =>
-         for Default_Switches ("ada") use ("-s", "-g");
+         for Default_Switches ("ada") use Default_Switches & ("-g");
       when "release" =>
-         for Default_Switches ("ada") use ("-s");
+         for Default_Switches ("ada") use Default_Switches;
       end case;
    end Builder;
 
    package Compiler is
+      Default_Switches := ("-gnat12", "-gnatwa", "-gnatwl",  "-gnaty3abcefhiklmNprt", "-fstack-check");
+
       case Mode is
       when "debug" =>
          for Default_Switches ("ada") use
-            ("-gnat12", "-gnatwa", "-gnatwl", "-E", "-gnateE", "-gnaty3abcefhiklmNprt", "-g", "-fstack-check");
+           Default_Switches &  ( "-E", "-gnateE" ,"-g");
       when "release" =>
          for Default_Switches ("ada") use
-            ("-gnat12", "-gnatwa", "-gnatwl", "-O3", "-gnaty3abcefhiklmNprt", "-fstack-check", "-fno-strict-aliasing");
+           Default_Switches &  ("-O3", "-fno-strict-aliasing");
       end case;
    end Compiler;
 end Libyaml_Dropin;

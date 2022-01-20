@@ -23,21 +23,23 @@ library project Yaml is
       when "debug" =>
          for Default_Switches ("ada") use Builder'Default_Switches ("ada") & ("-g");
       when "release" =>
-         null;
+         for Default_Switches ("ada") use Builder'Default_Switches ("ada");
       end case;
    end Builder;
 
    package Compiler is
       for Default_Switches ("ada") use
-        ("-gnat12", "-gnatwa", "-gnatwl", "-gnata",  "-gnaty3abcefhiklmNprt", "-fstack-check");
+        ("-gnat12", "-gnatwa", "-gnatwl",  "-gnaty3abcefhiklmNprt");
 
       case Mode is
       when "debug" =>
          for Default_Switches ("ada") use Compiler'Default_Switches ("ada") &
-         ("-gnata", "-gnateE", "-E",  "-g");
+         ("-gnata", "-gnateE",  "-g", "-fstack-check");
+
       when "release" =>
          for Default_Switches ("ada") use
-           ("-O3" );
+           Compiler'Default_Switches ("ada") & ("-O3" );
       end case;
    end Compiler;
+
 end Yaml;
