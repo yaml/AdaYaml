@@ -10,3 +10,4 @@ cvg
 messages.txt
 *.cgpr
 
+.clang-format
