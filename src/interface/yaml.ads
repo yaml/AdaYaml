@@ -32,28 +32,30 @@ package Yaml is
 
    --  the version of the library. major and minor version correspond to the
    --  YAML version, the patch version is local to this implementation.
-   function Version_Major return Natural with Inline;
-   function Version_Minor return Natural with Inline;
-   function Version_Patch return Natural with Inline;
+   function Version_Major return Natural with
+      Inline;
+   function Version_Minor return Natural with
+      Inline;
+   function Version_Patch return Natural with
+      Inline;
 
-
-   --  all positions in a mark start at 1
+      --  all positions in a mark start at 1
    subtype Mark_Position is Positive;
 
    --  a position in the input stream.
    type Mark is record
-      Index, Line, Column : Mark_Position;
+      Index, Line, Column : Mark_Position := 1;
    end record;
 
-   type Event_Kind is (Stream_Start, Stream_End, Document_Start, Document_End,
-                       Alias, Scalar, Sequence_Start, Sequence_End,
-                       Mapping_Start, Mapping_End, Annotation_Start,
-                       Annotation_End);
+   type Event_Kind is
+     (Stream_Start, Stream_End, Document_Start, Document_End, Alias, Scalar,
+      Sequence_Start, Sequence_End, Mapping_Start, Mapping_End,
+      Annotation_Start, Annotation_End);
    type Collection_Style_Type is (Any, Block, Flow) with
-     Convention => C;
+      Convention => C;
    type Scalar_Style_Type is
      (Any, Plain, Single_Quoted, Double_Quoted, Literal, Folded) with
-     Convention => C;
+      Convention => C;
    subtype Flow_Scalar_Style_Type is Scalar_Style_Type range Literal .. Folded;
 
    type Properties is record
@@ -62,7 +64,8 @@ package Yaml is
 
    function Default_Properties return Properties;
 
-   function Is_Empty (Props : Properties) return Boolean with Inline;
+   function Is_Empty (Props : Properties) return Boolean with
+      Inline;
 
    type Event (Kind : Event_Kind := Stream_End) is record
       --  Start_Position is first character, End_Position is after last
@@ -70,25 +73,26 @@ package Yaml is
       Start_Position, End_Position : Mark;
       case Kind is
          when Document_Start =>
-            Version : Text.Reference;
+            Version        : Text.Reference;
             Implicit_Start : Boolean := True;
          when Document_End =>
             Implicit_End : Boolean;
          when Mapping_Start | Sequence_Start =>
-            Collection_Style : Collection_Style_Type := Any;
+            Collection_Style      : Collection_Style_Type := Any;
             Collection_Properties : Properties;
          when Annotation_Start =>
             Annotation_Properties : Properties;
-            Namespace : Text.Reference;
-            Name : Text.Reference;
+            Namespace             : Text.Reference;
+            Name                  : Text.Reference;
          when Scalar =>
             Scalar_Properties : Properties;
-            Content : Text.Reference;
-            Scalar_Style : Scalar_Style_Type := Any;
+            Content           : Text.Reference;
+            Scalar_Style      : Scalar_Style_Type := Any;
          when Alias =>
             Target : Text.Reference;
          when Mapping_End | Sequence_End | Annotation_End | Stream_Start |
-              Stream_End => null;
+           Stream_End =>
+            null;
       end case;
    end record;
 
@@ -96,19 +100,19 @@ package Yaml is
 
    Standard_Annotation_Namespace : constant Text.Reference;
 
-   --  base type for refcounted types (mainly event streams). all streams and
-   --  some other objects can be used with reference-counting smart pointers, so
-   --  this base type implements the reference counting. note that this type
-   --  does not have any stream semantic; that is to be implemented by child
-   --  types by providing a Stream_Concept instance (if they are streams).
+--  base type for refcounted types (mainly event streams). all streams and
+--  some other objects can be used with reference-counting smart pointers, so
+--  this base type implements the reference counting. note that this type
+--  does not have any stream semantic; that is to be implemented by child
+--  types by providing a Stream_Concept instance (if they are streams).
    --
-   --  beware that this type is only the vessel for the reference count and does
-   --  not do any reference counting itself; the reference-counting management
-   --  functions must be called from a smart pointer type. An object of a child
-   --  type can be used on the stack, in which case the reference count is not
-   --  used and instead the object just goes out of scope.
-   type Refcount_Base is abstract limited new
-     Ada.Finalization.Limited_Controlled with private;
+--  beware that this type is only the vessel for the reference count and does
+--  not do any reference counting itself; the reference-counting management
+--  functions must be called from a smart pointer type. An object of a child
+--  type can be used on the stack, in which case the reference count is not
+--  used and instead the object just goes out of scope.
+   type Refcount_Base is
+     abstract limited new Ada.Finalization.Limited_Controlled with private;
 
    --  increases reference count. only call this explicitly when implementing
    --  a reference-counting smart pointer.
@@ -123,11 +127,12 @@ private
    Standard_Annotation_Namespace_Holder : constant Text.Constant_Instance :=
      Text.Hold ("@@");
 
-   Standard_Annotation_Namespace : constant Text.Reference := Text.Held
-     (Standard_Annotation_Namespace_Holder);
+   Standard_Annotation_Namespace : constant Text.Reference :=
+     Text.Held (Standard_Annotation_Namespace_Holder);
 
-   type Refcount_Base is abstract limited new
-     Ada.Finalization.Limited_Controlled with record
+   type Refcount_Base is abstract limited new Ada.Finalization
+     .Limited_Controlled with
+   record
       Refcount : Natural := 1;
    end record;
 end Yaml;
