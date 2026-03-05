@@ -1,3 +1,18 @@
+> **This Project is Unmaintained**
+>
+> AdaYaml was an experiment that added additional features on top of a
+> YAML 1.2 implementation, evaluating possible features for a prospective
+> YAML 1.3 version. 
+>
+> The particular ideas implemented here have proven to be too difficult to propose.
+> This code might still be of use as a standard YAML 1.2 implementation.
+> However, be aware that it was never in a stable state and it is not maintained.
+>
+> **You have been warned.**
+>
+> The rest of this documentation has been left untouched and still references
+> the YAML 1.3 version that didn't come to be.
+
 # AdaYaml - YAML 1.3 implementation in Ada
 
 This is an implementation of the upcoming YAML 1.3 standard. Since the standard

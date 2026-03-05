@@ -5,6 +5,18 @@ permalink: /
 weight: 1
 ---
 
+> **This Project is Unmaintained**
+>
+> AdaYaml was an experiment that added additional features on top of a
+> YAML 1.2 implementation, evaluating possible features for a prospective
+> YAML 1.3 version.
+>
+> The particular ideas implemented here have proven to be too difficult to propose.
+> This code might still be of use as a standard YAML 1.2 implementation.
+> However, be aware that it was never in a stable state and it is not maintained.
+>
+> **You have been warned.**
+
 **AdaYaml** is an experimental YAML implementation in Ada 2012. *Experimental*
 means that it does not conform to any released YAML specification. Instead, it
 is a testbed for the proposed YAML 1.3 standard. This [list of RFCs][1] gives an

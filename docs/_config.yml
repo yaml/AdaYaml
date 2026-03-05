@@ -1,0 +1,9 @@
+title: AdaYaml
+email: contact@flyx.org
+description: >
+  AdaYaml is an experimental implementation of the YAML specification using the
+  Ada language.
+baseurl: "/"
+url: "https://yaml.github.io/"
+highlighter: pygments
+markdown: kramdown
