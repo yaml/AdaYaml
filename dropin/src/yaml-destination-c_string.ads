@@ -20,4 +20,5 @@ private
       Size : Integer;
       Size_Written : access Interfaces.C.size_t;
    end record;
+   type Instance_Access is access all Instance'Class;
 end Yaml.Destination.C_String;

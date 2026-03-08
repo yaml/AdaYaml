@@ -6,7 +6,7 @@ package body Yaml.Destination.C_String is
                             Size : Interfaces.C.size_t;
                             Size_Written : access Interfaces.C.size_t)
                             return Pointer is
-      Ret : constant access Instance :=
+      Ret : constant Instance_Access :=
         new Instance'(Destination.Instance with
                       Raw => Raw, Size => Integer (Size),
                       Size_Written => Size_Written);
